@@ -16,21 +16,23 @@ let supabase = null;
 /**
  * Supabaseクライアントを初期化
  */
-console.log('Initializing Supabase client...');
-console.log('window.supabase type:', typeof window.supabase);
-console.log('window.supabase_js type:', typeof window.supabase_js);
+function initSupabaseClient() {
+    console.log('Initializing Supabase client...');
+    console.log('window.supabase type:', typeof window.supabase);
+    console.log('window.supabase_js type:', typeof window.supabase_js);
 
-if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('✅ Supabase client initialized (window.supabase)');
-    return true;
-} else if (typeof window.supabase_js !== 'undefined') {
-    supabase = window.supabase_js.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('✅ Supabase client initialized (window.supabase_js)');
-    return true;
-} else {
-    console.error('❌ Supabase SDK not loaded. Checked window.supabase and window.supabase_js');
-    return false;
+    if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('✅ Supabase client initialized (window.supabase)');
+        return true;
+    } else if (typeof window.supabase_js !== 'undefined') {
+        supabase = window.supabase_js.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('✅ Supabase client initialized (window.supabase_js)');
+        return true;
+    } else {
+        console.error('❌ Supabase SDK not loaded. Checked window.supabase and window.supabase_js');
+        return false;
+    }
 }
 
 /**
