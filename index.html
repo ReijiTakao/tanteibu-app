@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a365d">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>端艇部 総合管理</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<script>
+    window.onerror = function (msg, url, lineNo, columnNo, error) {
+        const message = [
+            'Message: ' + msg,
+            'URL: ' + url,
+            'Line: ' + lineNo,
+            'Column: ' + columnNo,
+            'Error object: ' + JSON.stringify(error)
+        ].join(' - ');
+
+        console.error(message);
+
+        // Show error in the UI if possible
+        const container = document.getElementById('user-select-list');
+        if (container) {
+            const errorDiv = document.createElement('div');
+            errorDiv.style.color = 'red';
+            errorDiv.style.padding = '10px';
+            errorDiv.style.border = '1px solid red';
+            errorDiv.style.backgroundColor = '#ffeeee';
+            errorDiv.textContent = 'Startup Error: ' + msg;
+            container.prepend(errorDiv);
+        }
+
+        return false;
+    };
+</script>
+
+<body>
+    <!-- ログイン画面 -->
+    <div id="login-screen" class="screen">
+        <div class="login-container">
+            <div class="login-header">
+                <div class="logo">🚣</div>
+                <h1>端艇部 総合管理</h1>
+                <p class="subtitle">慶應義塾端艇部 ボート部門</p>
+            </div>
+
+            <!-- メールアドレス認証ログイン -->
+            <div id="email-login-container" class="login-form-container">
+
+                <!-- ログインフォーム -->
+                <div id="login-form" class="auth-form">
+                    <div class="form-group">
+                        <label>メールアドレス</label>
+                        <input type="email" id="login-email" placeholder="example@keio.jp">
+                    </div>
+                    <div class="form-group">
+                        <label>パスワード</label>
+                        <input type="password" id="login-password" placeholder="パスワード">
+                    </div>
+                    <button id="email-login-btn" class="primary-btn full-width"
+                        onclick="handleEmailLogin()">ログイン</button>
+                    <p class="auth-switch">アカウントをお持ちでない方は <a href="#" onclick="toggleAuthMode('signup')">新規登録</a></p>
+                </div>
+
+                <!-- 新規登録フォーム -->
+                <div id="signup-form" class="auth-form hidden">
+                    <div class="form-group">
+                        <label>メールアドレス</label>
+                        <input type="email" id="signup-email" placeholder="example@keio.jp">
+                    </div>
+                    <div class="form-group">
+                        <label>パスワード (6文字以上)</label>
+                        <input type="password" id="signup-password" placeholder="パスワード">
+                    </div>
+                    <div class="form-group">
+                        <label>氏名 (登録用)</label>
+                        <input type="text" id="signup-name" placeholder="慶應 太郎">
+                    </div>
+                    <button id="email-signup-btn" class="primary-btn full-width"
+                        onclick="handleEmailSignup()">アカウント作成</button>
+                    <p class="auth-switch">すでにアカウントをお持ちの方は <a href="#" onclick="toggleAuthMode('login')">ログイン</a></p>
+                </div>
+
+                <p id="login-status" class="login-status"></p>
+            </div>
+
+            <!-- デモ用ユーザー選択（開発時のみ） -->
+            <div id="user-select-container" class="user-select-container">
+                <div class="demo-divider">
+                    <span>または デモモード</span>
+                </div>
+                <div id="user-select-list" class="user-select-list">
+                    <!-- JSで動的生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Concept2連携オンボーディング -->
+    <div id="onboarding-screen" class="screen hidden">
+        <div class="onboarding-container">
+            <div class="onboarding-icon">⚙️</div>
+            <h2>Concept2連携</h2>
+            <p>エルゴデータを自動で取得できます</p>
+            <div class="onboarding-benefits">
+                <div class="benefit-item">✓ 練習記録の自動取得</div>
+                <div class="benefit-item">✓ PR・ランキング表示</div>
+                <div class="benefit-item">✓ データ分析</div>
+            </div>
+            <div class="concept2-setup" style="margin-bottom: 16px;">
+                <div class="form-group">
+                    <label>アクセストークン</label>
+                    <input type="password" id="onboarding-access-token" placeholder="Concept2のPersonal Access Token">
+                </div>
+                <p class="help-text" style="font-size: 12px; color: #888;">
+                    <a href="https://log.concept2.com/profile/user/edit"
+                        target="_blank">Concept2プロフィール</a>の「Applications」から取得
+                </p>
+            </div>
+            <button id="connect-concept2-btn" class="primary-btn">Concept2と連携する</button>
+            <button id="skip-concept2-btn" class="secondary-btn">後で設定する（スキップ）</button>
+        </div>
+    </div>
+
+    <!-- 承認待ち画面 -->
+    <div id="pending-screen" class="screen hidden">
+        <div class="pending-container">
+            <div class="pending-icon">⏳</div>
+            <h2>承認待ち</h2>
+            <p>管理者による承認をお待ちください。</p>
+            <p class="pending-email"></p>
+            <button id="logout-pending-btn" class="secondary-btn">ログアウト</button>
+        </div>
+    </div>
+
+    <!-- メイン画面 -->
+    <div id="main-screen" class="screen hidden">
+        <!-- ヘッダー -->
+        <header class="main-header">
+            <h1>端艇部 総合管理</h1>
+            <div class="user-info">
+                <span id="user-name"></span>
+                <span id="user-role" class="role-badge"></span>
+            </div>
+        </header>
+
+        <!-- メインコンテンツ -->
+        <main class="main-content">
+            <!-- 1. 入力（自分）タブ -->
+            <div id="tab-input" class="tab-content active">
+                <div class="week-navigation">
+                    <button id="prev-week-btn" class="nav-btn">← 先週</button>
+                    <span id="week-range" class="week-range"></span>
+                    <button id="next-week-btn" class="nav-btn">来週 →</button>
+                </div>
+                <div id="week-calendar" class="week-calendar"></div>
+            </div>
+
+            <!-- 2. 全体（閲覧・調整）タブ -->
+            <div id="tab-overview" class="tab-content hidden">
+                <div class="overview-header">
+                    <div class="date-selector">
+                        <input type="date" id="overview-date">
+                        <div class="time-slot-toggle">
+                            <button class="slot-btn active" data-slot="午前">午前</button>
+                            <button class="slot-btn" data-slot="午後">午後</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="overview-content" class="overview-content">
+                    <!-- 乗艇セクション -->
+                    <div class="overview-section">
+                        <h3 class="section-title">🚣 乗艇</h3>
+                        <div id="overview-boat" class="overview-list"></div>
+                    </div>
+                    <!-- エルゴセクション -->
+                    <div class="overview-section">
+                        <h3 class="section-title">🏋️ エルゴ</h3>
+                        <div class="ergo-summary">
+                            <div class="ergo-type-summary">
+                                <span class="label">ダイナミック</span>
+                                <span id="dynamic-count" class="count">0 / 0</span>
+                            </div>
+                            <div class="ergo-type-summary">
+                                <span class="label">固定</span>
+                                <span id="fixed-count" class="count">0 / 0</span>
+                            </div>
+                        </div>
+                        <div id="overview-ergo" class="overview-list"></div>
+                    </div>
+                    <!-- ウェイトセクション -->
+                    <div class="overview-section">
+                        <h3 class="section-title">💪 ウェイト</h3>
+                        <div id="overview-weight" class="overview-list"></div>
+                    </div>
+                    <!-- 参加不可セクション -->
+                    <div class="overview-section">
+                        <h3 class="section-title">❌ 参加不可</h3>
+                        <div id="overview-absent" class="overview-list absent-list"></div>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <!-- 3. リギング管理タブ（新規追加） -->
+            <div id="tab-rigging" class="tab-content hidden">
+                <h2 class="tab-title">リギング管理</h2>
+                <div class="rigging-content">
+                    <!-- リギング一覧・選択 -->
+                    <div class="form-group">
+                        <label>艇を選択</label>
+                        <select id="rigging-boat-select">
+                            <option value="">選択してください</option>
+                            <!-- JSで動的生成 -->
+                        </select>
+                    </div>
+
+                    <div id="rigging-form" class="rigging-form hidden">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>ピン・トゥ・ヒール (cm)</label>
+                                <input type="number" id="rigging-pin-to-heel" step="0.1" placeholder="例: 123.4">
+                            </div>
+                            <div class="form-group">
+                                <label>デプス (cm)</label>
+                                <input type="number" id="rigging-depth" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label>スパン (cm)</label>
+                                <input type="number" id="rigging-span" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label>足角 (°)</label>
+                                <input type="number" id="rigging-pitch" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label>ハイト (cm)</label>
+                                <input type="number" id="rigging-height" step="0.1">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>メモ（感覚・感触・所感など）</label>
+                            <textarea id="rigging-memo" rows="3" placeholder="最近の感覚..."></textarea>
+                        </div>
+                        <button id="save-rigging-btn" class="primary-btn">設定を保存</button>
+                    </div>
+
+                    <div id="rigging-empty-state" class="empty-state">
+                        <p>艇を選択してリギング値を設定してください</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. エルゴデータ（旧データ）タブ -->
+            <div id="tab-ergo-data" class="tab-content hidden">
+                <h2 class="tab-title">エルゴ記録</h2>
+
+                <!-- データ表示切り替え -->
+                <div class="view-toggle">
+                    <button class="view-toggle-btn active" data-view="personal">マイデータ</button>
+                    <button class="view-toggle-btn" data-view="team">週間ランキング</button>
+                    <button class="view-toggle-btn" data-view="all-time">歴代ランキング</button>
+                </div>
+
+                <!-- マイデータビュー -->
+                <div id="personal-data-view" class="data-view">
+                    <!-- パン屑ナビゲーション -->
+                    <div id="ergo-breadcrumb" class="ergo-breadcrumb">
+                        <span class="breadcrumb-item active" data-level="all">すべて</span>
+                    </div>
+
+                    <!-- カテゴリタブ -->
+                    <div id="category-tabs-container" class="category-tabs">
+                        <button class="category-tab active" data-category="all">すべて</button>
+                        <button class="category-tab" data-category="distance">距離</button>
+                        <button class="category-tab" data-category="time">時間</button>
+                        <button class="category-tab" data-category="interval">ｲﾝﾀｰﾊﾞﾙ</button>
+                    </div>
+
+                    <!-- メニュー選択グリッド（カテゴリ選択後に表示） -->
+                    <div id="menu-selection" class="menu-selection hidden">
+                        <div id="menu-grid" class="menu-grid"></div>
+                    </div>
+
+                    <div class="data-filters">
+                        <select id="data-period">
+                            <option value="all" selected>すべて</option>
+                            <option value="week">今週</option>
+                            <option value="month">今月</option>
+                        </select>
+                    </div>
+
+                    <div id="concept2-banner" class="concept2-banner hidden">
+                        <p>Concept2と連携すると自動でデータを取得できます</p>
+                        <button id="connect-from-data-btn" class="small-btn">連携する</button>
+                    </div>
+
+                    <div id="concept2-sync-area" class="concept2-banner hidden"
+                        style="background: linear-gradient(135deg, #38a169, #2f855a);">
+                        <p>Concept2と連携済み</p>
+                        <button id="manual-sync-btn" class="small-btn" style="color: #38a169;">データを同期</button>
+                    </div>
+
+
+                    <div id="ergo-records-list" class="ergo-records-list"></div>
+
+                </div><!-- Close personal-data-view -->
+
+
+                <div id="team-data-view" class="data-view hidden">
+                    <!-- 週間ランキング -->
+                    <div id="weekly-ranking-section">
+                        <h3 class="section-title">🏆 週間ランキング</h3>
+                        <div class="ranking-filters">
+                            <div class="toggle-group gender-toggle" style="margin-bottom: 8px;">
+                                <button class="toggle-btn gender-btn active" data-gender="man">男子</button>
+                                <button class="toggle-btn gender-btn" data-gender="woman">女子</button>
+                            </div>
+                            <select id="ranking-menu">
+                                <option value="2000m TT">2000m TT</option>
+                                <option value="1000m TT">1000m TT</option>
+                                <option value="20分">20分</option>
+                                <option value="60分">60分</option>
+                                <option value="10000m">10000m</option>
+                            </select>
+                            <button id="idt-calc-btn" class="icon-btn" onclick="openIDTModal()" title="IDT計算機"
+                                style="margin-left: 8px;">⚖️</button>
+                        </div>
+                        <div id="weekly-ranking" class="ranking-list"></div>
+                    </div>
+
+                    <div id="team-records-list" class="team-records-list"></div>
+                </div>
+            </div>
+
+            <!-- 歴代ランキング (Moved out of team-data-view) -->
+            <div id="all-time-data-view" class="ranking-section data-view hidden">
+                <h3 class="section-title">🥇 歴代最高記録 (Personal Best)</h3>
+                <div class="ranking-filters">
+                    <select id="all-time-ranking-menu">
+                        <option value="2000m TT">2000m TT</option>
+                        <option value="1000m TT">1000m TT</option>
+                        <option value="20分">20分</option>
+                        <option value="60分">60分</option>
+                        <option value="10000m">10000m</option>
+                    </select>
+                </div>
+                <div id="all-time-ranking-list" class="ranking-list"></div>
+            </div>
+
+
+
+    </div><!-- Close tab-ergo-data -->
+
+    <!-- 5. 設定タブ に移動 -->
+
+    <!-- 6. クルーノートタブ -->
+    <div id="tab-crew-note" class="tab-content hidden">
+        <div class="sticky-header">
+            <h2>クルーノート</h2>
+            <div class="crew-nav">
+                <button class="crew-nav-btn active" data-type="my">My Crews</button>
+                <button class="crew-nav-btn" data-type="all">すべてのクルー</button>
+            </div>
+            <div class="crew-search-section hidden" id="crew-search-section">
+                <input type="date" id="crew-search-date" class="search-date-input">
+                <input type="text" id="crew-search-input" placeholder="メンバー名で検索...">
+                <select id="crew-search-boat">
+                    <option value="all">全艇種</option>
+                    <option value="1x">1x (シングル)</option>
+                    <option value="2x">2x (ダブル)</option>
+                    <option value="2-">2- (ペア)</option>
+                    <option value="4x">4x (クォドルプル)</option>
+                    <option value="4+">4+ (付きフォア)</option>
+                    <option value="8+">8+ (エイト)</option>
+                </select>
+            </div>
+        </div>
+        <div class="scrollable-content">
+            <div id="crew-list" class="crew-list">
+                <!-- クルーリストがここに描画される -->
+            </div>
+            <div class="fab-container">
+                <button class="fab" id="add-crew-note-btn">＋</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. 設定タブ -->
+    <div id="tab-settings" class="tab-content hidden">
+        <h2 class="tab-title">設定</h2>
+        <div class="settings-content">
+            <!-- アカウント情報 -->
+            <div class="settings-section">
+                <h3>アカウント情報</h3>
+                <div class="settings-item">
+                    <span class="settings-label">氏名</span>
+                    <span id="settings-name" class="settings-value"></span>
+                </div>
+                <div class="settings-item">
+                    <span class="settings-label">権限</span>
+                    <span id="settings-role" class="settings-value"></span>
+                </div>
+                <div class="settings-item">
+                    <span class="settings-label">学年</span>
+                    <span id="settings-grade" class="settings-value"></span>
+                </div>
+                <div class="settings-item">
+                    <span class="settings-label">性別</span>
+                    <select id="settings-gender-select"
+                        style="padding: 4px; border-radius: 4px; border: 1px solid #ccc;">
+                        <option value="man">男性</option>
+                        <option value="woman">女性</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Concept2連携 -->
+            <div class="settings-section">
+                <h3>Concept2連携</h3>
+                <div class="settings-item">
+                    <span class="settings-label">連携状態</span>
+                    <span id="concept2-status" class="settings-value">未連携</span>
+                </div>
+                <div id="concept2-last-sync" class="settings-item hidden">
+                    <span class="settings-label">最終同期</span>
+                    <span id="concept2-last-sync-time" class="settings-value">-</span>
+                </div>
+                <!-- アクセストークン入力（未連携時のみ表示） -->
+                <div id="concept2-setup" class="concept2-setup">
+                    <div class="form-group">
+                        <label>アクセストークン</label>
+                        <input type="password" id="concept2-access-token" placeholder="Concept2のPersonal Access Token">
+                    </div>
+                    <p class="help-text">Personal Access Tokenは<a href="https://log.concept2.com/profile/user/edit"
+                            target="_blank">Concept2プロフィール</a>の「Applications」から取得できます</p>
+                </div>
+                <div class="concept2-actions">
+                    <button id="toggle-concept2-btn" class="secondary-btn">連携する</button>
+                    <button id="sync-concept2-btn" class="primary-btn hidden">データを同期</button>
+                </div>
+            </div>
+
+            <!-- マスタ管理（Cox/管理者のみ） -->
+            <div id="master-settings" class="settings-section hidden">
+                <h3>マスタ管理</h3>
+                <button id="manage-boats-btn" class="settings-btn">艇マスタ</button>
+                <button id="manage-oars-btn" class="settings-btn">オールマスタ</button>
+                <button id="manage-ergos-btn" class="settings-btn">エルゴマスタ</button>
+            </div>
+
+            <button id="logout-btn" class="danger-btn">ログアウト</button>
+        </div>
+    </div>
+    </main>
+
+    <!-- 下タブナビゲーション（6つ） -->
+    <nav id="bottom-nav" class="bottom-nav">
+        <button class="nav-item active" data-tab="input">
+            <span class="nav-icon">📝</span>
+            <span class="nav-label">練習登録</span>
+        </button>
+        <button class="nav-item" data-tab="overview" id="nav-overview">
+            <span class="nav-icon">📅</span>
+            <span class="nav-label">全体</span>
+        </button>
+        <button class="nav-item" data-tab="ergo-data">
+            <span class="nav-icon">📊</span>
+            <span class="nav-label">エルゴデータ</span>
+        </button>
+        <button class="nav-item" data-tab="rigging">
+            <span class="nav-icon">🔧</span>
+            <span class="nav-label">リギング</span>
+        </button>
+        <button class="nav-item" data-tab="crew-note">
+            <span class="nav-icon">📖</span>
+            <span class="nav-label">ノート</span>
+        </button>
+        <button class="nav-item" data-tab="settings">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-label">設定</span>
+        </button>
+    </nav>
+    </div>
+
+    <!-- 入力モーダル -->
+    <div id="input-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h3 id="input-modal-title">練習登録</h3>
+                <button id="input-modal-close" class="modal-close">×</button>
+            </div>
+            <div class="modal-body">
+                <!-- 予定種別 -->
+                <div class="form-group">
+                    <label>予定種別（必須）</label>
+                    <div class="toggle-group schedule-type-group">
+                        <button class="toggle-btn schedule-type-btn" data-value="エルゴ">
+                            <span class="btn-icon">🏋️</span>
+                            <span>エルゴ</span>
+                        </button>
+                        <button class="toggle-btn schedule-type-btn" data-value="乗艇">
+                            <span class="btn-icon">🚣</span>
+                            <span>乗艇</span>
+                        </button>
+                        <button class="toggle-btn schedule-type-btn" data-value="ウェイト">
+                            <span class="btn-icon">💪</span>
+                            <span>ウェイト</span>
+                        </button>
+                        <button class="toggle-btn schedule-type-btn" data-value="参加不可">
+                            <span class="btn-icon">❌</span>
+                            <span>参加不可</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 開始予定時刻 -->
+                <div class="form-group" id="start-time-group">
+                    <label>開始予定時刻</label>
+                    <input type="time" id="input-start-time">
+                </div>
+
+                <!-- 参加不可の場合：理由 -->
+                <div class="form-group hidden" id="absence-reason-group">
+                    <label>理由（必須）</label>
+                    <div class="toggle-group">
+                        <button class="toggle-btn reason-btn" data-value="体調不良">体調不良</button>
+                        <button class="toggle-btn reason-btn" data-value="怪我">怪我</button>
+                        <button class="toggle-btn reason-btn" data-value="就活">就活</button>
+                        <button class="toggle-btn reason-btn" data-value="学校">学校</button>
+                        <button class="toggle-btn reason-btn" data-value="その他">その他</button>
+                    </div>
+                </div>
+
+                <!-- エルゴの場合 -->
+                <div class="form-group hidden" id="ergo-type-group">
+                    <label>エルゴ種別</label>
+                    <div class="toggle-group">
+                        <button class="toggle-btn ergo-type-btn" data-value="ダイナミック">ダイナミック</button>
+                        <button class="toggle-btn ergo-type-btn" data-value="固定">固定</button>
+                    </div>
+                </div>
+
+                <!-- 体重入力 (任意) -->
+                <div class="form-group hidden" id="ergo-weight-group">
+                    <label>体重 (kg) <span class="badge optional">任意</span></label>
+                    <input type="number" id="input-weight" step="0.1" placeholder="例: 75.5">
+                </div>
+
+                <!-- エルゴ記録入力 -->
+                <div class="form-group hidden" id="ergo-record-group">
+                    <label>この回のエルゴ記録入力</label>
+                    <div id="ergo-records-container" class="ergo-records-container">
+                        <!-- 動的に追加 -->
+                    </div>
+                    <button id="add-ergo-record-btn" class="add-record-btn">+ 記録を追加</button>
+                </div>
+
+                <!-- 乗艇の場合 -->
+                <div class="form-group hidden" id="boat-group">
+                    <label>艇種</label>
+                    <div class="toggle-group" id="boat-type-group" style="margin-bottom: 8px;">
+                        <button class="toggle-btn boat-type-btn" data-value="1x">1x</button>
+                        <button class="toggle-btn boat-type-btn" data-value="2x">2x</button>
+                        <button class="toggle-btn boat-type-btn" data-value="2-">2-</button>
+                        <button class="toggle-btn boat-type-btn" data-value="4x">4x</button>
+                        <button class="toggle-btn boat-type-btn" data-value="4+">4+</button>
+                        <button class="toggle-btn boat-type-btn" data-value="8+">8+</button>
+                    </div>
+                    <label>艇 (任意)</label>
+                    <select id="input-boat">
+                        <option value="">選択してください</option>
+                    </select>
+                </div>
+
+                <div class="form-group hidden" id="oar-group">
+                    <label>オール</label>
+                    <select id="input-oar">
+                        <option value="">選択してください</option>
+                    </select>
+                </div>
+
+                <div class="form-group hidden" id="crew-group">
+                    <div class="label-with-action">
+                        <label>クルー編成</label>
+                        <button id="manage-crew-presets-btn" class="text-btn small-btn">📂 プリセット読込/保存</button>
+                    </div>
+
+                    <!-- シート割り当てUI（ボート種別に応じて動的生成） -->
+                    <div id="seat-assignment-container" class="seat-assignment-container">
+                        <!-- JSで生成: Stroke, 7, ... Bow, Cox -->
+                    </div>
+
+                    <div class="crew-search-wrapper">
+                        <label class="sub-label">メンバー検索・追加</label>
+                        <div id="crew-search-container" class="crew-search-container">
+                            <input type="text" id="crew-search" placeholder="名前で検索...">
+                            <div id="crew-search-results" class="crew-list hidden"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>練習振り返り（任意）</label>
+                    <textarea id="input-reflection" rows="3" placeholder="今日の練習で感じたこと、反省点など"></textarea>
+                </div>
+
+                <!-- メモ -->
+                <div class="form-group">
+                    <label>メモ（任意）</label>
+                    <textarea id="input-memo" rows="2" placeholder="備考など"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="delete-schedule-btn" class="danger-btn hidden">削除</button>
+                <button id="save-schedule-btn" class="primary-btn">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- マスタ管理モーダル -->
+    <div id="master-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="master-modal-title">マスタ管理</h3>
+                <button id="master-modal-close" class="modal-close">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="master-list" class="master-list"></div>
+                <button id="add-master-btn" class="add-record-btn">+ 新規追加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- マスタ編集モーダル -->
+    <div id="master-edit-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="master-edit-title">編集</h3>
+                <button id="master-edit-close" class="modal-close">×</button>
+            </div>
+            <div class="modal-body" id="master-edit-form">
+                <!-- 動的に生成 -->
+            </div>
+            <div class="modal-footer">
+                <button id="delete-master-btn" class="danger-btn hidden">削除</button>
+                <button id="save-master-btn" class="primary-btn">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- エルゴ詳細モーダル -->
+    <div id="ergo-detail-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeErgoDetailModal()"></div>
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h3 id="ergo-detail-title">記録詳細</h3>
+                <button class="modal-close" onclick="closeErgoDetailModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <!-- 基本情報 -->
+                <div class="ergo-detail-summary">
+                    <div class="detail-row">
+                        <span class="detail-label">日付</span>
+                        <span id="ergo-detail-date" class="detail-value"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">距離</span>
+                        <span id="ergo-detail-distance" class="detail-value"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">タイム</span>
+                        <span id="ergo-detail-time" class="detail-value"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">平均Split</span>
+                        <span id="ergo-detail-split" class="detail-value"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">平均Rate</span>
+                        <span id="ergo-detail-rate" class="detail-value"></span>
+                    </div>
+                </div>
+
+                <!-- 500mスプリット -->
+                <div class="splits-section">
+                    <h4>500mスプリット</h4>
+                    <div id="ergo-splits-list" class="splits-list"></div>
+                </div>
+
+                <!-- ストロークデータ (あれば) -->
+                <div id="stroke-data-section" class="stroke-data-section hidden">
+                    <h4>ストロークデータ</h4>
+                    <div id="stroke-data-content"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supabase SDK (CDN) -->
+
+    <!-- Supabase設定 -->
+    <!-- クルー詳細・履歴モーダル -->
+    <div id="crew-detail-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content full-height">
+            <div class="modal-header">
+                <h3 id="crew-detail-title">クルー詳細</h3>
+                <button id="crew-detail-close" class="close-btn">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="crew-info-card" id="crew-detail-info">
+                    <!-- メンバー情報など -->
+                </div>
+                <div class="section-title">練習履歴・ノート</div>
+                <div id="crew-history-list" class="history-list">
+                    <!-- 履歴リスト -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary full-width" id="add-new-note-btn">このクルーで新規ノート作成</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- IDT計算機モーダル -->
+    <div id="idt-calculator-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <h3 class="modal-title">⚖️ IDT計算機 (2000m)</h3>
+            <p class="modal-subtitle">体重を入力して目標タイムを算出します</p>
+
+            <div class="field">
+                <label>性別</label>
+                <div class="toggle-group gender-toggle" id="idt-gender-toggle" style="margin-bottom: 8px;">
+                    <button class="toggle-btn gender-btn active" data-gender="man">男子</button>
+                    <button class="toggle-btn gender-btn" data-gender="woman">女子</button>
+                </div>
+            </div>
+
+            <div class="field">
+                <label>現在の体重 (kg)</label>
+                <input type="number" id="idt-weight" placeholder="例: 70.0" step="0.1">
+            </div>
+
+            <div class="result-box" id="idt-result-box" style="display: none;">
+                <div class="result-label">目標タイム (100% IDT)</div>
+                <div class="result-value" id="idt-target-time">--:--.-</div>
+                <div class="result-sub">ペース: <span id="idt-target-split">--:--.-</span> / 500m</div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="secondary-btn" onclick="closeIDTModal()">閉じる</button>
+                <button class="primary-btn" onclick="calculateIDT()">計算する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ノート編集モーダル -->
+    <div id="crew-note-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="crew-note-title">ノート編集</h3>
+                <button id="crew-note-close" class="close-btn">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>日付</label>
+                    <input type="date" id="crew-note-date">
+                </div>
+                <div class="form-group hidden" id="crew-boat-select-group">
+                    <label>艇種</label>
+                    <select id="crew-note-boat-type">
+                        <option value="1x">1x (シングル)</option>
+                        <option value="2x">2x (ダブル)</option>
+                        <option value="2-">2- (ペア)</option>
+                        <option value="4x">4x (クォドルプル)</option>
+                        <option value="4+">4+ (付きフォア)</option>
+                        <option value="8+">8+ (エイト)</option>
+                    </select>
+                </div>
+                <!-- メンバー選択（新規作成時のみ表示される想定だが、クルー詳細からは固定） -->
+                <div class="form-group hidden" id="crew-member-select-group">
+                    <label>メンバー</label>
+                    <div id="crew-member-select-list"></div>
+                </div>
+                <div class="form-group">
+                    <label>動画URL (YouTubeなど)</label>
+                    <div class="video-input-container">
+                        <textarea id="crew-note-video-bulk" rows="3"
+                            placeholder="動画のURLリストや、URLを含むメッセージをここに貼り付けてください。自動で抽出します。"></textarea>
+                        <button id="extract-videos-btn" class="secondary-btn small-btn">URL抽出・追加</button>
+                    </div>
+                    <div id="video-list" class="video-list"></div>
+                    <div id="video-preview-container" class="video-preview-container"></div>
+                </div>
+                <div class="form-group">
+                    <label>振り返り・日記</label>
+                    <textarea id="crew-note-content" rows="6" placeholder="本日の練習の振り返り、感覚など..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary full-width" id="save-crew-note-btn">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- クルー編成プリセットモーダル -->
+    <div id="crew-preset-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h3 id="crew-preset-title">クルー編成プリセット</h3>
+                <button id="crew-preset-close" class="modal-close">×</button>
+            </div>
+            <div class="modal-body">
+                <!-- タブ切り替え: 読込 / 保存 -->
+                <div class="tab-group" style="margin-bottom: 16px;">
+                    <button class="tab-btn active" data-tab="load">読込</button>
+                    <button class="tab-btn" data-tab="save">現在の編成を保存</button>
+                </div>
+
+                <!-- 読込タブ -->
+                <div id="preset-load-tab" class="preset-tab-content">
+                    <div id="preset-list" class="preset-list">
+                        <!-- JSで動的生成 -->
+                    </div>
+                    <div id="preset-empty-state" class="empty-state hidden">
+                        <p>保存されたプリセットはありません</p>
+                    </div>
+                </div>
+
+                <!-- 保存タブ -->
+                <div id="preset-save-tab" class="preset-tab-content hidden">
+                    <div class="form-group">
+                        <label>プリセット名</label>
+                        <input type="text" id="preset-name-input" placeholder="例: 対校エイト, 新人フォアA">
+                    </div>
+                    <div class="preview-box">
+                        <div class="preview-label">保存される編成:</div>
+                        <div id="preset-save-preview" class="preset-preview">
+                            <!-- JSで現在の編成を表示 -->
+                        </div>
+                    </div>
+                    <button id="save-new-preset-btn" class="primary-btn full-width">保存する</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="app.js?v=4"></script>
+</body>
+
+</html>

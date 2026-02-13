@@ -1,0 +1,18 @@
+# System files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Supabase
+supabase/.temp/
+.env.local
+.env
+
+# Vercel
+.vercel/

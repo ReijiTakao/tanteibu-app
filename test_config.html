@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Config Test</title>
+</head>
+
+<body>
+    <h1>Supabase Config Test</h1>
+    <div id="output">Running...</div>
+
+    <!-- CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Config -->
+    <script src="supabase-config.js?v=cachebust1"></script>
+    <script src="simple.js"></script>
+
+    <script>
+        const output = document.getElementById('output');
+        try {
+            if (window.SimpleTest) {
+                output.textContent += ' [SimpleTest: OK] ';
+                console.log('SimpleTest loaded');
+            } else {
+                output.textContent += ' [SimpleTest: FAIL] ';
+                console.error('SimpleTest failed');
+            }
+
+            if (window.SupabaseConfig) {
+                output.textContent = 'Success: window.SupabaseConfig is defined.';
+                output.style.color = 'green';
+                console.log('Success:', window.SupabaseConfig);
+
+                // Init check
+                window.SupabaseConfig.init();
+                output.textContent += ' Init called.';
+
+                if (window.SupabaseConfig.isReady()) {
+                    output.textContent += ' Ready: YES';
+                } else {
+                    output.textContent += ' Ready: NO (Check anon key)';
+                }
+
+            } else {
+                output.textContent = 'Failure: window.SupabaseConfig is undefined.';
+                output.style.color = 'red';
+                console.error('Failure: window.SupabaseConfig is undefined');
+            }
+        } catch (e) {
+            output.textContent = 'Exception: ' + e.message;
+            output.style.color = 'red';
+            console.error(e);
+        }
+    </script>
+</body>
+
+</html>
