@@ -1807,7 +1807,9 @@ function openInputModal(dateStr, timeSlot) {
         }
 
         document.getElementById('input-start-time').value = schedule.startTime || '';
+        document.getElementById('input-start-time').value = schedule.startTime || '';
         document.getElementById('input-memo').value = schedule.memo || '';
+        document.getElementById('input-distance').value = schedule.distance || ''; // 距離読み込み
 
         if (schedule.absenceReason) {
             const reasonBtn = document.querySelector(`.reason-btn[data-value="${schedule.absenceReason}"]`);
@@ -2089,7 +2091,9 @@ function saveSchedule() {
         date: dateStr,
         timeSlot: timeSlot,
         scheduleType: scheduleType,
+        scheduleType: scheduleType,
         startTime: document.getElementById('input-start-time').value || null,
+        distance: document.getElementById('input-distance').value ? parseInt(document.getElementById('input-distance').value) : null, // 距離保存
         absenceReason: document.querySelector('.reason-btn.active')?.dataset.value || null,
         reflection: document.getElementById('input-reflection')?.value || null,
         ergoType: document.querySelector('.ergo-type-btn.active')?.dataset.value || null,
@@ -2535,10 +2539,17 @@ function renderOverview() {
             equipText += ` / ${oar.name}`;
         }
 
+        const distance = s.distance ? `${s.distance}m` : '';
+        const menu = s.memo ? `📝 ${s.memo}` : '';
+        const details = [distance, menu].filter(d => d).join(' / ');
+
         return `<div class="overview-item">
-            <span class="name">${user?.name || ''}</span>
-            <span class="grade">${user?.grade}年</span>
-            <span class="equipment">${equipText}</span>
+            <div class="overview-main">
+                <span class="name">${user?.name || ''}</span>
+                <span class="grade">${user?.grade}年</span>
+                <span class="equipment">${equipText}</span>
+            </div>
+            ${details ? `<div class="overview-sub">${details}</div>` : ''}
         </div>`;
     }).join('') : '<div class="empty-state"><p>予定なし</p></div>';
 
@@ -2602,10 +2613,17 @@ function renderOverview() {
 
     ergoList.innerHTML = ergoSchedules.length ? ergoSchedules.map(s => {
         const user = state.users.find(u => u.id === s.userId);
+        const distance = s.distance ? `${s.distance}m` : '';
+        const menu = s.memo ? `📝 ${s.memo}` : '';
+        const details = [distance, menu].filter(d => d).join(' / ');
+
         return `<div class="overview-item">
-            <span class="name">${user?.name || ''}</span>
-            <span class="grade">${user?.grade}年</span>
-            <span class="equipment">${s.ergoType || ''}</span>
+            <div class="overview-main">
+                <span class="name">${user?.name || ''}</span>
+                <span class="grade">${user?.grade}年</span>
+                <span class="equipment">${s.ergoType || ''}</span>
+            </div>
+            ${details ? `<div class="overview-sub">${details}</div>` : ''}
         </div>`;
     }).join('') : '<div class="empty-state"><p>予定なし</p></div>';
 
