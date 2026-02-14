@@ -1824,7 +1824,6 @@ function openInputModal(dateStr, timeSlot) {
         }
 
         document.getElementById('input-start-time').value = schedule.startTime || '';
-        document.getElementById('input-start-time').value = schedule.startTime || '';
         document.getElementById('input-memo').value = schedule.memo || '';
         document.getElementById('input-distance').value = schedule.distance || ''; // 距離読み込み
 
@@ -2107,7 +2106,6 @@ function saveSchedule() {
         userId: state.currentUser.id,
         date: dateStr,
         timeSlot: timeSlot,
-        scheduleType: scheduleType,
         scheduleType: scheduleType,
         startTime: document.getElementById('input-start-time').value || null,
         distance: document.getElementById('input-distance').value ? parseInt(document.getElementById('input-distance').value) : null, // 距離保存
