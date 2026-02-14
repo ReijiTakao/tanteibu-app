@@ -359,6 +359,23 @@ const SupabaseDB = {
         return data || [];
     },
 
+    async updateProfile(profileId, updates) {
+        if (!isSupabaseReady()) return null;
+
+        const { data, error } = await _supabaseClient
+            .from('profiles')
+            .update(updates)
+            .eq('id', profileId)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Update profile error:', error);
+            return null;
+        }
+        return data;
+    },
+
     // --- マスタデータ ---
     async loadMasterData(table) {
         if (!isSupabaseReady()) return [];

@@ -93,10 +93,10 @@
                 <p id="login-status" class="login-status"></p>
             </div>
 
-            <!-- デモ用ユーザー選択（開発時のみ） -->
-            <div id="user-select-container" class="user-select-container">
+            <!-- デモ用ユーザー選択（?demo=true のときのみ表示） -->
+            <div id="user-select-container" class="user-select-container hidden">
                 <div class="demo-divider">
-                    <span>または デモモード</span>
+                    <span>🧪 デモモード</span>
                 </div>
                 <div id="user-select-list" class="user-select-list">
                     <!-- JSで動的生成 -->
@@ -342,161 +342,195 @@
 
                     <div id="team-records-list" class="team-records-list"></div>
                 </div>
-            </div>
 
-            <!-- 歴代ランキング (Moved out of team-data-view) -->
-            <div id="all-time-data-view" class="ranking-section data-view hidden">
-                <h3 class="section-title">🥇 歴代最高記録 (Personal Best)</h3>
-                <div class="ranking-filters">
-                    <select id="all-time-ranking-menu">
-                        <option value="2000m TT">2000m TT</option>
-                        <option value="1000m TT">1000m TT</option>
-                        <option value="20分">20分</option>
-                        <option value="60分">60分</option>
-                        <option value="10000m">10000m</option>
-                    </select>
-                </div>
-                <div id="all-time-ranking-list" class="ranking-list"></div>
-            </div>
-
-
-
-    </div><!-- Close tab-ergo-data -->
-
-    <!-- 5. 設定タブ に移動 -->
-
-    <!-- 6. クルーノートタブ -->
-    <div id="tab-crew-note" class="tab-content hidden">
-        <div class="sticky-header">
-            <h2>クルーノート</h2>
-            <div class="crew-nav">
-                <button class="crew-nav-btn active" data-type="my">My Crews</button>
-                <button class="crew-nav-btn" data-type="all">すべてのクルー</button>
-            </div>
-            <div class="crew-search-section hidden" id="crew-search-section">
-                <input type="date" id="crew-search-date" class="search-date-input">
-                <input type="text" id="crew-search-input" placeholder="メンバー名で検索...">
-                <select id="crew-search-boat">
-                    <option value="all">全艇種</option>
-                    <option value="1x">1x (シングル)</option>
-                    <option value="2x">2x (ダブル)</option>
-                    <option value="2-">2- (ペア)</option>
-                    <option value="4x">4x (クォドルプル)</option>
-                    <option value="4+">4+ (付きフォア)</option>
-                    <option value="8+">8+ (エイト)</option>
-                </select>
-            </div>
-        </div>
-        <div class="scrollable-content">
-            <div id="crew-list" class="crew-list">
-                <!-- クルーリストがここに描画される -->
-            </div>
-            <div class="fab-container">
-                <button class="fab" id="add-crew-note-btn">＋</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 7. 設定タブ -->
-    <div id="tab-settings" class="tab-content hidden">
-        <h2 class="tab-title">設定</h2>
-        <div class="settings-content">
-            <!-- アカウント情報 -->
-            <div class="settings-section">
-                <h3>アカウント情報</h3>
-                <div class="settings-item">
-                    <span class="settings-label">氏名</span>
-                    <span id="settings-name" class="settings-value"></span>
-                </div>
-                <div class="settings-item">
-                    <span class="settings-label">権限</span>
-                    <span id="settings-role" class="settings-value"></span>
-                </div>
-                <div class="settings-item">
-                    <span class="settings-label">学年</span>
-                    <span id="settings-grade" class="settings-value"></span>
-                </div>
-                <div class="settings-item">
-                    <span class="settings-label">性別</span>
-                    <select id="settings-gender-select"
-                        style="padding: 4px; border-radius: 4px; border: 1px solid #ccc;">
-                        <option value="man">男性</option>
-                        <option value="woman">女性</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Concept2連携 -->
-            <div class="settings-section">
-                <h3>Concept2連携</h3>
-                <div class="settings-item">
-                    <span class="settings-label">連携状態</span>
-                    <span id="concept2-status" class="settings-value">未連携</span>
-                </div>
-                <div id="concept2-last-sync" class="settings-item hidden">
-                    <span class="settings-label">最終同期</span>
-                    <span id="concept2-last-sync-time" class="settings-value">-</span>
-                </div>
-                <!-- アクセストークン入力（未連携時のみ表示） -->
-                <div id="concept2-setup" class="concept2-setup">
-                    <div class="form-group">
-                        <label>Personal Access Token</label>
-                        <input type="password" id="concept2-access-token" placeholder="ここにトークンを貼り付け">
+                <!-- 歴代ランキング (Moved out of team-data-view) -->
+                <div id="all-time-data-view" class="ranking-section data-view hidden">
+                    <h3 class="section-title">🥇 歴代最高記録 (Personal Best)</h3>
+                    <div class="ranking-filters">
+                        <select id="all-time-ranking-menu">
+                            <option value="2000m TT">2000m TT</option>
+                            <option value="1000m TT">1000m TT</option>
+                            <option value="20分">20分</option>
+                            <option value="60分">60分</option>
+                            <option value="10000m">10000m</option>
+                        </select>
                     </div>
-                    <p class="help-text">
-                        <strong>トークンの取得方法：</strong><br>
-                        1. <a href="https://log.concept2.com/profile/developer" target="_blank">Concept2 Developer
-                            ページ</a>を開く<br>
-                        2.「Create Personal Access Token」をクリック<br>
-                        3. 表示されたトークンをコピーして上の欄に貼り付け
-                    </p>
+                    <div id="all-time-ranking-list" class="ranking-list"></div>
                 </div>
-                <div class="concept2-actions">
-                    <button id="toggle-concept2-btn" class="secondary-btn">連携する</button>
-                    <button id="sync-concept2-btn" class="primary-btn hidden">データを同期</button>
+
+
+
+            </div><!-- Close tab-ergo-data -->
+
+            <!-- 5. 設定タブ に移動 -->
+
+            <!-- 6. クルーノートタブ -->
+            <div id="tab-crew-note" class="tab-content hidden">
+                <div class="sticky-header">
+                    <h2>クルーノート</h2>
+                    <div class="crew-nav">
+                        <button class="crew-nav-btn active" data-type="my">My Crews</button>
+                        <button class="crew-nav-btn" data-type="all">すべてのクルー</button>
+                    </div>
+                    <div class="crew-search-section hidden" id="crew-search-section">
+                        <input type="date" id="crew-search-date" class="search-date-input">
+                        <input type="text" id="crew-search-input" placeholder="メンバー名で検索...">
+                        <select id="crew-search-boat">
+                            <option value="all">全艇種</option>
+                            <option value="1x">1x (シングル)</option>
+                            <option value="2x">2x (ダブル)</option>
+                            <option value="2-">2- (ペア)</option>
+                            <option value="4x">4x (クォドルプル)</option>
+                            <option value="4+">4+ (付きフォア)</option>
+                            <option value="8+">8+ (エイト)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="scrollable-content">
+                    <div id="crew-list" class="crew-list">
+                        <!-- クルーリストがここに描画される -->
+                    </div>
+                    <div class="fab-container">
+                        <button class="fab" id="add-crew-note-btn">＋</button>
+                    </div>
                 </div>
             </div>
 
-            <!-- マスタ管理（Cox/管理者のみ） -->
-            <div id="master-settings" class="settings-section hidden">
-                <h3>マスタ管理</h3>
-                <button id="manage-boats-btn" class="settings-btn">艇マスタ</button>
-                <button id="manage-oars-btn" class="settings-btn">オールマスタ</button>
-                <button id="manage-ergos-btn" class="settings-btn">エルゴマスタ</button>
+            <!-- 7. 設定タブ -->
+            <div id="tab-settings" class="tab-content hidden">
+                <h2 class="tab-title">設定</h2>
+                <div class="settings-content">
+                    <!-- アカウント情報 -->
+                    <div class="settings-section">
+                        <h3>アカウント情報</h3>
+                        <div class="settings-item">
+                            <span class="settings-label">氏名</span>
+                            <span id="settings-name" class="settings-value"></span>
+                        </div>
+                        <div class="settings-item">
+                            <span class="settings-label">権限</span>
+                            <select id="settings-role-select"
+                                style="padding: 4px; border-radius: 4px; border: 1px solid #ccc;">
+                                <option value="管理者">管理者</option>
+                                <option value="幹部">幹部</option>
+                                <option value="コーチ">コーチ</option>
+                                <option value="Cox">Cox</option>
+                                <option value="部員">部員</option>
+                            </select>
+                        </div>
+                        <div class="settings-item">
+                            <span class="settings-label">学年</span>
+                            <select id="settings-grade-select"
+                                style="padding: 4px; border-radius: 4px; border: 1px solid #ccc;">
+                                <option value="1">1年</option>
+                                <option value="2">2年</option>
+                                <option value="3">3年</option>
+                                <option value="4">4年</option>
+                                <option value="0">コーチ / OB</option>
+                            </select>
+                        </div>
+                        <div class="settings-item">
+                            <span class="settings-label">性別</span>
+                            <select id="settings-gender-select"
+                                style="padding: 4px; border-radius: 4px; border: 1px solid #ccc;">
+                                <option value="man">男性</option>
+                                <option value="woman">女性</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Concept2連携 -->
+                    <div class="settings-section">
+                        <h3>Concept2連携</h3>
+                        <div class="settings-item">
+                            <span class="settings-label">連携状態</span>
+                            <span id="concept2-status" class="settings-value">未連携</span>
+                        </div>
+                        <div id="concept2-last-sync" class="settings-item hidden">
+                            <span class="settings-label">最終同期</span>
+                            <span id="concept2-last-sync-time" class="settings-value">-</span>
+                        </div>
+                        <!-- アクセストークン入力（未連携時のみ表示） -->
+                        <div id="concept2-setup" class="concept2-setup">
+                            <div class="form-group">
+                                <label>Personal Access Token</label>
+                                <input type="password" id="concept2-access-token" placeholder="ここにトークンを貼り付け">
+                            </div>
+                            <p class="help-text">
+                                <strong>トークンの取得方法：</strong><br>
+                                1. <a href="https://log.concept2.com/profile/developer" target="_blank">Concept2
+                                    Developer
+                                    ページ</a>を開く<br>
+                                2.「Create Personal Access Token」をクリック<br>
+                                3. 表示されたトークンをコピーして上の欄に貼り付け
+                            </p>
+                        </div>
+                        <div class="concept2-actions">
+                            <button id="toggle-concept2-btn" class="secondary-btn">連携する</button>
+                            <button id="sync-concept2-btn" class="primary-btn hidden">データを同期</button>
+                        </div>
+                    </div>
+
+                    <!-- マスタ管理（Cox/管理者のみ） -->
+                    <div id="master-settings" class="settings-section hidden">
+                        <h3>マスタ管理</h3>
+                        <button id="manage-boats-btn" class="settings-btn">艇マスタ</button>
+                        <button id="manage-oars-btn" class="settings-btn">オールマスタ</button>
+                        <button id="manage-ergos-btn" class="settings-btn">エルゴマスタ</button>
+                    </div>
+
+                    <!-- 管理者パスコード設定（管理者のみ） -->
+                    <div id="admin-passcode-settings" class="settings-section hidden">
+                        <h3>🔑 管理者パスコード</h3>
+                        <p class="help-text" style="margin-bottom: 12px;">
+                            管理者権限を取得するにはこのパスコードが必要です。<br>
+                            部員・コックス等の権限は自由に変更できます。
+                        </p>
+                        <div class="settings-item">
+                            <span class="settings-label">現在のパスコード</span>
+                            <span id="current-admin-passcode" class="settings-value"
+                                style="font-family: monospace;">未設定</span>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-top: 8px;">
+                            <input type="text" id="new-admin-passcode" placeholder="新しいパスコード"
+                                style="flex: 1; padding: 8px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px;">
+                            <button id="set-admin-passcode-btn" class="primary-btn"
+                                style="white-space: nowrap;">設定</button>
+                        </div>
+                    </div>
+
+                    <button id="logout-btn" class="danger-btn">ログアウト</button>
+                </div>
             </div>
+        </main>
 
-            <button id="logout-btn" class="danger-btn">ログアウト</button>
-        </div>
-    </div>
-    </main>
-
-    <!-- 下タブナビゲーション（6つ） -->
-    <nav id="bottom-nav" class="bottom-nav">
-        <button class="nav-item active" data-tab="input">
-            <span class="nav-icon">📝</span>
-            <span class="nav-label">練習登録</span>
-        </button>
-        <button class="nav-item" data-tab="overview" id="nav-overview">
-            <span class="nav-icon">📅</span>
-            <span class="nav-label">全体</span>
-        </button>
-        <button class="nav-item" data-tab="ergo-data">
-            <span class="nav-icon">📊</span>
-            <span class="nav-label">エルゴデータ</span>
-        </button>
-        <button class="nav-item" data-tab="rigging">
-            <span class="nav-icon">🔧</span>
-            <span class="nav-label">リギング</span>
-        </button>
-        <button class="nav-item" data-tab="crew-note">
-            <span class="nav-icon">📖</span>
-            <span class="nav-label">ノート</span>
-        </button>
-        <button class="nav-item" data-tab="settings">
-            <span class="nav-icon">⚙️</span>
-            <span class="nav-label">設定</span>
-        </button>
-    </nav>
+        <!-- 下タブナビゲーション（6つ） -->
+        <nav id="bottom-nav" class="bottom-nav">
+            <button class="nav-item active" data-tab="input">
+                <span class="nav-icon">📝</span>
+                <span class="nav-label">練習登録</span>
+            </button>
+            <button class="nav-item" data-tab="overview" id="nav-overview">
+                <span class="nav-icon">📅</span>
+                <span class="nav-label">全体</span>
+            </button>
+            <button class="nav-item" data-tab="ergo-data">
+                <span class="nav-icon">📊</span>
+                <span class="nav-label">エルゴデータ</span>
+            </button>
+            <button class="nav-item" data-tab="rigging">
+                <span class="nav-icon">🔧</span>
+                <span class="nav-label">リギング</span>
+            </button>
+            <button class="nav-item" data-tab="crew-note">
+                <span class="nav-icon">📖</span>
+                <span class="nav-label">ノート</span>
+            </button>
+            <button class="nav-item" data-tab="settings">
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-label">設定</span>
+            </button>
+        </nav>
     </div>
 
     <!-- 入力モーダル -->

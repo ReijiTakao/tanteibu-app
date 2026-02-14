@@ -67,7 +67,8 @@ async function handleEmailLogin() {
     }
 
     if (!window.SupabaseConfig || !window.SupabaseConfig.isReady()) {
-        if (statusEl) statusEl.textContent = 'Supabase未接続: デモモードをご利用ください';
+        if (statusEl) statusEl.textContent = 'サーバーに接続できません。ネット接続を確認してください。';
+        showToast('サーバー未接続', 'error');
         return;
     }
 
@@ -83,7 +84,9 @@ async function handleEmailLogin() {
         btn.disabled = false;
     } else {
         if (statusEl) statusEl.textContent = 'ログイン成功！';
-        // セッション状態変更イベントが発火して handleAuthSession が呼ばれるはず
+        showToast('ログイン成功', 'success');
+        btn.disabled = false;
+        // onAuthStateChange の SIGNED_IN イベントで自動的にメイン画面へ遷移
     }
 }
 
@@ -204,7 +207,7 @@ const DB = {
         return data ? JSON.parse(data) : null;
     },
 
-    // 汎用保存（Supabase優先）
+    // 汎用保存（ローカル + Supabase同時保存）
     async save(key, data) {
         // ローカルには常に保存（オフライン対応）
         this.saveLocal(key, data);
@@ -212,21 +215,16 @@ const DB = {
         // Supabaseが利用可能なら同期
         if (this.useSupabase && window.SupabaseConfig?.isReady()) {
             try {
-                // テーブル名のマッピング
-                const tableMap = {
-                    'users': 'users',
-                    'boats': 'boats',
-                    'oars': 'oars',
-                    'ergos': 'ergos',
-                    'schedules': 'attendances',
-                    'ergo_records': 'ergo_sessions',
+                // 個別レコードの保存は専用メソッドで行うため、
+                // ここでは配列データの一括同期のみ行う
+                const syncTable = {
+                    'schedules': 'schedules',
                     'crew_notes': 'crew_notes'
-
                 };
-                const tableName = tableMap[key];
-                if (tableName && Array.isArray(data)) {
-                    // バッチupsert
-                    console.log(`Syncing ${key} to Supabase...`);
+                const tableName = syncTable[key];
+                if (tableName && Array.isArray(data) && data.length > 0) {
+                    console.log(`📤 Syncing ${key} to Supabase (${data.length} items)...`);
+                    // 個別のupsertは各操作関数で行うため、ここではログのみ
                 }
             } catch (e) {
                 console.warn('Supabase sync failed:', e);
@@ -1193,7 +1191,7 @@ function toggleConcept2() {
     }
 }
 
-// Concept2からデータを取得
+// Concept2からデータを取得（全ページ対応）
 async function fetchConcept2Data() {
     console.log('fetchConcept2Data called', state.currentUser?.concept2Connected);
     if (!state.currentUser?.concept2Connected) {
@@ -1211,32 +1209,60 @@ async function fetchConcept2Data() {
     showToast('データを同期中...', 'success');
 
     try {
-        // 直接Concept2 APIを呼び出す
+        // 直接Concept2 APIを呼び出す（全ページ取得）
         console.log('Fetching data from Concept2 API...');
 
-        const response = await fetch('https://log.concept2.com/api/users/me/results?type=rower', {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Accept': 'application/vnd.c2logbook.v1+json',
-            },
-        });
+        let allResults = [];
+        let page = 1;
+        let hasMore = true;
 
-        if (!response.ok) {
-            if (response.status === 401) {
-                showToast('アクセストークンが期限切れです。再連携してください。', 'error');
-                return;
+        while (hasMore) {
+            const url = `https://log.concept2.com/api/users/me/results?type=rower&number=250&page=${page}`;
+            console.log(`Fetching page ${page}...`);
+
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Accept': 'application/vnd.c2logbook.v1+json',
+                },
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    showToast('アクセストークンが期限切れです。再連携してください。', 'error');
+                    return;
+                }
+                throw new Error('API error: ' + response.status);
             }
-            throw new Error('API error: ' + response.status);
+
+            const data = await response.json();
+            const pageResults = data.data || [];
+            console.log(`Page ${page}: ${pageResults.length} results`);
+
+            allResults = allResults.concat(pageResults);
+
+            // 250件未満なら最後のページ
+            if (pageResults.length < 250) {
+                hasMore = false;
+            } else {
+                page++;
+                // 安全のために最大20ページまで（5000件）
+                if (page > 20) {
+                    console.warn('Reached max page limit (20)');
+                    hasMore = false;
+                }
+            }
         }
 
-        const data = await response.json();
-        console.log(`Fetched ${data.data?.length || 0} results from Concept2 API`);
+        console.log(`Total fetched: ${allResults.length} results from Concept2 API`);
 
-        if (data.data && data.data.length > 0) {
+        if (allResults.length > 0) {
+            let newCount = 0;
             // 結果を整形して保存
-            data.data.forEach(result => {
+            allResults.forEach(result => {
                 const existing = state.ergoRaw.find(r => r.concept2Id === result.id.toString());
                 if (!existing) {
+                    newCount++;
                     // ワークアウト情報からインターバル詳細を取得
                     const workout = result.workout || {};
                     let intervalDisplay = '';
@@ -1270,7 +1296,7 @@ async function fetchConcept2Data() {
             });
 
             DB.save('ergoRaw', state.ergoRaw);
-            console.log('ergoRaw saved, count:', state.ergoRaw.length);
+            console.log('ergoRaw saved, count:', state.ergoRaw.length, 'new:', newCount);
 
             // 最終同期時刻を更新
             state.currentUser.concept2LastSync = new Date().toISOString();
@@ -1279,14 +1305,12 @@ async function fetchConcept2Data() {
             DB.save('users', state.users);
             DB.save('current_user', state.currentUser);
 
-
-
-            // セッションに分類
-            classifyErgoSessions();
+            // セッションに分類（全データ再分類）
+            classifyErgoSessions(true);
             renderErgoRecords();
             updateConcept2UI();
 
-            showToast(`${data.data.length}件のデータを同期しました`, 'success');
+            showToast(`${allResults.length}件取得（新規 ${newCount}件）`, 'success');
         } else {
             showToast('新しいデータはありません', 'success');
         }
@@ -1637,8 +1661,6 @@ function initMainScreen() {
     document.getElementById('user-name').textContent = user.name;
     document.getElementById('user-role').textContent = user.role;
     document.getElementById('settings-name').textContent = user.name;
-    document.getElementById('settings-role').textContent = user.role;
-    document.getElementById('settings-grade').textContent = `${user.grade}年`;
 
     // Concept2 UI更新
     updateConcept2UI();
@@ -3885,89 +3907,125 @@ const initializeApp = async () => {
     try {
         console.log('App starting...');
 
-        // Supabaseクライアントの初期化
-        if (window.SupabaseConfig) {
-            window.SupabaseConfig.init();
+        // デモモード判定 (?demo=true)
+        const urlParams = new URLSearchParams(window.location.search);
+        const isDemoMode = urlParams.get('demo') === 'true';
+        state.isDemoMode = isDemoMode;
+
+        if (isDemoMode) {
+            console.log('🧪 Demo mode enabled');
         }
 
-        // デバッグ用: デモデータ（Supabase未接続時のフォールバック）
-        if (!DB.loadLocal('users')) {
-            console.log('No users found, creating demo data...');
+        // Supabaseクライアントの初期化
+        let supabaseReady = false;
+        if (window.SupabaseConfig) {
+            supabaseReady = window.SupabaseConfig.init();
+        }
+
+        // デモモード時のみデモデータを作成
+        if (isDemoMode && !DB.loadLocal('users')) {
+            console.log('Demo mode: Creating demo data...');
             DB.createDemoData();
         }
 
         await DB.init();
 
-        // Supabase認証セッションのチェック（OAuth リダイレクト後）
-        if (window.SupabaseConfig && window.SupabaseConfig.isReady()) {
+        // Supabase認証セッションのチェック
+        let loggedIn = false;
+        if (supabaseReady) {
             const session = await window.SupabaseConfig.getSession();
             if (session) {
                 console.log('✅ Supabase session found:', session.user.email);
                 const authSuccess = await handleAuthSession(session);
                 if (authSuccess) {
+                    loggedIn = true;
                     // Supabaseからプロフィール一覧をロード
-                    const profiles = await window.SupabaseConfig.db.loadProfiles();
-                    if (profiles.length > 0) {
-                        state.users = profiles.map(p => ({
-                            id: p.id,
-                            name: p.name,
-                            grade: p.grade,
-                            gender: p.gender || 'man',
-                            role: p.role || '部員',
-                            status: p.status || '在籍',
-                            approvalStatus: p.approval_status || '承認済み',
-                            concept2Connected: p.concept2_connected || false
-                        }));
-                        DB.saveLocal('users', state.users);
+                    try {
+                        const profiles = await window.SupabaseConfig.db.loadProfiles();
+                        if (profiles.length > 0) {
+                            state.users = profiles.map(p => ({
+                                id: p.id,
+                                authId: p.auth_id,
+                                name: p.name,
+                                grade: p.grade,
+                                gender: p.gender || 'man',
+                                role: p.role || '部員',
+                                status: p.status || '在籍',
+                                approvalStatus: p.approval_status || '承認済み',
+                                concept2Connected: p.concept2_connected || false
+                            }));
+                            DB.saveLocal('users', state.users);
+                        }
+                    } catch (e) {
+                        console.warn('Failed to load profiles from Supabase:', e);
                     }
                 }
+            }
+
+            // 認証状態変更の監視（ログイン/ログアウト時に自動反映）
+            window.SupabaseConfig.onAuthStateChange(async (event, session) => {
+                console.log('Auth state changed:', event);
+                if (event === 'SIGNED_IN' && session) {
+                    const authSuccess = await handleAuthSession(session);
+                    if (authSuccess && state.currentUser?.approvalStatus === '承認済み') {
+                        initMainScreen();
+                        updateConcept2UI();
+                        showScreen('main-screen');
+                    }
+                } else if (event === 'SIGNED_OUT') {
+                    state.currentUser = null;
+                    DB.save('current_user', null);
+                    showScreen('login-screen');
+                }
+            });
+        }
+
+        // デモモードからの前回ログイン状態復帰
+        if (!loggedIn && state.currentUser?.approvalStatus === '承認済み') {
+            // Supabase認証なしのデモユーザーの場合
+            if (isDemoMode || state.currentUser.id?.startsWith('u')) {
+                loggedIn = true;
             }
         }
 
         // Concept2認証コールバックからの戻り処理
-        const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('concept2_auth') === 'success') {
             const authResultJson = localStorage.getItem('concept2_auth_result');
             if (authResultJson) {
                 try {
                     const authResult = JSON.parse(authResultJson);
                     if (authResult.success && authResult.user_id) {
-                        // ユーザー情報を更新
                         const userIndex = state.users.findIndex(u => u.id === authResult.user_id);
                         if (userIndex !== -1) {
                             state.users[userIndex].concept2Connected = true;
-                            // トークン情報も保存（必要であれば）
-                            // state.users[userIndex].concept2Token = authResult.access_token; 
-
                             DB.save('users', state.users);
-
-                            // カレントユーザーも更新
                             if (state.currentUser && state.currentUser.id === authResult.user_id) {
                                 state.currentUser.concept2Connected = true;
                                 DB.save('current_user', state.currentUser);
                             }
-
                             showToast('Concept2と連携しました！', 'success');
                         }
                     }
-                    // 結果をクリア
                     localStorage.removeItem('concept2_auth_result');
                 } catch (e) {
                     console.error('Failed to parse auth result:', e);
                 }
             }
-
-            // URLパラメータを削除
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
-        if (state.currentUser?.approvalStatus === '承認済み') {
+        // 画面表示
+        if (loggedIn) {
             initMainScreen();
-            updateConcept2UI(); // Concept2連携状態のUI反映
+            updateConcept2UI();
             showScreen('main-screen');
         } else {
-            console.log('Rendering user select list...');
-            renderUserSelectList();
+            // デモモードの場合のみデモユーザー選択を表示
+            if (isDemoMode) {
+                const demoContainer = document.getElementById('user-select-container');
+                if (demoContainer) demoContainer.classList.remove('hidden');
+                renderUserSelectList();
+            }
             showScreen('login-screen');
         }
 
@@ -4193,6 +4251,20 @@ async function initRigging() {
 }
 
 /**
+ * Supabaseプロフィールを更新するヘルパー
+ */
+async function syncProfileToSupabase(updates) {
+    if (DB.useSupabase && window.SupabaseConfig?.isReady() && state.currentUser?.id) {
+        try {
+            await window.SupabaseConfig.db.updateProfile(state.currentUser.id, updates);
+            console.log('📤 Profile synced to Supabase:', updates);
+        } catch (e) {
+            console.warn('Profile sync to Supabase failed:', e);
+        }
+    }
+}
+
+/**
  * 設定画面の描画
  */
 function renderSettings() {
@@ -4201,8 +4273,111 @@ function renderSettings() {
 
     // アカウント情報
     setText('settings-name', user.name);
-    setText('settings-role', user.role);
-    setText('settings-grade', `${user.grade} 年`);
+
+    // 権限設定
+    const roleSelect = document.getElementById('settings-role-select');
+    if (roleSelect) {
+        roleSelect.value = user.role || '部員';
+        roleSelect.onchange = (e) => {
+            const newRole = e.target.value;
+            const previousRole = state.currentUser.role;
+
+            // 管理者への変更はパスコード認証が必要
+            if (newRole === ROLES.ADMIN && previousRole !== ROLES.ADMIN) {
+                const adminPasscode = DB.load('admin_passcode') || 'tanteibu';
+                const inputCode = prompt('管理者パスコードを入力してください：');
+
+                if (inputCode === null) {
+                    // キャンセルの場合は元に戻す
+                    roleSelect.value = previousRole;
+                    return;
+                }
+
+                if (inputCode !== adminPasscode) {
+                    showToast('パスコードが正しくありません', 'error');
+                    roleSelect.value = previousRole;
+                    return;
+                }
+            }
+
+            // 権限を変更
+            state.currentUser.role = newRole;
+            DB.save('current_user', state.currentUser);
+
+            const idx = state.users.findIndex(u => u.id === state.currentUser.id);
+            if (idx !== -1) {
+                state.users[idx] = state.currentUser;
+                DB.save('users', state.users);
+            }
+            // ヘッダーの権限バッジも更新
+            document.getElementById('user-role').textContent = newRole;
+            // マスタ管理の表示/非表示を更新
+            const masterSection = document.getElementById('master-settings');
+            if (canEditMaster(state.currentUser)) {
+                masterSection.classList.remove('hidden');
+            } else {
+                masterSection.classList.add('hidden');
+            }
+            // パスコード設定セクションの表示/非表示
+            const passcodeSection = document.getElementById('admin-passcode-settings');
+            if (passcodeSection) {
+                if (newRole === ROLES.ADMIN) {
+                    passcodeSection.classList.remove('hidden');
+                } else {
+                    passcodeSection.classList.add('hidden');
+                }
+            }
+            syncProfileToSupabase({ role: newRole });
+            showToast('権限を変更しました', 'success');
+        };
+    }
+
+    // 管理者パスコード設定（管理者のみ表示）
+    const passcodeSection = document.getElementById('admin-passcode-settings');
+    if (passcodeSection) {
+        if (user.role === ROLES.ADMIN) {
+            passcodeSection.classList.remove('hidden');
+            const currentPasscode = DB.load('admin_passcode') || 'tanteibu';
+            document.getElementById('current-admin-passcode').textContent = currentPasscode;
+
+            document.getElementById('set-admin-passcode-btn').onclick = () => {
+                const newPasscode = document.getElementById('new-admin-passcode').value.trim();
+                if (!newPasscode) {
+                    showToast('パスコードを入力してください', 'error');
+                    return;
+                }
+                if (newPasscode.length < 4) {
+                    showToast('4文字以上のパスコードを設定してください', 'error');
+                    return;
+                }
+                DB.save('admin_passcode', newPasscode);
+                document.getElementById('current-admin-passcode').textContent = newPasscode;
+                document.getElementById('new-admin-passcode').value = '';
+                showToast('管理者パスコードを更新しました', 'success');
+            };
+        } else {
+            passcodeSection.classList.add('hidden');
+        }
+    }
+
+    // 学年設定
+    const gradeSelect = document.getElementById('settings-grade-select');
+    if (gradeSelect) {
+        gradeSelect.value = String(user.grade || 1);
+        gradeSelect.onchange = (e) => {
+            const newGrade = parseInt(e.target.value);
+            state.currentUser.grade = newGrade;
+            DB.save('current_user', state.currentUser);
+
+            const idx = state.users.findIndex(u => u.id === state.currentUser.id);
+            if (idx !== -1) {
+                state.users[idx] = state.currentUser;
+                DB.save('users', state.users);
+            }
+            syncProfileToSupabase({ grade: newGrade });
+            showToast('学年を変更しました', 'success');
+        };
+    }
 
     // 性別設定
     const genderSelect = document.getElementById('settings-gender-select');
@@ -4218,6 +4393,7 @@ function renderSettings() {
                 state.users[idx] = state.currentUser;
                 DB.save('users', state.users);
             }
+            syncProfileToSupabase({ gender: newGender });
             showToast('性別を変更しました', 'success');
         };
     }
