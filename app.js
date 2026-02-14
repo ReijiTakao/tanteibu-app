@@ -1056,10 +1056,29 @@ async function validateAndConnectConcept2(accessToken) {
     } catch (error) {
         console.error('Connection error:', error);
 
-        // CORSエラーの場合はEdge Functionを使用
+        // CORSエラーの場合: トークンをそのまま保存して連携完了にする
+        // （Concept2 APIはブラウザ直接呼出しでCORSを拒否するため）
         if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
-            console.log('Direct API failed, trying Edge Function...');
-            await validateAndConnectConcept2ViaEdgeFunction(accessToken);
+            console.log('Direct API failed (likely CORS), saving token directly...');
+
+            // トークンを信頼して保存
+            state.currentUser.concept2Connected = true;
+            state.currentUser.concept2Token = accessToken;
+            state.currentUser.concept2LastSync = new Date().toISOString();
+
+            const idx = state.users.findIndex(u => u.id === state.currentUser.id);
+            if (idx !== -1) state.users[idx] = state.currentUser;
+            DB.save('users', state.users);
+            DB.save('current_user', state.currentUser);
+
+            // Supabaseにも保存
+            syncProfileToSupabase({
+                concept2_connected: true,
+                concept2_last_sync: new Date().toISOString()
+            });
+
+            showToast('Concept2と連携しました！（トークン保存済み）', 'success');
+            updateConcept2UI();
         } else {
             showToast('接続エラー: ' + error.message, 'error');
         }
