@@ -7,7 +7,7 @@
 // Supabase 設定
 // ========================================
 const SUPABASE_URL = 'https://zjhzysysclynlagidjmj.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_Vd-3mxlGleewLLgEC1V3yg_hiMA4NJI';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqaHp5c3lzY2x5bmxhZ2lkam1qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzMTIwNzIsImV4cCI6MjA4NTg4ODA3Mn0.FHU6z2ffdIhFvcyRU6DGpFV-p4xz6xW5jefxMyk5g4A';
 
 // 内部変数（グローバル汚染を避ける）
 let _supabaseClient = null;
