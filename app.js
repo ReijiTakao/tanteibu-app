@@ -958,8 +958,8 @@ function connectConcept2() {
         showToast('トークンを検証中...', 'success');
         validateAndConnectConcept2(accessToken);
     } else {
-        // トークン未入力の場合はOAuth連携を開始
-        initiateConcept2OAuth();
+        // トークン未入力の場合はエラーメッセージを表示
+        showToast('Personal Access Tokenを入力してください。Concept2プロフィールページから取得できます。', 'error');
     }
 }
 

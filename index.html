@@ -440,11 +440,16 @@
                 <!-- アクセストークン入力（未連携時のみ表示） -->
                 <div id="concept2-setup" class="concept2-setup">
                     <div class="form-group">
-                        <label>アクセストークン</label>
-                        <input type="password" id="concept2-access-token" placeholder="Concept2のPersonal Access Token">
+                        <label>Personal Access Token</label>
+                        <input type="password" id="concept2-access-token" placeholder="ここにトークンを貼り付け">
                     </div>
-                    <p class="help-text">Personal Access Tokenは<a href="https://log.concept2.com/profile/user/edit"
-                            target="_blank">Concept2プロフィール</a>の「Applications」から取得できます</p>
+                    <p class="help-text">
+                        <strong>トークンの取得方法：</strong><br>
+                        1. <a href="https://log.concept2.com/profile/developer" target="_blank">Concept2 Developer
+                            ページ</a>を開く<br>
+                        2.「Create Personal Access Token」をクリック<br>
+                        3. 表示されたトークンをコピーして上の欄に貼り付け
+                    </p>
                 </div>
                 <div class="concept2-actions">
                     <button id="toggle-concept2-btn" class="secondary-btn">連携する</button>
