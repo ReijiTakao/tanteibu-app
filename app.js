@@ -879,14 +879,21 @@ function loginAsUser(user) {
 }
 
 async function handleLogout() {
-    // Supabaseからもサインアウト
+    // Supabaseからもサインアウト（可能な場合）
     if (window.SupabaseConfig && window.SupabaseConfig.isReady()) {
-        await window.SupabaseConfig.signOut();
+        try {
+            await window.SupabaseConfig.signOut();
+        } catch (e) {
+            console.warn('Supabase signout failed:', e);
+        }
     }
+
+    // アプリの状態をクリア
     state.currentUser = null;
     DB.save('current_user', null);
-    renderUserSelectList();
-    showScreen('login-screen');
+
+    // 強制的にリロードして状態を初期化（キャッシュ対策含む）
+    window.location.reload();
 }
 
 function skipConcept2() {
