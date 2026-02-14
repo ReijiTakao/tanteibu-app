@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アプリ初期化（トラブルシューティング）</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: #FF4444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>アプリ初期化ツール</h1>
+    <p>ログイン状態がおかしい、または画面が真っ白になる場合、このボタンを押してデータをリセットしてください。</p>
+    <button class="btn" onclick="resetApp()">アプリをリセットする</button>
+
+    <script>
+        function resetApp() {
+            // ローカルストレージとセッションストレージを全消去
+            localStorage.clear();
+            sessionStorage.clear();
+
+            // クッキーも可能な限り削除（念のため）
+            document.cookie.split(";").forEach(function (c) { document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); });
+
+            alert('リセット完了！アプリを再読み込みします。');
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+
+</html>
