@@ -787,10 +787,26 @@ function canViewOverview(user) {
 // =========================================
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
-    document.getElementById(screenId).classList.remove('hidden');
+    const target = document.getElementById(screenId);
+    if (target) {
+        target.classList.remove('hidden');
+    }
+    // 安定性のため: メイン画面表示時は必ずログイン画面を隠す
+    if (screenId === 'main-screen') {
+        const login = document.getElementById('login-screen');
+        if (login) login.style.display = 'none';
+        const onboarding = document.getElementById('onboarding-screen');
+        if (onboarding) onboarding.style.display = 'none';
+    }
 }
 
 function switchTab(tabId) {
+    // 安定性のため: タブ切り替え時はログイン画面を強制非表示
+    const loginScreen = document.getElementById('login-screen');
+    if (loginScreen) loginScreen.style.display = 'none';
+    const onboardingScreen = document.getElementById('onboarding-screen');
+    if (onboardingScreen) onboardingScreen.style.display = 'none';
+
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.toggle('active', item.dataset.tab === tabId);
     });
@@ -807,7 +823,7 @@ function switchTab(tabId) {
     }
     if (tabId === 'rigging') initRigging();
     if (tabId === 'crew-note') {
-        initCrewNoteFeatures(); // イベントリスナー登録 (初回のみにすべきだが、簡易実装)
+        initCrewNoteFeatures();
         renderCrewList();
     }
     if (tabId === 'settings') renderSettings();
