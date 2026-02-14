@@ -25,10 +25,12 @@ function initSupabaseClient() {
 
     if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
         _supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.supabaseClient = _supabaseClient;
         console.log('✅ Supabase client initialized (window.supabase)');
         return true;
     } else if (typeof window.supabase_js !== 'undefined') {
         _supabaseClient = window.supabase_js.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.supabaseClient = _supabaseClient;
         console.log('✅ Supabase client initialized (window.supabase_js)');
         return true;
     } else {
