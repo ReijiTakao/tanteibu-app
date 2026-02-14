@@ -7,26 +7,28 @@
 // Supabase 設定
 // ========================================
 const SUPABASE_URL = 'https://zjhzysysclynlagidjmj.supabase.co';
-
-// ★★★ 以下のキーをSupabaseダッシュボードからコピーして貼り付けてください ★★★
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdWJhc2FzZSIsInJlZiI6InpqaHp5c3lzY2x5bmxhZ2lkam1qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzMTIwNzIsImV4cCI6MjA4NTg4ODA3Mn0.FHU6z2ffdIhFvcyRU6DGpFV-p4xz6xW5jefxMyk5g4A';
 
-let supabase = null;
+// 内部変数（グローバル汚染を避ける）
+let _supabaseClient = null;
 
 /**
  * Supabaseクライアントを初期化
  */
 function initSupabaseClient() {
     console.log('Initializing Supabase client...');
-    console.log('window.supabase type:', typeof window.supabase);
-    console.log('window.supabase_js type:', typeof window.supabase_js);
+
+    if (_supabaseClient) {
+        console.log('✅ Supabase client already initialized');
+        return true;
+    }
 
     if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        _supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log('✅ Supabase client initialized (window.supabase)');
         return true;
     } else if (typeof window.supabase_js !== 'undefined') {
-        supabase = window.supabase_js.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        _supabaseClient = window.supabase_js.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log('✅ Supabase client initialized (window.supabase_js)');
         return true;
     } else {
@@ -39,7 +41,7 @@ function initSupabaseClient() {
  * Supabaseが利用可能かチェック
  */
 function isSupabaseReady() {
-    return supabase !== null && SUPABASE_ANON_KEY !== 'ここにanon_keyを貼り付けてください';
+    return _supabaseClient !== null && SUPABASE_ANON_KEY.length > 20;
 }
 
 // ========================================
@@ -52,7 +54,7 @@ function isSupabaseReady() {
 async function signUpWithEmail(email, password, userData) {
     if (!isSupabaseReady()) return { error: { message: 'Supabase not ready' } };
 
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await _supabaseClient.auth.signUp({
         email: email,
         password: password,
         options: {
@@ -69,7 +71,7 @@ async function signUpWithEmail(email, password, userData) {
 async function signInWithEmail(email, password) {
     if (!isSupabaseReady()) return { error: { message: 'Supabase not ready' } };
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await _supabaseClient.auth.signInWithPassword({
         email: email,
         password: password
     });
@@ -83,7 +85,7 @@ async function signInWithEmail(email, password) {
 async function signOutUser() {
     if (!isSupabaseReady()) return;
 
-    const { error } = await supabase.auth.signOut();
+    const { error } = await _supabaseClient.auth.signOut();
     if (error) {
         console.error('Sign out error:', error);
         showToast('ログアウトに失敗しました', 'error');
@@ -96,7 +98,7 @@ async function signOutUser() {
 async function getSession() {
     if (!isSupabaseReady()) return null;
 
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const { data: { session }, error } = await _supabaseClient.auth.getSession();
     if (error) {
         console.error('Get session error:', error);
         return null;
@@ -110,7 +112,7 @@ async function getSession() {
 function onAuthStateChange(callback) {
     if (!isSupabaseReady()) return;
 
-    supabase.auth.onAuthStateChange((event, session) => {
+    _supabaseClient.auth.onAuthStateChange((event, session) => {
         console.log('Auth state changed:', event);
         callback(event, session);
     });
@@ -131,7 +133,7 @@ async function getOrCreateProfile(session) {
     const displayName = authUser.user_metadata?.full_name || authUser.user_metadata?.name || email;
 
     // まずプロフィールを検索
-    const { data: existing, error: fetchError } = await supabase
+    const { data: existing, error: fetchError } = await _supabaseClient
         .from('profiles')
         .select('*')
         .eq('auth_id', authUser.id)
@@ -153,7 +155,7 @@ async function getOrCreateProfile(session) {
         approval_status: '承認済み' // 最初のリリースでは自動承認
     };
 
-    const { data: created, error: insertError } = await supabase
+    const { data: created, error: insertError } = await _supabaseClient
         .from('profiles')
         .insert(newProfile)
         .select()
@@ -176,7 +178,7 @@ const SupabaseDB = {
     async loadSchedules(startDate, endDate) {
         if (!isSupabaseReady()) return [];
 
-        const { data, error } = await supabase
+        const { data, error } = await _supabaseClient
             .from('schedules')
             .select('*')
             .gte('date', startDate)
@@ -192,7 +194,7 @@ const SupabaseDB = {
     async saveSchedule(schedule) {
         if (!isSupabaseReady()) return null;
 
-        const { data, error } = await supabase
+        const { data, error } = await _supabaseClient
             .from('schedules')
             .upsert(schedule, { onConflict: 'id' })
             .select()
@@ -208,7 +210,7 @@ const SupabaseDB = {
     async deleteSchedule(id) {
         if (!isSupabaseReady()) return false;
 
-        const { error } = await supabase
+        const { error } = await _supabaseClient
             .from('schedules')
             .delete()
             .eq('id', id);
@@ -224,7 +226,7 @@ const SupabaseDB = {
     async loadErgoRecords(userId) {
         if (!isSupabaseReady()) return [];
 
-        let query = supabase
+        let query = _supabaseClient
             .from('ergo_records')
             .select('*')
             .order('date', { ascending: false });
@@ -245,7 +247,7 @@ const SupabaseDB = {
     async saveErgoRecord(record) {
         if (!isSupabaseReady()) return null;
 
-        const { data, error } = await supabase
+        const { data, error } = await _supabaseClient
             .from('ergo_records')
             .upsert(record, { onConflict: 'id' })
             .select()
@@ -261,7 +263,7 @@ const SupabaseDB = {
     async deleteErgoRecord(id) {
         if (!isSupabaseReady()) return false;
 
-        const { error } = await supabase
+        const { error } = await _supabaseClient
             .from('ergo_records')
             .delete()
             .eq('id', id);
@@ -276,7 +278,7 @@ const SupabaseDB = {
     async deleteErgoRecordsByScheduleId(scheduleId) {
         if (!isSupabaseReady()) return false;
 
-        const { error } = await supabase
+        const { error } = await _supabaseClient
             .from('ergo_records')
             .delete()
             .eq('schedule_id', scheduleId);
@@ -292,7 +294,7 @@ const SupabaseDB = {
     async loadCrewNotes(startDate, endDate) {
         if (!isSupabaseReady()) return [];
 
-        let query = supabase
+        let query = _supabaseClient
             .from('crew_notes')
             .select('*')
             .order('date', { ascending: false });
@@ -312,7 +314,7 @@ const SupabaseDB = {
     async saveCrewNote(note) {
         if (!isSupabaseReady()) return null;
 
-        const { data, error } = await supabase
+        const { data, error } = await _supabaseClient
             .from('crew_notes')
             .upsert(note, { onConflict: 'id' })
             .select()
@@ -328,7 +330,7 @@ const SupabaseDB = {
     async deleteCrewNote(id) {
         if (!isSupabaseReady()) return false;
 
-        const { error } = await supabase
+        const { error } = await _supabaseClient
             .from('crew_notes')
             .delete()
             .eq('id', id);
@@ -344,7 +346,7 @@ const SupabaseDB = {
     async loadProfiles() {
         if (!isSupabaseReady()) return [];
 
-        const { data, error } = await supabase
+        const { data, error } = await _supabaseClient
             .from('profiles')
             .select('*')
             .eq('approval_status', '承認済み')
@@ -361,7 +363,7 @@ const SupabaseDB = {
     async loadMasterData(table) {
         if (!isSupabaseReady()) return [];
 
-        const { data, error } = await supabase
+        const { data, error } = await _supabaseClient
             .from(table)
             .select('*');
 
@@ -375,7 +377,7 @@ const SupabaseDB = {
     async saveMasterItem(table, item) {
         if (!isSupabaseReady()) return null;
 
-        const { data, error } = await supabase
+        const { data, error } = await _supabaseClient
             .from(table)
             .upsert(item, { onConflict: 'id' })
             .select()
@@ -391,7 +393,7 @@ const SupabaseDB = {
     async deleteMasterItem(table, id) {
         if (!isSupabaseReady()) return false;
 
-        const { error } = await supabase
+        const { error } = await _supabaseClient
             .from(table)
             .delete()
             .eq('id', id);
