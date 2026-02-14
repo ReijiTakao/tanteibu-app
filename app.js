@@ -1786,6 +1786,7 @@ function openInputModal(dateStr, timeSlot) {
     document.querySelectorAll('#input-modal .toggle-btn').forEach(btn => btn.classList.remove('active'));
     document.getElementById('input-start-time').value = '';
     document.getElementById('input-memo').value = '';
+    document.getElementById('input-distance').value = ''; // 距離リセット
     document.getElementById('absence-reason-group').classList.add('hidden');
     document.getElementById('ergo-type-group').classList.add('hidden');
     document.getElementById('ergo-record-group').classList.add('hidden');
