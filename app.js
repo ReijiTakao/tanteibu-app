@@ -1650,31 +1650,51 @@ async function syncConcept2() {
     if (settingSyncBtn) settingSyncBtn.disabled = true;
 
     try {
-        // Vercel APIプロキシ経由でデータ取得（全ページ）
-        const response = await fetch(API_BASE + '/api/concept2-proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'sync',
-                access_token: state.currentUser.concept2Token
-            })
-        });
+        // Vercel APIプロキシ経由でデータ取得（ページごとにループ）
+        let allResults = [];
+        let currentPage = 1;
+        let hasMore = true;
 
-        const data = await response.json();
+        while (hasMore && currentPage <= 50) {
+            showToast(`Concept2データ取得中... ページ${currentPage}`, 'info');
 
-        if (!response.ok || !data.success) {
-            if (response.status === 401) {
-                showToast('トークンが期限切れです。再連携してください', 'error');
-                state.currentUser.concept2Connected = false;
-                DB.save('current_user', state.currentUser);
-                updateConcept2UI();
-                return;
+            const response = await fetch(API_BASE + '/api/concept2-proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'sync',
+                    access_token: state.currentUser.concept2Token,
+                    page: currentPage
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                if (response.status === 401) {
+                    showToast('トークンが期限切れです。再連携してください', 'error');
+                    state.currentUser.concept2Connected = false;
+                    DB.save('current_user', state.currentUser);
+                    updateConcept2UI();
+                    return;
+                }
+                // 最初のページでエラーならabort、2ページ目以降ならここまでのデータで進む
+                if (currentPage === 1) {
+                    throw new Error(data.error || '同期に失敗しました');
+                }
+                break;
             }
-            throw new Error(data.error || '同期に失敗しました');
+
+            const pageResults = data.results || [];
+            allResults = allResults.concat(pageResults);
+            hasMore = data.hasMore || false;
+            currentPage++;
+
+            console.log(`Page ${data.page}: ${pageResults.length} results (total: ${allResults.length})`);
         }
 
-        const results = data.results || [];
-        console.log(`Fetched ${results.length} results from Concept2 (${data.pages || 1} pages)`);
+        const results = allResults;
+        console.log(`Fetched ${results.length} results from Concept2 (${currentPage - 1} pages)`);
 
         // ローカルのエルゴ記録・セッションに統合
         let existingRecords = DB.load('ergo_records') || [];

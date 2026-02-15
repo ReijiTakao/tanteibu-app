@@ -16,7 +16,7 @@ module.exports = async function handler(req, res) {
     }
 
     try {
-        const { action, access_token, from_date, to_date } = req.body;
+        const { action, access_token, from_date, to_date, page } = req.body;
 
         if (!access_token) {
             return res.status(400).json({ error: 'Access token required' });
@@ -49,56 +49,32 @@ module.exports = async function handler(req, res) {
             });
 
         } else if (action === 'sync') {
-            // エルゴデータ取得（全ページ取得）
-            let allResults = [];
-            let page = 1;
-            const maxPages = 50; // 安全制限
+            // エルゴデータ取得（1ページずつ — クライアント側でループ）
+            const currentPage = page || 1;
+            let apiUrl = `https://log.concept2.com/api/users/me/results?type=rower&page=${currentPage}`;
+            if (from_date) apiUrl += `&from=${from_date}`;
+            if (to_date) apiUrl += `&to=${to_date}`;
 
-            while (page <= maxPages) {
-                let apiUrl = `https://log.concept2.com/api/users/me/results?type=rower&page=${page}`;
-                if (from_date) apiUrl += `&from=${from_date}`;
-                if (to_date) apiUrl += `&to=${to_date}`;
+            const response = await fetch(apiUrl, { headers });
 
-                const response = await fetch(apiUrl, { headers });
-
-                if (!response.ok) {
-                    // 最初のページでエラーなら失敗、2ページ目以降ならここまでのデータを返す
-                    if (page === 1) {
-                        const errorText = await response.text();
-                        return res.status(response.status).json({
-                            error: 'Concept2 API error',
-                            status: response.status,
-                            details: errorText
-                        });
-                    }
-                    break;
-                }
-
-                const data = await response.json();
-                const results = data.data || [];
-
-                if (results.length === 0) {
-                    // データがなくなったら終了
-                    break;
-                }
-
-                allResults = allResults.concat(results);
-                console.log(`Page ${page}: ${results.length} results (total: ${allResults.length})`);
-
-                // 次のページがあるか確認
-                // Concept2 APIのページネーション: 通常25件/ページ
-                if (results.length < 25) {
-                    break; // 最終ページ
-                }
-
-                page++;
+            if (!response.ok) {
+                const errorText = await response.text();
+                return res.status(response.status).json({
+                    error: 'Concept2 API error',
+                    status: response.status,
+                    details: errorText
+                });
             }
+
+            const data = await response.json();
+            const results = data.data || [];
 
             return res.status(200).json({
                 success: true,
-                count: allResults.length,
-                pages: page,
-                results: allResults
+                count: results.length,
+                page: currentPage,
+                hasMore: results.length >= 25, // 25件未満なら最終ページ
+                results: results
             });
 
         } else {
