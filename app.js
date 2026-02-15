@@ -4539,7 +4539,11 @@ function renderSettings() {
     }
 
     // 体重管理
-    initWeightSection();
+    try {
+        initWeightSection();
+    } catch (e) {
+        console.error('initWeightSection error:', e);
+    }
 
     // Concept2連携
     const isConnected = user.concept2Connected;
@@ -4600,21 +4604,32 @@ function renderSettings() {
 }
 
 function disconnectConcept2() {
-    if (!confirm('Concept2との連携を解除しますか？')) return;
+    try {
+        console.log('disconnectConcept2 called');
+        if (!window.confirm('Concept2との連携を解除しますか？')) {
+            console.log('User cancelled disconnect');
+            return;
+        }
 
-    state.currentUser.concept2Connected = false;
-    state.currentUser.concept2Token = null;
-    DB.save('current_user', state.currentUser);
+        state.currentUser.concept2Connected = false;
+        state.currentUser.concept2Token = null;
+        state.currentUser.concept2LastSync = null;
+        DB.save('current_user', state.currentUser);
 
-    // ユーザー一覧も更新
-    const idx = state.users.findIndex(u => u.id === state.currentUser.id);
-    if (idx !== -1) {
-        state.users[idx] = state.currentUser;
-        DB.save('users', state.users);
+        // ユーザー一覧も更新
+        const idx = state.users.findIndex(u => u.id === state.currentUser.id);
+        if (idx !== -1) {
+            state.users[idx] = state.currentUser;
+            DB.save('users', state.users);
+        }
+
+        console.log('Concept2 disconnected successfully');
+        showToast('連携を解除しました', 'success');
+        renderSettings();
+    } catch (e) {
+        console.error('disconnectConcept2 error:', e);
+        showToast('連携解除中にエラーが発生しました', 'error');
     }
-
-    showToast('連携を解除しました', 'success');
-    renderSettings();
 }
 
 // =========================================
