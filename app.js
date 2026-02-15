@@ -871,7 +871,7 @@ function switchTab(tabId) {
         content.classList.toggle('active', content.id === `tab-${tabId}`);
     });
 
-    if (tabId === 'overview') renderOverview();
+    if (tabId === 'overview') { renderOverview(); renderMileageRanking(); }
     if (tabId === 'ergo-data') {
         renderErgoRecords();
         renderWeeklyRanking();
@@ -2133,10 +2133,8 @@ function openInputModal(dateStr, timeSlot, scheduleId = null) {
     document.querySelectorAll('#input-modal .toggle-btn').forEach(btn => btn.classList.remove('active'));
     document.getElementById('input-start-time').value = '';
     document.getElementById('input-memo').value = '';
-    document.getElementById('input-distance').value = '';
     document.getElementById('absence-reason-group').classList.add('hidden');
     document.getElementById('ergo-type-group').classList.add('hidden');
-    document.getElementById('ergo-record-group').classList.add('hidden');
     document.getElementById('boat-group').classList.add('hidden');
     document.getElementById('oar-group').classList.add('hidden');
     document.getElementById('crew-group').classList.add('hidden');
@@ -2158,7 +2156,6 @@ function openInputModal(dateStr, timeSlot, scheduleId = null) {
 
         document.getElementById('input-start-time').value = schedule.startTime || '';
         document.getElementById('input-memo').value = schedule.memo || '';
-        document.getElementById('input-distance').value = schedule.distance || '';
 
         if (schedule.absenceReason) {
             const reasonBtn = document.querySelector(`.reason-btn[data-value="${schedule.absenceReason}"]`);
@@ -2451,7 +2448,6 @@ function saveSchedule() {
         timeSlot: timeSlot,
         scheduleType: scheduleType,
         startTime: document.getElementById('input-start-time').value || null,
-        distance: document.getElementById('input-distance').value ? parseInt(document.getElementById('input-distance').value) : null,
         absenceReason: document.querySelector('.reason-btn.active')?.dataset.value || null,
         absenceDetail: document.getElementById('input-absence-detail')?.value || null,
 
@@ -3101,6 +3097,94 @@ function renderTimeBlock(timeLabel, entries) {
     </div>`;
 }
 
+// ======= マイレージランキング =======
+function renderMileageRanking(period) {
+    period = period || document.querySelector('.period-btn.active')?.dataset.period || 'week';
+    const container = document.getElementById('mileage-ranking');
+    if (!container) return;
+
+    // 期間フィルタの日付範囲を計算
+    const today = new Date();
+    let startDate;
+    if (period === 'week') {
+        const dayOfWeek = today.getDay();
+        const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - mondayOffset);
+    } else if (period === 'month') {
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+    } else {
+        startDate = new Date(2020, 0, 1); // 累計：全期間
+    }
+    const startDateStr = startDate.toISOString().slice(0, 10);
+    const todayStr = today.toISOString().slice(0, 10);
+
+    // 全ユーザーの距離を集計
+    const userDistances = {};
+    state.users.forEach(u => {
+        userDistances[u.id] = { name: u.name, total: 0, sessions: 0 };
+    });
+
+    state.practiceNotes.forEach(note => {
+        if (!note.rowingDistance || note.rowingDistance <= 0) return;
+        if (note.date < startDateStr || note.date > todayStr) return;
+        if (!userDistances[note.userId]) return;
+        userDistances[note.userId].total += note.rowingDistance;
+        userDistances[note.userId].sessions += 1;
+    });
+
+    // ソート（距離の大きい順）
+    const sorted = Object.entries(userDistances)
+        .filter(([_, d]) => d.total > 0)
+        .sort((a, b) => b[1].total - a[1].total);
+
+    if (sorted.length === 0) {
+        container.innerHTML = `<div class="mileage-empty">
+            <p>まだ練習距離の記録がありません</p>
+            <p class="text-muted">練習ノート → 漕いだ距離を入力するとランキングに反映されます</p>
+        </div>`;
+        return;
+    }
+
+    const medals = ['🥇', '🥈', '🥉'];
+    const maxDistance = sorted[0][1].total;
+
+    let html = '';
+    sorted.forEach(([userId, data], index) => {
+        const rank = index + 1;
+        const medal = medals[index] || `${rank}`;
+        const isMe = state.currentUser && userId === state.currentUser.id;
+        const barWidth = maxDistance > 0 ? (data.total / maxDistance * 100) : 0;
+        const km = (data.total / 1000).toFixed(1);
+
+        html += `<div class="mileage-row ${isMe ? 'mileage-me' : ''}">
+            <span class="mileage-rank">${medal}</span>
+            <span class="mileage-name">${data.name}</span>
+            <div class="mileage-bar-container">
+                <div class="mileage-bar" style="width: ${barWidth}%"></div>
+            </div>
+            <span class="mileage-distance">${km}km</span>
+            <span class="mileage-sessions">${data.sessions}回</span>
+        </div>`;
+    });
+
+    // 自分がランキング外の場合にも表示
+    if (state.currentUser && !sorted.find(([uid]) => uid === state.currentUser.id)) {
+        html += `<div class="mileage-row mileage-me mileage-unranked">
+            <span class="mileage-rank">—</span>
+            <span class="mileage-name">${state.currentUser.name}</span>
+            <div class="mileage-bar-container">
+                <div class="mileage-bar" style="width: 0%"></div>
+            </div>
+            <span class="mileage-distance">0km</span>
+            <span class="mileage-sessions">0回</span>
+        </div>`;
+    }
+
+    container.innerHTML = html;
+}
+
+
 function renderAvailableBoats(dateStr, container) {
     if (!container) return;
 
@@ -3304,6 +3388,16 @@ function openPracticeNoteModal(noteId) {
         crewLinkGroup.classList.add('hidden');
     }
 
+    // 漕いだ距離入力（乗艇時のみ表示）
+    const distanceGroup = document.getElementById('rowing-distance-group');
+    if (schedule && schedule.scheduleType === SCHEDULE_TYPES.BOAT) {
+        distanceGroup.classList.remove('hidden');
+        document.getElementById('practice-note-distance').value = note.rowingDistance || '';
+    } else {
+        distanceGroup.classList.add('hidden');
+        document.getElementById('practice-note-distance').value = '';
+    }
+
     modal.dataset.noteId = noteId;
     modal.classList.remove('hidden');
 }
@@ -3433,6 +3527,15 @@ function savePracticeNote() {
     if (!note) return;
 
     note.reflection = document.getElementById('practice-note-reflection').value || '';
+
+    // 漕いだ距離を保存
+    const distanceInput = document.getElementById('practice-note-distance');
+    if (distanceInput && distanceInput.value) {
+        note.rowingDistance = parseInt(distanceInput.value);
+    } else {
+        note.rowingDistance = null;
+    }
+
     note.updatedAt = new Date().toISOString();
 
     DB.save('practice_notes', state.practiceNotes);
@@ -4876,6 +4979,15 @@ const initializeApp = async () => {
 
         // 全体タブ
         document.getElementById('overview-date').addEventListener('change', renderOverview);
+
+        // マイレージ期間切替
+        document.querySelectorAll('.period-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                renderMileageRanking(btn.dataset.period);
+            });
+        });
 
         // Concept2バナー
         document.getElementById('connect-from-data-btn')?.addEventListener('click', connectConcept2);

@@ -1134,6 +1134,147 @@ body {
     cursor: help;
 }
 
+/* ======= マイレージランキング ======= */
+.mileage-section {
+    margin-top: 16px;
+    background: var(--card-gradient);
+    border-radius: var(--border-radius);
+    padding: 16px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.mileage-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.mileage-header h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.mileage-period-toggle {
+    display: flex;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 2px;
+    gap: 2px;
+}
+
+.period-btn {
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.period-btn.active {
+    background: var(--accent-color);
+    color: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.mileage-ranking {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.mileage-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.mileage-row:hover {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.mileage-me {
+    background: rgba(59, 130, 246, 0.08) !important;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 8px;
+}
+
+.mileage-unranked {
+    opacity: 0.6;
+    margin-top: 6px;
+    border-top: 1px dashed var(--bg-secondary);
+    padding-top: 12px;
+}
+
+.mileage-rank {
+    font-size: 16px;
+    width: 28px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.mileage-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    min-width: 60px;
+}
+
+.mileage-bar-container {
+    flex: 1;
+    height: 8px;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    overflow: hidden;
+    min-width: 40px;
+}
+
+.mileage-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-color), #60a5fa);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.mileage-distance {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent-color);
+    white-space: nowrap;
+    min-width: 50px;
+    text-align: right;
+}
+
+.mileage-sessions {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    min-width: 24px;
+}
+
+.mileage-empty {
+    text-align: center;
+    padding: 24px 12px;
+    color: var(--text-secondary);
+}
+
+.mileage-empty p:first-child {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
 /* 空き艇セクション - アコーディオン */
 .available-boats-section {
     margin-top: 12px;

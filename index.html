@@ -182,6 +182,21 @@
                 <div id="available-boats-section" class="available-boats-section">
                     <!-- 空き艇セクション: JSで動的生成 -->
                 </div>
+
+                <!-- マイレージランキング -->
+                <div class="mileage-section">
+                    <div class="mileage-header">
+                        <h3>🏅 Mile Makes Champion</h3>
+                        <div class="mileage-period-toggle">
+                            <button class="period-btn active" data-period="week">今週</button>
+                            <button class="period-btn" data-period="month">今月</button>
+                            <button class="period-btn" data-period="all">累計</button>
+                        </div>
+                    </div>
+                    <div id="mileage-ranking" class="mileage-ranking">
+                        <!-- JSで動的生成 -->
+                    </div>
+                </div>
             </div>
 
 
@@ -653,14 +668,7 @@
                     <input type="number" id="input-weight" step="0.1" placeholder="例: 75.5">
                 </div>
 
-                <!-- エルゴ記録入力 -->
-                <div class="form-group hidden" id="ergo-record-group">
-                    <label>この回のエルゴ記録入力</label>
-                    <div id="ergo-records-container" class="ergo-records-container">
-                        <!-- 動的に追加 -->
-                    </div>
-                    <button id="add-ergo-record-btn" class="add-record-btn">+ 記録を追加</button>
-                </div>
+
 
                 <!-- 乗艇の場合 -->
                 <div class="form-group hidden" id="boat-group">
@@ -679,11 +687,7 @@
                     </select>
                 </div>
 
-                <!-- 距離入力 (共通) -->
-                <div class="form-group" id="distance-group">
-                    <label>漕いだ距離 (m)</label>
-                    <input type="number" id="input-distance" placeholder="例: 12000">
-                </div>
+
 
                 <div class="form-group hidden" id="oar-group">
                     <label>オール</label>
@@ -897,6 +901,13 @@
                     <div id="ergo-select-list" class="ergo-select-list hidden">
                         <!-- 同日のConcept2データ一覧 -->
                     </div>
+                </div>
+
+                <!-- 漕いだ距離入力（乗艇時のみ表示） -->
+                <div class="form-group hidden" id="rowing-distance-group">
+                    <label>🏅 漕いだ距離 (m)</label>
+                    <input type="number" id="practice-note-distance" placeholder="例: 12000" min="0" step="100">
+                    <p class="help-text">Mile makes champion — 漕いだ距離がマイレージランキングに反映されます</p>
                 </div>
 
                 <!-- クルーノートリンク（乗艇時のみ表示） -->
