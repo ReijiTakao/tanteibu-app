@@ -1,7 +1,7 @@
 // Vercel Serverless Function: Concept2 APIプロキシ
 // ブラウザからのCORS制限を回避してConcept2 APIを呼び出す
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
     // CORS ヘッダー
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -82,4 +82,4 @@ export default async function handler(req, res) {
         console.error('Concept2 proxy error:', error);
         return res.status(500).json({ error: error.message });
     }
-}
+};

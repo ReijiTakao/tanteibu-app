@@ -28,12 +28,24 @@
         {
             "src": "*.ico",
             "use": "@vercel/static"
+        },
+        {
+            "src": "*.webmanifest",
+            "use": "@vercel/static"
         }
     ],
-    "rewrites": [
+    "routes": [
         {
-            "source": "/api/:path*",
-            "destination": "/api/:path*"
+            "src": "/api/(.*)",
+            "dest": "/api/$1"
+        },
+        {
+            "src": "/(.*\\.(html|js|css|json|png|ico|webmanifest|svg))",
+            "dest": "/$1"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/index.html"
         }
     ]
 }
