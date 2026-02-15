@@ -337,10 +337,25 @@
 
             <!-- 5. 設定タブ に移動 -->
 
-            <!-- 6. クルーノートタブ -->
+            <!-- 6. ノートタブ（サブタブ: 練習記録 / クルーノート） -->
             <div id="tab-crew-note" class="tab-content hidden">
                 <div class="sticky-header">
-                    <h2>クルーノート</h2>
+                    <h2>ノート</h2>
+                    <div class="note-subtabs">
+                        <button class="note-subtab-btn active" data-subtab="practice">📝 練習記録</button>
+                        <button class="note-subtab-btn" data-subtab="crew">🚣 クルーノート</button>
+                    </div>
+                </div>
+
+                <!-- サブタブ: 練習記録 -->
+                <div id="subtab-practice" class="note-subtab-content">
+                    <div id="practice-notes-list" class="practice-notes-list">
+                        <!-- JSで動的生成 -->
+                    </div>
+                </div>
+
+                <!-- サブタブ: クルーノート -->
+                <div id="subtab-crew" class="note-subtab-content hidden">
                     <div class="crew-nav">
                         <button class="crew-nav-btn active" data-type="my">My Crews</button>
                         <button class="crew-nav-btn" data-type="all">すべてのクルー</button>
@@ -358,13 +373,13 @@
                             <option value="8+">8+ (エイト)</option>
                         </select>
                     </div>
-                </div>
-                <div class="scrollable-content">
-                    <div id="crew-list" class="crew-list">
-                        <!-- クルーリストがここに描画される -->
-                    </div>
-                    <div class="fab-container">
-                        <button class="fab" id="add-crew-note-btn">＋</button>
+                    <div class="scrollable-content">
+                        <div id="crew-list" class="crew-list">
+                            <!-- クルーリストがここに描画される -->
+                        </div>
+                        <div class="fab-container">
+                            <button class="fab" id="add-crew-note-btn">＋</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -388,6 +403,7 @@
                                 <option value="幹部">幹部</option>
                                 <option value="コーチ">コーチ</option>
                                 <option value="Cox">Cox</option>
+                                <option value="マネージャー">マネージャー</option>
                                 <option value="部員">部員</option>
                             </select>
                         </div>
@@ -505,27 +521,27 @@
 
         <!-- 下タブナビゲーション（6つ） -->
         <nav id="bottom-nav" class="bottom-nav">
-            <button class="nav-item active" data-tab="input">
+            <button class="nav-item active" data-tab="input" data-roles="member,executive,admin,cox,manager">
                 <span class="nav-icon">📝</span>
                 <span class="nav-label">練習登録</span>
             </button>
-            <button class="nav-item" data-tab="overview" id="nav-overview">
+            <button class="nav-item" data-tab="overview" id="nav-overview" data-roles="all">
                 <span class="nav-icon">📅</span>
                 <span class="nav-label">全体</span>
             </button>
-            <button class="nav-item" data-tab="ergo-data">
+            <button class="nav-item" data-tab="ergo-data" data-roles="member,executive,admin,coach">
                 <span class="nav-icon">📊</span>
                 <span class="nav-label">エルゴデータ</span>
             </button>
-            <button class="nav-item" data-tab="rigging">
+            <button class="nav-item" data-tab="rigging" data-roles="member,executive,admin,cox,coach">
                 <span class="nav-icon">🔧</span>
                 <span class="nav-label">リギング</span>
             </button>
-            <button class="nav-item" data-tab="crew-note">
+            <button class="nav-item" data-tab="crew-note" data-roles="member,executive,admin,cox,coach">
                 <span class="nav-icon">📖</span>
                 <span class="nav-label">ノート</span>
             </button>
-            <button class="nav-item" data-tab="settings">
+            <button class="nav-item" data-tab="settings" data-roles="all">
                 <span class="nav-icon">⚙️</span>
                 <span class="nav-label">設定</span>
             </button>
@@ -582,7 +598,9 @@
                 <!-- 開始予定時刻 -->
                 <div class="form-group" id="start-time-group">
                     <label>開始予定時刻</label>
-                    <input type="time" id="input-start-time">
+                    <select id="input-start-time">
+                        <option value="">選択してください</option>
+                    </select>
                 </div>
 
                 <!-- 参加不可の場合：理由 -->
@@ -692,10 +710,7 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>練習振り返り（任意）</label>
-                    <textarea id="input-reflection" rows="3" placeholder="今日の練習で感じたこと、反省点など"></textarea>
-                </div>
+
 
                 <!-- メモ -->
                 <div class="form-group">
@@ -846,6 +861,52 @@
             <div class="modal-actions">
                 <button class="secondary-btn" onclick="closeIDTModal()">閉じる</button>
                 <button class="primary-btn" onclick="calculateIDT()">計算する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 練習ノートモーダル -->
+    <div id="practice-note-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h3 id="practice-note-title">練習ノート</h3>
+                <button id="practice-note-close" class="modal-close">×</button>
+            </div>
+            <div class="modal-body">
+                <!-- 練習サマリー（自動表示） -->
+                <div id="practice-note-summary" class="practice-note-summary">
+                    <!-- JSで動的生成 -->
+                </div>
+
+                <!-- 振り返り -->
+                <div class="form-group">
+                    <label>振り返り</label>
+                    <textarea id="practice-note-reflection" rows="5" placeholder="今日の練習で感じたこと、反省点、良かった点など…"></textarea>
+                </div>
+
+                <!-- エルゴデータ紐づけ -->
+                <div class="form-group" id="ergo-link-group">
+                    <label>📊 エルゴデータ紐づけ</label>
+                    <div id="linked-ergo-records" class="linked-ergo-records">
+                        <!-- 紐づけ済みエルゴ表示 -->
+                    </div>
+                    <button type="button" id="link-ergo-btn" class="secondary-btn small-btn">＋ エルゴデータを紐づけ</button>
+                    <div id="ergo-select-list" class="ergo-select-list hidden">
+                        <!-- 同日のConcept2データ一覧 -->
+                    </div>
+                </div>
+
+                <!-- クルーノートリンク（乗艇時のみ表示） -->
+                <div class="form-group hidden" id="crew-note-link-group">
+                    <label>🚣 クルーノート</label>
+                    <div id="crew-note-link-info" class="crew-note-link-info">
+                        <!-- JSで動的生成 -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="save-practice-note-btn" class="primary-btn">保存</button>
             </div>
         </div>
     </div>

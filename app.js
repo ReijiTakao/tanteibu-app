@@ -197,6 +197,7 @@ let state = {
     oars: [],
     ergos: [],
     crews: [],
+    practiceNotes: [],
     auditLogs: []
 };
 
@@ -264,6 +265,7 @@ const DB = {
         state.oars = this.load('oars') || [];
         state.ergos = this.load('ergos') || [];
         state.crewNotes = this.load('crew_notes') || [];
+        state.practiceNotes = this.load('practice_notes') || [];
 
         // 過去の練習記録からクルー情報を抽出
         extractCrewsFromSchedules();
@@ -805,6 +807,52 @@ function showScreen(screenId) {
         if (login) login.style.display = 'none';
         const onboarding = document.getElementById('onboarding-screen');
         if (onboarding) onboarding.style.display = 'none';
+        // ロール別タブ表示制御
+        applyRoleBasedTabs();
+        // 5分刻み時間セレクター初期化
+        initTimeSelect();
+    }
+}
+
+// ロール別タブ表示/非表示
+function applyRoleBasedTabs() {
+    const role = state.currentUser?.role || '';
+    const roleKey = {
+        [ROLES.ADMIN]: 'admin',
+        [ROLES.EXECUTIVE]: 'executive',
+        [ROLES.COACH]: 'coach',
+        [ROLES.COX]: 'cox',
+        [ROLES.MEMBER]: 'member',
+        [ROLES.MANAGER]: 'manager'
+    }[role] || 'member';
+
+    let firstVisibleTab = null;
+    document.querySelectorAll('#bottom-nav .nav-item').forEach(item => {
+        const roles = item.dataset.roles || 'all';
+        const visible = roles === 'all' || roles.split(',').includes(roleKey);
+        item.style.display = visible ? '' : 'none';
+        if (visible && !firstVisibleTab) firstVisibleTab = item.dataset.tab;
+    });
+
+    // 現在のactiveタブが非表示なら最初の表示可能タブへ切替
+    const activeItem = document.querySelector('#bottom-nav .nav-item.active');
+    if (activeItem && activeItem.style.display === 'none' && firstVisibleTab) {
+        switchTab(firstVisibleTab);
+    }
+}
+
+// 5分刻み時間セレクター初期化
+function initTimeSelect() {
+    const sel = document.getElementById('input-start-time');
+    if (!sel || sel.options.length > 1) return; // 既に生成済みなら不要
+    for (let h = 5; h <= 21; h++) {
+        for (let m = 0; m < 60; m += 5) {
+            const val = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+            const opt = document.createElement('option');
+            opt.value = val;
+            opt.textContent = val;
+            sel.appendChild(opt);
+        }
     }
 }
 
@@ -832,7 +880,7 @@ function switchTab(tabId) {
     if (tabId === 'rigging') initRigging();
     if (tabId === 'crew-note') {
         initCrewNoteFeatures();
-        renderCrewList();
+        renderPracticeNotesList();
     }
     if (tabId === 'settings') renderSettings();
 }
@@ -2402,7 +2450,7 @@ function saveSchedule() {
         startTime: document.getElementById('input-start-time').value || null,
         distance: document.getElementById('input-distance').value ? parseInt(document.getElementById('input-distance').value) : null,
         absenceReason: document.querySelector('.reason-btn.active')?.dataset.value || null,
-        reflection: document.getElementById('input-reflection')?.value || null,
+
         ergoType: document.querySelector('.ergo-type-btn.active')?.dataset.value || null,
         boatType: document.querySelector('.boat-type-btn.active')?.dataset.value || null,
         boatId: document.getElementById('input-boat').value || null,
@@ -2493,6 +2541,11 @@ function saveSchedule() {
     // 自動でクルーノートを作成（乗艇練習の場合）
     if (newSchedule.scheduleType === SCHEDULE_TYPES.BOAT) {
         autoCreateCrewNotesFromSchedule(newSchedule);
+    }
+
+    // 練習ノート自動作成（参加不可以外）
+    if (newSchedule.scheduleType !== SCHEDULE_TYPES.ABSENT) {
+        autoCreatePracticeNote(newSchedule);
     }
 
     closeInputModal();
@@ -3001,22 +3054,305 @@ function renderAvailableBoats(dateStr, container) {
         groupedBoats[type].push(b);
     });
 
+    let bodyHtml;
     if (availableBoats.length > 0) {
         const groupsHtml = Object.keys(groupedBoats).sort().map(type => {
             const boats = groupedBoats[type].map(b => `<span class="boat-tag available">${b.name}</span>`).join('');
             return `<div class="boat-group"><span class="boat-type-label">${type}:</span> ${boats}</div>`;
         }).join('');
-
-        container.innerHTML = `
-            <h4 class="subsection-title">🚣 空き艇状況</h4>
-            <div class="available-boats-list">${groupsHtml}</div>
-        `;
+        bodyHtml = `<div class="available-boats-list">${groupsHtml}</div>`;
     } else {
-        container.innerHTML = `<h4 class="subsection-title">🚣 空き艇状況</h4><div class="empty-state sub-empty"><p>空き艇なし</p></div>`;
+        bodyHtml = `<div class="empty-state sub-empty"><p>空き艇なし</p></div>`;
+    }
+
+    container.innerHTML = `
+        <div class="accordion-header boats-accordion-header" onclick="this.parentElement.classList.toggle('open')">
+            <span>🚣 空き艇状況 (${availableBoats.length}艇)</span>
+            <span class="accordion-icon">▶</span>
+        </div>
+        <div class="accordion-body">${bodyHtml}</div>
+    `;
+}
+
+// =========================================
+// 練習ノート機能
+// =========================================
+
+// 練習ノートを自動作成（saveScheduleから呼ばれる）
+function autoCreatePracticeNote(schedule) {
+    const existing = state.practiceNotes.find(n => n.scheduleId === schedule.id);
+    if (existing) return;
+
+    let crewNoteId = null;
+    if (schedule.scheduleType === SCHEDULE_TYPES.BOAT) {
+        const crewNote = state.crews.find(c =>
+            c.date === schedule.date &&
+            c.memberIds?.includes(schedule.userId)
+        );
+        if (crewNote) crewNoteId = crewNote.id;
+    }
+
+    const note = {
+        id: generateId(),
+        scheduleId: schedule.id,
+        userId: schedule.userId,
+        date: schedule.date,
+        timeSlot: schedule.timeSlot,
+        scheduleType: schedule.scheduleType,
+        reflection: '',
+        ergoRecordIds: [],
+        crewNoteId: crewNoteId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+
+    state.practiceNotes.push(note);
+    DB.save('practice_notes', state.practiceNotes);
+}
+
+// 練習ノート一覧を表示
+function renderPracticeNotesList() {
+    const container = document.getElementById('practice-notes-list');
+    if (!container) return;
+
+    const myNotes = state.practiceNotes
+        .filter(n => n.userId === state.currentUser.id)
+        .sort((a, b) => b.date.localeCompare(a.date) || (b.timeSlot || '').localeCompare(a.timeSlot || ''));
+
+    if (myNotes.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <p>📝 練習を登録すると、ここに練習ノートが自動で作成されます</p>
+            </div>
+        `;
+        return;
+    }
+
+    const byDate = {};
+    myNotes.forEach(note => {
+        if (!byDate[note.date]) byDate[note.date] = [];
+        byDate[note.date].push(note);
+    });
+
+    let html = '';
+    Object.keys(byDate).sort((a, b) => b.localeCompare(a)).forEach(date => {
+        const display = formatDisplayDate(date);
+        let weekdayClass = '';
+        if (display.dayOfWeek === 0) weekdayClass = 'sunday';
+        if (display.dayOfWeek === 6) weekdayClass = 'saturday';
+
+        html += `<div class="pn-date-group">`;
+        html += `<div class="pn-date-header">${display.month}/${display.day} <span class="weekday ${weekdayClass}">(${display.weekday})</span></div>`;
+
+        byDate[date].forEach(note => {
+            const schedule = state.schedules.find(s => s.id === note.scheduleId);
+            const typeLabel = schedule?.scheduleType || '不明';
+            const hasReflection = note.reflection && note.reflection.trim().length > 0;
+            const hasErgo = note.ergoRecordIds && note.ergoRecordIds.length > 0;
+            const timeLabel = schedule?.startTime || note.timeSlot || '';
+
+            let badgeClass = 'default';
+            if (typeLabel === SCHEDULE_TYPES.ERGO) badgeClass = 'ergo';
+            else if (typeLabel === SCHEDULE_TYPES.BOAT) badgeClass = 'boat';
+            else if (typeLabel === SCHEDULE_TYPES.WEIGHT) badgeClass = 'weight';
+
+            html += `
+                <div class="pn-card" data-note-id="${note.id}">
+                    <div class="pn-card-header">
+                        <span class="slot-type-badge ${badgeClass}">${typeLabel}</span>
+                        <span class="pn-time">${timeLabel}</span>
+                    </div>
+                    <div class="pn-card-body">
+                        ${hasReflection ? `<p class="pn-preview">${note.reflection.substring(0, 60)}${note.reflection.length > 60 ? '…' : ''}</p>` : '<p class="pn-empty-hint">振り返りを書く</p>'}
+                        <div class="pn-tags">
+                            ${hasErgo ? '<span class="pn-tag">📊 エルゴ</span>' : ''}
+                            ${note.crewNoteId ? '<span class="pn-tag">🚣 クルー</span>' : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `</div>`;
+    });
+
+    container.innerHTML = html;
+
+    container.querySelectorAll('.pn-card').forEach(card => {
+        card.addEventListener('click', () => {
+            openPracticeNoteModal(card.dataset.noteId);
+        });
+    });
+}
+
+// 練習ノートモーダルを開く
+function openPracticeNoteModal(noteId) {
+    const note = state.practiceNotes.find(n => n.id === noteId);
+    if (!note) return;
+
+    const schedule = state.schedules.find(s => s.id === note.scheduleId);
+    const modal = document.getElementById('practice-note-modal');
+
+    const summaryEl = document.getElementById('practice-note-summary');
+    const display = formatDisplayDate(note.date);
+    const typeLabel = schedule?.scheduleType || '不明';
+    const timeLabel = schedule?.startTime || note.timeSlot || '';
+    const memoText = schedule?.memo ? `<div class="pn-memo">📋 ${schedule.memo}</div>` : '';
+
+    summaryEl.innerHTML = `
+        <div class="pn-summary-header">
+            <span class="pn-summary-date">${display.month}/${display.day} (${display.weekday})</span>
+            <span class="slot-type-badge">${typeLabel}</span>
+            ${timeLabel ? `<span class="pn-summary-time">${timeLabel}</span>` : ''}
+        </div>
+        ${memoText}
+    `;
+
+    document.getElementById('practice-note-reflection').value = note.reflection || '';
+    renderLinkedErgoRecords(note);
+
+    const crewLinkGroup = document.getElementById('crew-note-link-group');
+    if (note.crewNoteId || (schedule && schedule.scheduleType === SCHEDULE_TYPES.BOAT)) {
+        crewLinkGroup.classList.remove('hidden');
+        const crewNote = state.crews.find(c => c.id === note.crewNoteId);
+        const linkInfo = document.getElementById('crew-note-link-info');
+        if (crewNote) {
+            const members = (crewNote.memberIds || []).map(id => {
+                const u = state.users.find(u => u.id === id);
+                return u ? u.name : '?';
+            }).join(', ');
+            linkInfo.innerHTML = `
+                <div class="crew-note-link-card" data-crew-note-id="${crewNote.id}">
+                    <span>${crewNote.boatType || ''} — ${members}</span>
+                    <button class="secondary-btn small-btn" onclick="openCrewNoteFromLink('${crewNote.id}')">開く →</button>
+                </div>
+            `;
+        } else {
+            linkInfo.innerHTML = `<p class="text-muted">クルーノートはまだ作成されていません</p>`;
+        }
+    } else {
+        crewLinkGroup.classList.add('hidden');
+    }
+
+    modal.dataset.noteId = noteId;
+    modal.classList.remove('hidden');
+}
+
+function renderLinkedErgoRecords(note) {
+    const container = document.getElementById('linked-ergo-records');
+    if (!note.ergoRecordIds || note.ergoRecordIds.length === 0) {
+        container.innerHTML = '<p class="text-muted">紐づけなし</p>';
+        return;
+    }
+
+    let html = '';
+    note.ergoRecordIds.forEach(recId => {
+        const rec = state.ergoRecords.find(r => r.id === recId);
+        if (rec) {
+            html += `
+                <div class="linked-ergo-item">
+                    <span>📊 ${rec.distance || '?'}m — ${rec.timeDisplay || '?'} ${rec.split ? `(${rec.split}/500m)` : ''}</span>
+                    <button class="btn-icon-sm" onclick="unlinkErgoRecord('${recId}')">✕</button>
+                </div>
+            `;
+        }
+    });
+    container.innerHTML = html || '<p class="text-muted">紐づけなし</p>';
+}
+
+function showErgoSelectList(noteId) {
+    const note = state.practiceNotes.find(n => n.id === noteId);
+    if (!note) return;
+
+    const selectList = document.getElementById('ergo-select-list');
+    const dayRecords = state.ergoRecords.filter(r =>
+        r.date === note.date &&
+        r.userId === note.userId &&
+        !(note.ergoRecordIds || []).includes(r.id)
+    );
+
+    if (dayRecords.length === 0) {
+        selectList.innerHTML = '<p class="text-muted">この日のエルゴデータが見つかりません</p>';
+    } else {
+        selectList.innerHTML = dayRecords.map(rec => `
+            <div class="ergo-select-item" data-record-id="${rec.id}">
+                <span>📊 ${rec.distance || '?'}m — ${rec.timeDisplay || '?'} ${rec.source === 'concept2' ? '(C2同期)' : '(手入力)'}</span>
+                <button class="secondary-btn small-btn">追加</button>
+            </div>
+        `).join('');
+
+        selectList.querySelectorAll('.ergo-select-item button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const recId = btn.closest('.ergo-select-item').dataset.recordId;
+                linkErgoRecord(noteId, recId);
+            });
+        });
+    }
+
+    selectList.classList.remove('hidden');
+}
+
+function linkErgoRecord(noteId, recordId) {
+    const note = state.practiceNotes.find(n => n.id === noteId);
+    if (!note) return;
+    if (!note.ergoRecordIds) note.ergoRecordIds = [];
+    if (!note.ergoRecordIds.includes(recordId)) {
+        note.ergoRecordIds.push(recordId);
+        note.updatedAt = new Date().toISOString();
+        DB.save('practice_notes', state.practiceNotes);
+        renderLinkedErgoRecords(note);
+        showErgoSelectList(noteId);
     }
 }
 
+function unlinkErgoRecord(recordId) {
+    const modal = document.getElementById('practice-note-modal');
+    const noteId = modal.dataset.noteId;
+    const note = state.practiceNotes.find(n => n.id === noteId);
+    if (!note) return;
+    note.ergoRecordIds = (note.ergoRecordIds || []).filter(id => id !== recordId);
+    note.updatedAt = new Date().toISOString();
+    DB.save('practice_notes', state.practiceNotes);
+    renderLinkedErgoRecords(note);
+}
 
+function savePracticeNote() {
+    const modal = document.getElementById('practice-note-modal');
+    const noteId = modal.dataset.noteId;
+    const note = state.practiceNotes.find(n => n.id === noteId);
+    if (!note) return;
+
+    note.reflection = document.getElementById('practice-note-reflection').value || '';
+    note.updatedAt = new Date().toISOString();
+
+    DB.save('practice_notes', state.practiceNotes);
+    modal.classList.add('hidden');
+    renderPracticeNotesList();
+    showToast('保存しました', 'success');
+}
+
+function openCrewNoteFromLink(crewNoteId) {
+    document.getElementById('practice-note-modal').classList.add('hidden');
+    const crewNote = state.crews.find(c => c.id === crewNoteId);
+    if (crewNote) {
+        openCrewNoteModal(crewNote);
+    }
+}
+
+function switchNoteSubtab(subtab) {
+    document.querySelectorAll('.note-subtab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.subtab === subtab);
+    });
+    document.querySelectorAll('.note-subtab-content').forEach(content => {
+        content.classList.toggle('hidden', content.id !== `subtab-${subtab}`);
+    });
+
+    if (subtab === 'practice') {
+        renderPracticeNotesList();
+    } else if (subtab === 'crew') {
+        renderCrewList();
+    }
+}
 
 // =========================================
 // データ（記録）タブ
@@ -4409,6 +4745,24 @@ const initializeApp = async () => {
 
         // クルー検索
         document.getElementById('crew-search').addEventListener('input', (e) => filterCrew(e.target.value));
+
+        // サブタブ切替（ノートタブ内）
+        document.querySelectorAll('.note-subtab-btn').forEach(btn => {
+            btn.addEventListener('click', () => switchNoteSubtab(btn.dataset.subtab));
+        });
+
+        // 練習ノートモーダル
+        document.getElementById('practice-note-close')?.addEventListener('click', () => {
+            document.getElementById('practice-note-modal').classList.add('hidden');
+        });
+        document.querySelector('#practice-note-modal .modal-overlay')?.addEventListener('click', () => {
+            document.getElementById('practice-note-modal').classList.add('hidden');
+        });
+        document.getElementById('save-practice-note-btn')?.addEventListener('click', savePracticeNote);
+        document.getElementById('link-ergo-btn')?.addEventListener('click', () => {
+            const modal = document.getElementById('practice-note-modal');
+            showErgoSelectList(modal.dataset.noteId);
+        });
 
         // 全体タブ
         document.getElementById('overview-date').addEventListener('change', renderOverview);

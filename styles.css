@@ -996,14 +996,63 @@ body {
     margin-top: 2px;
 }
 
-/* 空き艇セクション */
+/* 空き艇セクション - アコーディオン */
 .available-boats-section {
     margin-top: 12px;
     background: var(--card-gradient);
     border-radius: var(--border-radius);
-    padding: 14px;
     box-shadow: var(--shadow-sm);
     border: 1px solid rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+}
+
+.accordion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-secondary);
+    user-select: none;
+    transition: background 0.2s;
+}
+
+.accordion-header:hover {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.accordion-icon {
+    font-size: 10px;
+    transition: transform 0.3s ease;
+}
+
+.available-boats-section.open .accordion-icon {
+    transform: rotate(90deg);
+}
+
+.accordion-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+    padding: 0 14px;
+}
+
+.available-boats-section.open .accordion-body {
+    max-height: 500px;
+    padding: 0 14px 14px;
+}
+
+/* 5分刻みセレクト */
+#input-start-time {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 15px;
+    background: #fff;
+    color: var(--text-primary);
 }
 
 
@@ -2527,6 +2576,205 @@ textarea {
 .crew-nav-btn.active {
     color: var(--primary-color);
     border-bottom-color: var(--primary-color);
+}
+
+/* ノートサブタブ */
+.note-subtabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 12px;
+    background: var(--bg-secondary);
+    border-radius: 10px;
+    padding: 3px;
+}
+
+.note-subtab-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    background: none;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.note-subtab-btn.active {
+    background: #fff;
+    color: var(--primary-color);
+    box-shadow: var(--shadow-sm);
+}
+
+/* 練習ノートカード一覧 */
+.practice-notes-list {
+    padding: 0 16px 16px;
+}
+
+.pn-date-group {
+    margin-bottom: 16px;
+}
+
+.pn-date-header {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    padding-left: 4px;
+}
+
+.pn-card {
+    background: var(--card-gradient);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    margin-bottom: 8px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pn-card:active {
+    transform: scale(0.98);
+}
+
+.pn-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.pn-time {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.pn-card-body {
+    font-size: 13px;
+}
+
+.pn-preview {
+    color: var(--text-primary);
+    margin: 0 0 6px;
+    line-height: 1.4;
+}
+
+.pn-empty-hint {
+    color: var(--text-tertiary);
+    margin: 0 0 6px;
+    font-style: italic;
+}
+
+.pn-tags {
+    display: flex;
+    gap: 6px;
+}
+
+.pn-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    background: var(--bg-secondary);
+    border-radius: 10px;
+    color: var(--text-secondary);
+}
+
+/* 練習ノートモーダル */
+.practice-note-summary {
+    background: var(--bg-secondary);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.pn-summary-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.pn-summary-date {
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.pn-summary-time {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.pn-memo {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* エルゴ紐づけ関連 */
+.linked-ergo-records {
+    margin-bottom: 8px;
+}
+
+.linked-ergo-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    margin-bottom: 4px;
+    font-size: 13px;
+}
+
+.btn-icon-sm {
+    border: none;
+    background: none;
+    color: var(--text-tertiary);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 6px;
+}
+
+.small-btn {
+    font-size: 12px;
+    padding: 5px 12px;
+}
+
+.ergo-select-list {
+    margin-top: 8px;
+    border: 1px solid var(--bg-secondary);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.ergo-select-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--bg-secondary);
+    font-size: 13px;
+}
+
+.ergo-select-item:last-child {
+    border-bottom: none;
+}
+
+/* クルーノートリンク */
+.crew-note-link-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.text-muted {
+    color: var(--text-tertiary);
+    font-size: 13px;
 }
 
 .crew-search-section {
