@@ -2916,42 +2916,61 @@ function renderOverview() {
         }
     });
 
-    // 時間順にソート
     const sortedTimes = Object.keys(timeGroups).sort();
 
     let html = '';
 
-    // 日付ヘッダー
+    // 日付ヘッダー + 全体サマリー
     const display = formatDisplayDate(dateStr);
-    html += `<div class="timeline-date-header">${display.month}/${display.day}（${display.weekday}）のスケジュール</div>`;
+    const totalActive = schedules.length - absentSchedules.length;
+    html += `<div class="timeline-date-header">
+        ${display.month}/${display.day}（${display.weekday}）のスケジュール
+        <span class="overview-total-badge">${totalActive}人参加 / ${absentSchedules.length}人不参加</span>
+    </div>`;
 
     if (sortedTimes.length === 0 && noTimeSchedules.length === 0 && absentSchedules.length === 0) {
         html += '<div class="empty-state"><p>予定なし</p></div>';
     }
 
-    // 時間帯ごとに表示
+    // 時間帯ごとにサマリーカード表示
     sortedTimes.forEach(time => {
         html += renderTimeBlock(time, timeGroups[time]);
     });
 
-    // 時間未定
     if (noTimeSchedules.length > 0) {
         html += renderTimeBlock('未定', noTimeSchedules);
     }
 
-    // 参加不可
+    // 参加不可（折りたたみ）
     if (absentSchedules.length > 0) {
+        const absentByReason = {};
+        absentSchedules.forEach(s => {
+            const reason = s.absenceReason || 'その他';
+            if (!absentByReason[reason]) absentByReason[reason] = [];
+            absentByReason[reason].push(s);
+        });
+
+        const absentChips = Object.entries(absentByReason).map(([reason, list]) => {
+            const names = list.map(s => {
+                const u = state.users.find(u => u.id === s.userId);
+                const detail = s.absenceDetail ? `<span class="absent-detail-hint" title="${s.absenceDetail}">ⓘ</span>` : '';
+                return `<span class="ov-chip absent-chip">${u?.name || '?'}${detail}</span>`;
+            }).join('');
+            return `<div class="absent-reason-group">
+                <span class="absent-reason-label">${reason}</span>
+                <div class="ov-chip-row">${names}</div>
+            </div>`;
+        }).join('');
+
         html += `<div class="timeline-block absent-block">
-            <div class="timeline-time-label">❌ 参加不可</div>
-            <div class="timeline-entries">
-                ${absentSchedules.map(s => {
-            const user = state.users.find(u => u.id === s.userId);
-            return `<div class="timeline-entry absent">
-                        <span class="entry-name">${user?.name || ''}</span>
-                        <span class="entry-detail">${s.absenceReason || ''}</span>
-                    </div>`;
-        }).join('')}
+            <div class="ov-card-header" onclick="this.parentElement.classList.toggle('expanded')">
+                <span class="timeline-time-label">❌ 参加不可</span>
+                <div class="ov-summary-badges">
+                    <span class="ov-badge absent-badge">${absentSchedules.length}人</span>
+                    <span class="ov-expand-icon">▶</span>
+                </div>
             </div>
+            <div class="ov-card-body">${absentChips}</div>
         </div>`;
     }
 
@@ -2964,74 +2983,121 @@ function renderOverview() {
 function renderTimeBlock(timeLabel, entries) {
     const displayTime = timeLabel === '未定' ? '🕐 時間未定' : `⏰ ${timeLabel}`;
 
-    const entriesHtml = entries.map(s => {
-        const user = state.users.find(u => u.id === s.userId);
-        let icon = '', colorClass = '', detail = '';
+    // タイプ別にグループ分け
+    const typeGroups = {};
+    entries.forEach(s => {
+        const t = s.scheduleType;
+        if (!typeGroups[t]) typeGroups[t] = [];
+        typeGroups[t].push(s);
+    });
 
-        switch (s.scheduleType) {
-            case SCHEDULE_TYPES.BOAT: {
-                icon = '🚣';
-                colorClass = 'boat';
-                const boat = state.boats.find(b => b.id === s.boatId);
-                const oar = state.oars.find(o => o.id === s.oarId);
-                const parts = [];
-                if (s.boatType) parts.push(s.boatType);
-                if (boat) parts.push(boat.name);
-                if (oar) parts.push(oar.name);
-                // クルー表示
-                if (s.crewDetailsMap && Object.keys(s.crewDetailsMap).length > 0) {
-                    const crewNames = Object.values(s.crewDetailsMap)
-                        .map(uid => state.users.find(u => u.id === uid)?.name)
-                        .filter(n => n);
-                    if (crewNames.length > 0) parts.push(crewNames.join('・'));
-                } else if (s.crewIds && s.crewIds.length > 0) {
-                    const crewNames = s.crewIds
-                        .map(uid => state.users.find(u => u.id === uid)?.name)
-                        .filter(n => n);
-                    if (crewNames.length > 0) parts.push(crewNames.join('・'));
-                }
-                detail = parts.join(' / ');
-                break;
-            }
-            case SCHEDULE_TYPES.ERGO:
-                icon = '🏋️';
-                colorClass = 'ergo';
-                detail = [s.ergoType, s.distance ? `${s.distance}m` : ''].filter(d => d).join(' ');
-                break;
-            case SCHEDULE_TYPES.WEIGHT:
-                icon = '💪';
-                colorClass = 'weight';
-                break;
-            case SCHEDULE_TYPES.MEAL:
-                icon = '🍳';
-                colorClass = 'meal';
-                detail = s.mealTypes ? s.mealTypes.join('/') : '';
-                break;
-            case SCHEDULE_TYPES.VIDEO:
-                icon = '🎥';
-                colorClass = 'video';
-                detail = s.videoDuration ? `${s.videoDuration}分` : '';
-                break;
-            case SCHEDULE_TYPES.BANCHA:
-                icon = '🚴';
-                colorClass = 'bancha';
-                break;
-        }
+    // タイプ設定
+    const typeConfig = {
+        [SCHEDULE_TYPES.BOAT]: { icon: '🚣', label: '乗艇', cls: 'boat' },
+        [SCHEDULE_TYPES.ERGO]: { icon: '🏋️', label: 'エルゴ', cls: 'ergo' },
+        [SCHEDULE_TYPES.WEIGHT]: { icon: '💪', label: 'ウエイト', cls: 'weight' },
+        [SCHEDULE_TYPES.MEAL]: { icon: '🍳', label: '炊事', cls: 'meal' },
+        [SCHEDULE_TYPES.VIDEO]: { icon: '🎥', label: 'ビデオ', cls: 'video' },
+        [SCHEDULE_TYPES.BANCHA]: { icon: '🚴', label: '伴チャ', cls: 'bancha' }
+    };
 
-        const memoHtml = s.memo ? `<span class="entry-memo">📝 ${s.memo}</span>` : '';
-
-        return `<div class="timeline-entry ${colorClass}">
-            <span class="entry-icon">${icon}</span>
-            <span class="entry-name">${user?.name || ''}</span>
-            <span class="entry-type">${s.scheduleType}</span>
-            ${detail ? `<span class="entry-detail">${detail}</span>` : ''}
-            ${memoHtml}
-        </div>`;
+    // サマリーバッジ
+    const badgesHtml = Object.entries(typeGroups).map(([type, list]) => {
+        const cfg = typeConfig[type] || { icon: '📋', label: type, cls: '' };
+        return `<span class="ov-badge ${cfg.cls}-badge">${cfg.icon}${list.length}</span>`;
     }).join('');
 
-    return `<div class="timeline-block">
-        <div class="timeline-time-label">${displayTime}</div>
-        <div class="timeline-entries">${entriesHtml}</div>
+    // タイプ別詳細コンテンツ
+    let detailHtml = '';
+
+    // --- 乗艇: クルー単位でまとめ ---
+    if (typeGroups[SCHEDULE_TYPES.BOAT]) {
+        const boatEntries = typeGroups[SCHEDULE_TYPES.BOAT];
+        const crewGroups = {};
+        const soloEntries = [];
+
+        boatEntries.forEach(s => {
+            if (s.boatId && s.crewDetailsMap && Object.keys(s.crewDetailsMap).length > 0) {
+                const key = s.boatId;
+                if (!crewGroups[key]) crewGroups[key] = { boat: s, members: new Map() };
+                Object.entries(s.crewDetailsMap).forEach(([seat, uid]) => {
+                    const u = state.users.find(u => u.id === uid);
+                    if (u) crewGroups[key].members.set(uid, { seat, name: u.name });
+                });
+                const registrant = state.users.find(u => u.id === s.userId);
+                if (registrant && !crewGroups[key].members.has(s.userId)) {
+                    crewGroups[key].members.set(s.userId, { seat: 'Cox', name: registrant.name });
+                }
+            } else {
+                soloEntries.push(s);
+            }
+        });
+
+        let boatHtml = '';
+        Object.values(crewGroups).forEach(group => {
+            const boat = state.boats.find(b => b.id === group.boat.boatId);
+            const boatType = group.boat.boatType || '';
+            const boatName = boat?.name || '未選択';
+            const memberChips = Array.from(group.members.values())
+                .sort((a, b) => a.seat.localeCompare(b.seat))
+                .map(m => `<span class="ov-chip boat-chip">${m.name}</span>`).join('');
+            boatHtml += `<div class="ov-crew-card">
+                <div class="ov-crew-label">${boatType ? `[${boatType}]` : ''} ${boatName}</div>
+                <div class="ov-chip-row">${memberChips}</div>
+            </div>`;
+        });
+
+        if (soloEntries.length > 0) {
+            const soloChips = soloEntries.map(s => {
+                const u = state.users.find(u => u.id === s.userId);
+                const boatType = s.boatType || '';
+                const boat = state.boats.find(b => b.id === s.boatId);
+                const label = [boatType, boat?.name].filter(Boolean).join(' ');
+                return `<span class="ov-chip boat-chip" title="${label}">${u?.name || '?'}${label ? ` (${label})` : ''}</span>`;
+            }).join('');
+            boatHtml += `<div class="ov-crew-card"><div class="ov-chip-row">${soloChips}</div></div>`;
+        }
+
+        detailHtml += `<div class="ov-type-section boat-section">
+            <div class="ov-type-header">🚣 乗艇 (${boatEntries.length}人)</div>
+            ${boatHtml}
+        </div>`;
+    }
+
+    // --- エルゴ/ウエイト/その他: チップ一覧 ---
+    const chipTypes = [SCHEDULE_TYPES.ERGO, SCHEDULE_TYPES.WEIGHT, SCHEDULE_TYPES.MEAL, SCHEDULE_TYPES.VIDEO, SCHEDULE_TYPES.BANCHA];
+    chipTypes.forEach(type => {
+        if (!typeGroups[type]) return;
+        const list = typeGroups[type];
+        const cfg = typeConfig[type];
+
+        const chips = list.map(s => {
+            const u = state.users.find(u => u.id === s.userId);
+            let extra = '';
+            if (type === SCHEDULE_TYPES.ERGO) {
+                extra = [s.ergoType, s.distance ? `${s.distance}m` : ''].filter(Boolean).join(' ');
+            } else if (type === SCHEDULE_TYPES.MEAL) {
+                extra = s.mealTypes ? s.mealTypes.join('/') : '';
+            }
+            return `<span class="ov-chip ${cfg.cls}-chip" ${extra ? `title="${extra}"` : ''}>${u?.name || '?'}${extra ? ` <small>${extra}</small>` : ''}</span>`;
+        }).join('');
+
+        detailHtml += `<div class="ov-type-section ${cfg.cls}-section">
+            <div class="ov-type-header">${cfg.icon} ${cfg.label} (${list.length}人)</div>
+            <div class="ov-chip-row">${chips}</div>
+        </div>`;
+    });
+
+    return `<div class="timeline-block expanded">
+        <div class="ov-card-header" onclick="this.parentElement.classList.toggle('expanded')">
+            <span class="timeline-time-label">${displayTime}</span>
+            <div class="ov-summary-badges">
+                ${badgesHtml}
+                <span class="ov-total-count">${entries.length}人</span>
+                <span class="ov-expand-icon">▼</span>
+            </div>
+        </div>
+        <div class="ov-card-body">${detailHtml}</div>
     </div>`;
 }
 

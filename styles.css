@@ -895,10 +895,11 @@ body {
 .timeline-block {
     background: var(--card-gradient);
     border-radius: var(--border-radius);
-    padding: 12px 14px;
+    padding: 0;
     margin-bottom: 8px;
     box-shadow: var(--shadow-sm);
     border: 1px solid rgba(0, 0, 0, 0.04);
+    overflow: hidden;
 }
 
 .timeline-block.absent-block {
@@ -910,90 +911,227 @@ body {
     font-size: 14px;
     font-weight: 700;
     color: var(--accent-color);
-    margin-bottom: 8px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--bg-secondary);
+    margin: 0;
 }
 
-.timeline-entries {
+/* サマリーカードヘッダー */
+.ov-card-header {
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.ov-card-header:hover {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.ov-summary-badges {
+    display: flex;
+    align-items: center;
     gap: 6px;
 }
 
-.timeline-entry {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
-    border-radius: var(--border-radius-sm);
-    font-size: 13px;
-    flex-wrap: wrap;
-    transition: background-color 0.15s ease;
-}
-
-.timeline-entry.boat {
-    background-color: rgba(59, 130, 246, 0.06);
-    border-left: 3px solid var(--boat-color);
-}
-
-.timeline-entry.ergo {
-    background-color: rgba(139, 92, 246, 0.06);
-    border-left: 3px solid var(--ergo-color);
-}
-
-.timeline-entry.weight {
-    background-color: rgba(249, 115, 22, 0.06);
-    border-left: 3px solid var(--weight-color);
-}
-
-.timeline-entry.meal {
-    background-color: rgba(234, 179, 8, 0.06);
-    border-left: 3px solid #b45309;
-}
-
-.timeline-entry.video {
-    background-color: rgba(236, 72, 153, 0.06);
-    border-left: 3px solid #be185d;
-}
-
-.timeline-entry.bancha {
-    background-color: rgba(16, 185, 129, 0.06);
-    border-left: 3px solid #047857;
-}
-
-.timeline-entry.absent {
-    background-color: rgba(100, 116, 139, 0.06);
-}
-
-.entry-icon {
-    font-size: 16px;
-    flex-shrink: 0;
-}
-
-.entry-name {
+.ov-badge {
+    font-size: 11px;
     font-weight: 600;
-    color: var(--text-primary);
+    padding: 2px 8px;
+    border-radius: 10px;
     white-space: nowrap;
 }
 
-.entry-type {
-    color: var(--text-muted);
-    font-size: 11px;
-    white-space: nowrap;
+.boat-badge {
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--boat-color);
 }
 
-.entry-detail {
-    color: var(--text-secondary);
+.ergo-badge {
+    background: rgba(139, 92, 246, 0.12);
+    color: var(--ergo-color);
+}
+
+.weight-badge {
+    background: rgba(249, 115, 22, 0.12);
+    color: #c2410c;
+}
+
+.meal-badge {
+    background: rgba(234, 179, 8, 0.12);
+    color: #b45309;
+}
+
+.video-badge {
+    background: rgba(236, 72, 153, 0.12);
+    color: #be185d;
+}
+
+.bancha-badge {
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+}
+
+.absent-badge {
+    background: rgba(100, 116, 139, 0.15);
+    color: var(--absent-color);
+}
+
+.ov-total-count {
     font-size: 12px;
-    margin-left: auto;
+    font-weight: 700;
+    color: var(--text-secondary);
 }
 
-.entry-memo {
-    font-size: 11px;
-    color: var(--text-muted);
-    width: 100%;
-    margin-top: 2px;
+.ov-expand-icon {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    transition: transform 0.3s ease;
+}
+
+.timeline-block.expanded .ov-expand-icon {
+    transform: rotate(90deg);
+}
+
+/* カード本体（展開/折り畳み） */
+.ov-card-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease, padding 0.35s ease;
+    padding: 0 14px;
+}
+
+.timeline-block.expanded .ov-card-body {
+    max-height: 2000px;
+    padding: 0 14px 14px;
+}
+
+/* 全体サマリーバッジ */
+.overview-total-badge {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-left: 8px;
+}
+
+/* タイプ別セクション */
+.ov-type-section {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--bg-secondary);
+}
+
+.ov-type-section:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+
+.ov-type-header {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+/* チップ行 */
+.ov-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.ov-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 12px;
+    white-space: nowrap;
+}
+
+.ov-chip small {
+    font-size: 10px;
+    opacity: 0.7;
+}
+
+.boat-chip {
+    background: rgba(59, 130, 246, 0.08);
+    color: var(--text-primary);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+.ergo-chip {
+    background: rgba(139, 92, 246, 0.08);
+    color: var(--text-primary);
+    border: 1px solid rgba(139, 92, 246, 0.15);
+}
+
+.weight-chip {
+    background: rgba(249, 115, 22, 0.08);
+    color: var(--text-primary);
+    border: 1px solid rgba(249, 115, 22, 0.15);
+}
+
+.meal-chip {
+    background: rgba(234, 179, 8, 0.08);
+    color: var(--text-primary);
+    border: 1px solid rgba(234, 179, 8, 0.15);
+}
+
+.video-chip {
+    background: rgba(236, 72, 153, 0.08);
+    color: var(--text-primary);
+    border: 1px solid rgba(236, 72, 153, 0.15);
+}
+
+.bancha-chip {
+    background: rgba(16, 185, 129, 0.08);
+    color: var(--text-primary);
+    border: 1px solid rgba(16, 185, 129, 0.15);
+}
+
+.absent-chip {
+    background: rgba(100, 116, 139, 0.08);
+    color: var(--text-primary);
+    border: 1px solid rgba(100, 116, 139, 0.15);
+}
+
+/* クルーカード */
+.ov-crew-card {
+    background: rgba(59, 130, 246, 0.04);
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+}
+
+.ov-crew-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--boat-color);
+    margin-bottom: 4px;
+}
+
+/* 参加不可グループ */
+.absent-reason-group {
+    margin-bottom: 8px;
+}
+
+.absent-reason-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.absent-detail-hint {
+    font-size: 10px;
+    color: var(--accent-color);
+    margin-left: 2px;
+    cursor: help;
 }
 
 /* 空き艇セクション - アコーディオン */
