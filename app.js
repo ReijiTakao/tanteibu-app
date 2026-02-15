@@ -1,6 +1,11 @@
 document.title = 'APP STARTED';
 console.log('APP JS START');
 
+// APIプロキシURL（ローカルfile://では絶対URL、Vercelでは相対パス）
+const API_BASE = window.location.protocol === 'file:'
+    ? 'https://tanteibu-app.vercel.app'
+    : '';
+
 /**
  * 端艇部 総合管理アプリ - メインロジック v2
  */
@@ -1008,7 +1013,7 @@ function initiateConcept2OAuth() {
 async function validateAndConnectConcept2(accessToken) {
     try {
         // Vercel APIプロキシ経由でConcept2 APIを呼び出し（CORS回避）
-        const response = await fetch('/api/concept2-proxy', {
+        const response = await fetch(API_BASE + '/api/concept2-proxy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1589,7 +1594,48 @@ function parseTimeString(timeStr) {
     return parseFloat(timeStr) || 0;
 }
 
-// Concept2データを同期（Vercel APIプロキシ経由）
+// Concept2データからmenuKeyとcategoryを分類
+function classifyConcept2Result(result) {
+    const distance = result.distance || 0;
+    const timeSec = result.time ? result.time / 10 : 0; // Concept2は1/10秒単位
+    const workoutType = result.workout_type || '';
+    const rules = CONCEPT2_API.classificationRules;
+
+    for (const rule of rules) {
+        if (rule.type === 'distance' && distance >= rule.min && distance <= rule.max) {
+            return { menuKey: rule.key, category: 'distance' };
+        } else if (rule.type === 'time' && timeSec >= rule.min && timeSec <= rule.max) {
+            return { menuKey: rule.key, category: 'time' };
+        } else if (rule.type === 'workout' && rule.patterns && rule.patterns.includes(workoutType)) {
+            // インターバル判定
+            const intervals = result.workout?.intervals || [];
+            let intervalDisplay = rule.key;
+            if (intervals.length > 0) {
+                const first = intervals[0];
+                if (first.distance && first.distance > 0) {
+                    intervalDisplay = `${first.distance}m×${intervals.length}`;
+                } else if (first.time && first.time > 0) {
+                    const sec = Math.round(first.time / 10);
+                    if (sec >= 60) {
+                        intervalDisplay = `${Math.round(sec / 60)}分×${intervals.length}`;
+                    } else {
+                        intervalDisplay = `${sec}sec×${intervals.length}`;
+                    }
+                }
+            }
+            return { menuKey: intervalDisplay, category: 'interval' };
+        }
+    }
+
+    // JustRow判定
+    if (workoutType === 'JustRow') {
+        return { menuKey: 'JustRow', category: 'other' };
+    }
+
+    return { menuKey: 'その他', category: 'other' };
+}
+
+// Concept2データを同期（Vercel APIプロキシ経由・全ページ取得）
 async function syncConcept2() {
     if (!state.currentUser?.concept2Connected || !state.currentUser?.concept2Token) {
         showToast('Concept2と連携してください', 'error');
@@ -1604,8 +1650,8 @@ async function syncConcept2() {
     if (settingSyncBtn) settingSyncBtn.disabled = true;
 
     try {
-        // Vercel APIプロキシ経由でデータ取得
-        const response = await fetch('/api/concept2-proxy', {
+        // Vercel APIプロキシ経由でデータ取得（全ページ）
+        const response = await fetch(API_BASE + '/api/concept2-proxy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1628,47 +1674,89 @@ async function syncConcept2() {
         }
 
         const results = data.results || [];
-        console.log(`Fetched ${results.length} results from Concept2`);
+        console.log(`Fetched ${results.length} results from Concept2 (${data.pages || 1} pages)`);
 
-        // ローカルのエルゴ記録に統合
+        // ローカルのエルゴ記録・セッションに統合
         let existingRecords = DB.load('ergo_records') || [];
+        let existingSessions = DB.load('ergoSessions') || [];
         let insertedCount = 0;
 
         for (const result of results) {
             const concept2Id = String(result.id);
             // 既存データにあるか確認
             const exists = existingRecords.some(r => r.concept2Id === concept2Id);
-            if (!exists) {
-                // 新しいレコードを追加
-                const newRecord = {
-                    id: 'c2_' + concept2Id,
-                    concept2Id: concept2Id,
-                    userId: state.currentUser.id,
-                    userName: state.currentUser.name,
-                    date: result.date?.split('T')[0] || new Date().toISOString().split('T')[0],
-                    distance: result.distance || 0,
-                    time: result.time ? Math.round(result.time / 10) : 0, // 1/10秒 → 秒
-                    strokeRate: result.stroke_rate || 0,
-                    heartRate: result.heart_rate?.average || null,
-                    workoutType: result.workout_type || 'FixedDistanceSplits',
-                    intervals: result.workout?.intervals || [],
-                    rawData: result,
-                    source: 'concept2',
-                    createdAt: new Date().toISOString()
-                };
-                existingRecords.push(newRecord);
-                insertedCount++;
-            }
+            if (exists) continue;
+
+            // menuKey/categoryを分類
+            const { menuKey, category } = classifyConcept2Result(result);
+
+            // JustRowはスキップ
+            if (menuKey === 'JustRow') continue;
+
+            const timeSec = result.time ? result.time / 10 : 0;
+            const distance = result.distance || 0;
+            const recordDate = result.date?.split('T')[0] || new Date().toISOString().split('T')[0];
+            const splitStr = (distance > 0 && timeSec > 0) ? formatSplit(timeSec, distance) : '-';
+            const recordId = 'c2_' + concept2Id;
+
+            // ergoRecordsに追加
+            const newRecord = {
+                id: recordId,
+                concept2Id: concept2Id,
+                userId: state.currentUser.id,
+                userName: state.currentUser.name,
+                date: recordDate,
+                distance: distance,
+                time: timeSec,
+                timeSeconds: Math.round(timeSec),
+                timeDisplay: formatTime(timeSec),
+                split: splitStr,
+                strokeRate: result.stroke_rate || 0,
+                heartRate: result.heart_rate?.average || null,
+                workoutType: result.workout_type || 'FixedDistanceSplits',
+                menuKey: menuKey,
+                category: category,
+                intervals: result.workout?.intervals || [],
+                rawData: result,
+                source: 'concept2',
+                createdAt: new Date().toISOString()
+            };
+            existingRecords.push(newRecord);
+
+            // ergoSessionsにも追加（ランキング用）
+            existingSessions.push({
+                id: generateId(),
+                rawId: recordId,
+                userId: state.currentUser.id,
+                date: recordDate,
+                menuKey: menuKey,
+                category: category,
+                distance: distance,
+                time: timeSec,
+                timeDisplay: formatTime(timeSec),
+                split: splitStr,
+                strokeRate: result.stroke_rate || 0,
+                workoutType: result.workout_type || 'FixedDistanceSplits',
+                source: 'Concept2',
+                createdAt: new Date().toISOString()
+            });
+
+            insertedCount++;
         }
 
         // 保存
         DB.save('ergo_records', existingRecords);
+        DB.save('ergoSessions', existingSessions);
+
+        // stateも更新
+        state.ergoRecords = existingRecords;
+        state.ergoSessions = existingSessions;
 
         // 最終同期日時を更新
         state.currentUser.concept2LastSync = new Date().toISOString();
         DB.save('current_user', state.currentUser);
 
-        showToast(`同期完了: ${insertedCount}件の新しいデータを取得しました`, 'success');
+        showToast(`同期完了: ${insertedCount}件の新しいデータを取得（全${results.length}件中）`, 'success');
 
         // UI更新
         updateConcept2UI();
@@ -4430,6 +4518,9 @@ function renderSettings() {
         };
     }
 
+    // 体重管理
+    initWeightSection();
+
     // Concept2連携
     const isConnected = user.concept2Connected;
     const statusEl = document.getElementById('concept2-status');
@@ -4504,6 +4595,230 @@ function disconnectConcept2() {
 
     showToast('連携を解除しました', 'success');
     renderSettings();
+}
+
+// =========================================
+// 体重管理
+// =========================================
+
+function initWeightSection() {
+    const weightHistory = getWeightHistory();
+    const latestWeight = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1] : null;
+
+    // 現在の体重を表示
+    const display = document.getElementById('current-weight-display');
+    if (display) {
+        if (latestWeight) {
+            display.textContent = `${latestWeight.weight} kg`;
+            display.className = 'settings-value success';
+        } else {
+            display.textContent = '未登録';
+            display.className = 'settings-value';
+        }
+    }
+
+    // 体重入力フィールドに最新値をプリセット
+    const input = document.getElementById('weight-input');
+    if (input && latestWeight) {
+        input.placeholder = `前回: ${latestWeight.weight} kg`;
+    }
+
+    // 記録ボタン
+    const saveBtn = document.getElementById('save-weight-btn');
+    if (saveBtn) {
+        saveBtn.onclick = saveWeight;
+    }
+
+    // グラフと履歴を描画
+    renderWeightChart(weightHistory);
+    renderWeightHistoryList(weightHistory);
+}
+
+function getWeightHistory() {
+    const history = DB.load('weight_history') || [];
+    // 日付順にソート
+    return history
+        .filter(w => w.userId === state.currentUser?.id)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
+function saveWeight() {
+    const input = document.getElementById('weight-input');
+    if (!input) return;
+
+    const weight = parseFloat(input.value);
+    if (isNaN(weight) || weight < 30 || weight > 150) {
+        showToast('30〜150kgの範囲で入力してください', 'error');
+        return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    let allHistory = DB.load('weight_history') || [];
+
+    // 同じ日の記録があれば更新
+    const existingIdx = allHistory.findIndex(w => w.userId === state.currentUser.id && w.date === today);
+    if (existingIdx !== -1) {
+        allHistory[existingIdx].weight = weight;
+    } else {
+        allHistory.push({
+            id: generateId(),
+            userId: state.currentUser.id,
+            date: today,
+            weight: weight,
+            createdAt: new Date().toISOString()
+        });
+    }
+
+    DB.save('weight_history', allHistory);
+
+    // ユーザーの現在体重も更新
+    state.currentUser.weight = weight;
+    DB.save('current_user', state.currentUser);
+    const idx = state.users.findIndex(u => u.id === state.currentUser.id);
+    if (idx !== -1) {
+        state.users[idx] = state.currentUser;
+        DB.save('users', state.users);
+    }
+
+    input.value = '';
+    showToast(`体重 ${weight} kg を記録しました`, 'success');
+    initWeightSection(); // UI更新
+}
+
+function renderWeightChart(history) {
+    const canvas = document.getElementById('weight-chart');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width || 300;
+    canvas.height = 150;
+
+    // 背景クリア
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 最近30日のデータ
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const recentData = history.filter(w => new Date(w.date) >= thirtyDaysAgo);
+
+    if (recentData.length < 2) {
+        ctx.fillStyle = '#888';
+        ctx.font = '13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('2件以上の記録でグラフが表示されます', canvas.width / 2, canvas.height / 2);
+        return;
+    }
+
+    const weights = recentData.map(w => w.weight);
+    const minW = Math.floor(Math.min(...weights) - 1);
+    const maxW = Math.ceil(Math.max(...weights) + 1);
+    const rangeW = maxW - minW || 1;
+
+    const padding = { top: 20, right: 15, bottom: 30, left: 40 };
+    const plotWidth = canvas.width - padding.left - padding.right;
+    const plotHeight = canvas.height - padding.top - padding.bottom;
+
+    // Y軸ラベル
+    ctx.fillStyle = '#aaa';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= 4; i++) {
+        const val = minW + (rangeW * i / 4);
+        const y = padding.top + plotHeight - (plotHeight * i / 4);
+        ctx.fillText(val.toFixed(1), padding.left - 5, y + 3);
+        // グリッド線
+        ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(canvas.width - padding.right, y);
+        ctx.stroke();
+    }
+
+    // データポイントとライン
+    const points = recentData.map((w, i) => ({
+        x: padding.left + (plotWidth * i / (recentData.length - 1)),
+        y: padding.top + plotHeight - (plotHeight * (w.weight - minW) / rangeW),
+        weight: w.weight,
+        date: w.date
+    }));
+
+    // グラデーション塗りつぶし
+    const gradient = ctx.createLinearGradient(0, padding.top, 0, canvas.height - padding.bottom);
+    gradient.addColorStop(0, 'rgba(74, 144, 226, 0.3)');
+    gradient.addColorStop(1, 'rgba(74, 144, 226, 0.02)');
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, canvas.height - padding.bottom);
+    points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(points[points.length - 1].x, canvas.height - padding.bottom);
+    ctx.closePath();
+    ctx.fill();
+
+    // ライン
+    ctx.strokeStyle = '#4a90e2';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    points.forEach((p, i) => {
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
+
+    // データポイント（ドット）
+    points.forEach(p => {
+        ctx.fillStyle = '#4a90e2';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // X軸ラベル（最初と最後の日付）
+    ctx.fillStyle = '#aaa';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(recentData[0].date.slice(5), padding.left, canvas.height - 5);
+    ctx.textAlign = 'right';
+    ctx.fillText(recentData[recentData.length - 1].date.slice(5), canvas.width - padding.right, canvas.height - 5);
+
+    // 最新値を強調
+    const last = points[points.length - 1];
+    ctx.fillStyle = '#4a90e2';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(`${last.weight} kg`, last.x - 5, last.y - 8);
+}
+
+function renderWeightHistoryList(history) {
+    const list = document.getElementById('weight-history-list');
+    if (!list) return;
+
+    const recent = history.slice(-10).reverse(); // 最新10件
+
+    if (recent.length === 0) {
+        list.innerHTML = '<div style="text-align:center; color:#888; font-size:12px; padding:8px;">記録はまだありません</div>';
+        return;
+    }
+
+    list.innerHTML = recent.map((w, i) => {
+        const prev = i < recent.length - 1 ? recent[i + 1].weight : null;
+        const diff = prev !== null ? (w.weight - prev).toFixed(1) : null;
+        const diffStr = diff !== null
+            ? (diff > 0 ? `<span style="color:#e74c3c">+${diff}</span>` : diff < 0 ? `<span style="color:#27ae60">${diff}</span>` : `<span style="color:#888">±0</span>`)
+            : '';
+
+        return `<div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:12px;">
+            <span style="color:#aaa;">${w.date.slice(5).replace('-', '/')}</span>
+            <span><strong>${w.weight}</strong> kg ${diffStr}</span>
+        </div>`;
+    }).join('');
 }
 
 function setText(id, text) {
@@ -5229,6 +5544,13 @@ function updateVideoPreview(url) {
 function openIDTModal() {
     const modal = document.getElementById('idt-calculator-modal');
     modal.classList.remove('hidden');
+
+    // 保存済み体重を自動入力
+    const savedWeight = state.currentUser?.weight;
+    const weightInput = document.getElementById('idt-weight');
+    if (weightInput && savedWeight) {
+        weightInput.value = savedWeight;
+    }
 
     // 性別トグルの初期化
     const userGender = state.currentUser?.gender || 'man';

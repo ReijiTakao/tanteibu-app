@@ -439,6 +439,32 @@
                         </div>
                     </div>
 
+                    <!-- 体重管理 -->
+                    <div class="settings-section">
+                        <h3>⚖️ 体重管理</h3>
+                        <div class="settings-item">
+                            <span class="settings-label">現在の体重</span>
+                            <span id="current-weight-display" class="settings-value">未登録</span>
+                        </div>
+                        <div class="weight-input-row"
+                            style="display: flex; gap: 8px; align-items: center; margin: 8px 0;">
+                            <input type="number" id="weight-input" placeholder="体重 (kg)" step="0.1" min="30" max="150"
+                                style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px;">
+                            <button id="save-weight-btn" class="primary-btn"
+                                style="white-space: nowrap; padding: 8px 16px;">記録</button>
+                        </div>
+                        <div id="weight-history-section" style="margin-top: 12px;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-size: 13px; color: #888;">体重推移（最近30日）</span>
+                            </div>
+                            <canvas id="weight-chart" height="150"
+                                style="width: 100%; border-radius: 8px; background: #1a1a2e;"></canvas>
+                            <div id="weight-history-list" style="margin-top: 8px; max-height: 120px; overflow-y: auto;">
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Concept2連携 -->
                     <div class="settings-section">
                         <h3>Concept2連携</h3>

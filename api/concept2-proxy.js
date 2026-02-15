@@ -49,29 +49,56 @@ module.exports = async function handler(req, res) {
             });
 
         } else if (action === 'sync') {
-            // エルゴデータ取得
-            let apiUrl = 'https://log.concept2.com/api/users/me/results?type=rower';
-            if (from_date) apiUrl += `&from=${from_date}`;
-            if (to_date) apiUrl += `&to=${to_date}`;
+            // エルゴデータ取得（全ページ取得）
+            let allResults = [];
+            let page = 1;
+            const maxPages = 50; // 安全制限
 
-            const response = await fetch(apiUrl, { headers });
+            while (page <= maxPages) {
+                let apiUrl = `https://log.concept2.com/api/users/me/results?type=rower&page=${page}`;
+                if (from_date) apiUrl += `&from=${from_date}`;
+                if (to_date) apiUrl += `&to=${to_date}`;
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                return res.status(response.status).json({
-                    error: 'Concept2 API error',
-                    status: response.status,
-                    details: errorText
-                });
+                const response = await fetch(apiUrl, { headers });
+
+                if (!response.ok) {
+                    // 最初のページでエラーなら失敗、2ページ目以降ならここまでのデータを返す
+                    if (page === 1) {
+                        const errorText = await response.text();
+                        return res.status(response.status).json({
+                            error: 'Concept2 API error',
+                            status: response.status,
+                            details: errorText
+                        });
+                    }
+                    break;
+                }
+
+                const data = await response.json();
+                const results = data.data || [];
+
+                if (results.length === 0) {
+                    // データがなくなったら終了
+                    break;
+                }
+
+                allResults = allResults.concat(results);
+                console.log(`Page ${page}: ${results.length} results (total: ${allResults.length})`);
+
+                // 次のページがあるか確認
+                // Concept2 APIのページネーション: 通常25件/ページ
+                if (results.length < 25) {
+                    break; // 最終ページ
+                }
+
+                page++;
             }
-
-            const data = await response.json();
-            const results = data.data || [];
 
             return res.status(200).json({
                 success: true,
-                count: results.length,
-                results: results
+                count: allResults.length,
+                pages: page,
+                results: allResults
             });
 
         } else {
