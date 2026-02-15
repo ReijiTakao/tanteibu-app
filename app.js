@@ -4568,7 +4568,15 @@ function renderSettings() {
         if (toggleBtn) {
             toggleBtn.textContent = '連携を解除';
             toggleBtn.className = 'danger-btn';
-            toggleBtn.onclick = disconnectConcept2;
+            // 既存のリスナーを削除するためクローンして差し替え
+            const newToggleBtn = toggleBtn.cloneNode(true);
+            toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
+            newToggleBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                disconnectConcept2();
+            });
         }
     } else {
         if (statusEl) {
@@ -4581,7 +4589,13 @@ function renderSettings() {
         if (toggleBtn) {
             toggleBtn.textContent = '連携する';
             toggleBtn.className = 'secondary-btn';
-            toggleBtn.onclick = connectConcept2;
+            const newToggleBtn = toggleBtn.cloneNode(true);
+            toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
+            newToggleBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                connectConcept2();
+            });
         }
     }
 
@@ -4604,32 +4618,114 @@ function renderSettings() {
 }
 
 function disconnectConcept2() {
-    try {
-        console.log('disconnectConcept2 called');
-        if (!window.confirm('Concept2との連携を解除しますか？')) {
-            console.log('User cancelled disconnect');
-            return;
+    console.log('disconnectConcept2 called');
+    showConfirmModal('Concept2との連携を解除しますか？', () => {
+        try {
+            state.currentUser.concept2Connected = false;
+            state.currentUser.concept2Token = null;
+            state.currentUser.concept2LastSync = null;
+            DB.save('current_user', state.currentUser);
+
+            // ユーザー一覧も更新
+            const idx = state.users.findIndex(u => u.id === state.currentUser.id);
+            if (idx !== -1) {
+                state.users[idx] = state.currentUser;
+                DB.save('users', state.users);
+            }
+
+            console.log('Concept2 disconnected successfully');
+            showToast('連携を解除しました', 'success');
+            renderSettings();
+        } catch (e) {
+            console.error('disconnectConcept2 error:', e);
+            showToast('連携解除中にエラーが発生しました', 'error');
         }
+    });
+}
 
-        state.currentUser.concept2Connected = false;
-        state.currentUser.concept2Token = null;
-        state.currentUser.concept2LastSync = null;
-        DB.save('current_user', state.currentUser);
+/**
+ * カスタム確認モーダル（window.confirmの代替）
+ * モバイルブラウザ/PWAでタッチイベントのゴーストクリックを防止
+ */
+function showConfirmModal(message, onConfirm, onCancel) {
+    // 既存のモーダルがあれば削除
+    const existing = document.getElementById('custom-confirm-modal');
+    if (existing) existing.remove();
 
-        // ユーザー一覧も更新
-        const idx = state.users.findIndex(u => u.id === state.currentUser.id);
-        if (idx !== -1) {
-            state.users[idx] = state.currentUser;
-            DB.save('users', state.users);
+    const modal = document.createElement('div');
+    modal.id = 'custom-confirm-modal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:10000;pointer-events:none;';
+
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#1e1e2e;border-radius:16px;padding:24px;margin:16px;max-width:320px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.4);pointer-events:none;';
+
+    const msgEl = document.createElement('p');
+    msgEl.textContent = message;
+    msgEl.style.cssText = 'color:#eee;font-size:15px;margin:0 0 20px 0;text-align:center;line-height:1.5;';
+
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:10px;';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'キャンセル';
+    cancelBtn.style.cssText = 'flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;background:#333;color:#aaa;cursor:pointer;pointer-events:none;';
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.textContent = '解除する';
+    confirmBtn.style.cssText = 'flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;background:#e74c3c;color:#fff;cursor:pointer;pointer-events:none;';
+
+    btnRow.appendChild(cancelBtn);
+    btnRow.appendChild(confirmBtn);
+    box.appendChild(msgEl);
+    box.appendChild(btnRow);
+    modal.appendChild(box);
+    document.body.appendChild(modal);
+
+    // ゴーストクリック防止：400ms後にpointer-eventsを有効化
+    setTimeout(() => {
+        modal.style.pointerEvents = 'auto';
+        box.style.pointerEvents = 'auto';
+        cancelBtn.style.pointerEvents = 'auto';
+        confirmBtn.style.pointerEvents = 'auto';
+
+        cancelBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            modal.remove();
+            if (onCancel) onCancel();
+        });
+
+        confirmBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            modal.remove();
+            if (onConfirm) onConfirm();
+        });
+
+        // オーバーレイクリックでキャンセル
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) {
+                e.preventDefault();
+                e.stopPropagation();
+                modal.remove();
+                if (onCancel) onCancel();
+            }
+        });
+    }, 400);
+
+    // タッチイベントも防止（400ms以内の誤タップ防止）
+    modal.addEventListener('touchstart', function (e) {
+        if (modal.style.pointerEvents === 'none') {
+            e.preventDefault();
+            e.stopPropagation();
         }
-
-        console.log('Concept2 disconnected successfully');
-        showToast('連携を解除しました', 'success');
-        renderSettings();
-    } catch (e) {
-        console.error('disconnectConcept2 error:', e);
-        showToast('連携解除中にエラーが発生しました', 'error');
-    }
+    }, { passive: false });
+    modal.addEventListener('touchend', function (e) {
+        if (modal.style.pointerEvents === 'none') {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }, { passive: false });
 }
 
 // =========================================
