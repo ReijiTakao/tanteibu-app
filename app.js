@@ -2140,7 +2140,6 @@ function openInputModal(dateStr, timeSlot, scheduleId = null) {
     document.getElementById('crew-group').classList.add('hidden');
     document.getElementById('meal-type-group').classList.add('hidden');
     document.getElementById('video-duration-group').classList.add('hidden');
-    document.getElementById('ergo-records-container').innerHTML = '';
 
     document.getElementById('delete-schedule-btn').classList.add('hidden');
     document.getElementById('seat-assignment-container').innerHTML = '';
@@ -2220,7 +2219,6 @@ function handleScheduleTypeChange(type) {
     document.getElementById('start-time-group').classList.toggle('hidden', type === SCHEDULE_TYPES.ABSENT);
     document.getElementById('absence-reason-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.ABSENT);
     document.getElementById('ergo-type-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.ERGO);
-    document.getElementById('ergo-record-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.ERGO);
     document.getElementById('boat-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.BOAT);
     document.getElementById('oar-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.BOAT);
     document.getElementById('crew-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.BOAT);
@@ -4928,7 +4926,6 @@ const initializeApp = async () => {
         document.querySelector('#input-modal .modal-overlay').addEventListener('click', closeInputModal);
         document.getElementById('save-schedule-btn').addEventListener('click', saveSchedule);
         document.getElementById('delete-schedule-btn').addEventListener('click', deleteSchedule);
-        document.getElementById('add-ergo-record-btn').addEventListener('click', () => addErgoRecordInput());
 
         // 予定種別切替
         document.querySelectorAll('.schedule-type-btn').forEach(btn => {
