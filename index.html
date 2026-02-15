@@ -170,44 +170,17 @@
             <div id="tab-overview" class="tab-content hidden">
                 <div class="overview-header">
                     <div class="date-selector">
+                        <button id="overview-prev-day" class="nav-btn-sm">←</button>
                         <input type="date" id="overview-date">
-                        <div class="time-slot-toggle">
-                            <button class="slot-btn active" data-slot="午前">午前</button>
-                            <button class="slot-btn" data-slot="午後">午後</button>
-                        </div>
+                        <button id="overview-next-day" class="nav-btn-sm">→</button>
+                        <button id="overview-today-btn" class="nav-btn-sm today-btn">今日</button>
                     </div>
                 </div>
-                <div id="overview-content" class="overview-content">
-                    <!-- 乗艇セクション -->
-                    <div class="overview-section">
-                        <h3 class="section-title">🚣 乗艇</h3>
-                        <div id="overview-boat" class="overview-list"></div>
-                    </div>
-                    <!-- エルゴセクション -->
-                    <div class="overview-section">
-                        <h3 class="section-title">🏋️ エルゴ</h3>
-                        <div class="ergo-summary">
-                            <div class="ergo-type-summary">
-                                <span class="label">ダイナミック</span>
-                                <span id="dynamic-count" class="count">0 / 0</span>
-                            </div>
-                            <div class="ergo-type-summary">
-                                <span class="label">固定</span>
-                                <span id="fixed-count" class="count">0 / 0</span>
-                            </div>
-                        </div>
-                        <div id="overview-ergo" class="overview-list"></div>
-                    </div>
-                    <!-- ウェイトセクション -->
-                    <div class="overview-section">
-                        <h3 class="section-title">💪 ウェイト</h3>
-                        <div id="overview-weight" class="overview-list"></div>
-                    </div>
-                    <!-- 参加不可セクション -->
-                    <div class="overview-section">
-                        <h3 class="section-title">❌ 参加不可</h3>
-                        <div id="overview-absent" class="overview-list absent-list"></div>
-                    </div>
+                <div id="schedule-timeline" class="schedule-timeline">
+                    <!-- JSで動的生成 -->
+                </div>
+                <div id="available-boats-section" class="available-boats-section">
+                    <!-- 空き艇セクション: JSで動的生成 -->
                 </div>
             </div>
 
@@ -572,19 +545,34 @@
                 <div class="form-group">
                     <label>予定種別（必須）</label>
                     <div class="toggle-group schedule-type-group">
-                        <button class="toggle-btn schedule-type-btn" data-value="エルゴ">
+                        <button class="toggle-btn schedule-type-btn" data-value="エルゴ"
+                            data-roles="member,executive,admin">
                             <span class="btn-icon">🏋️</span>
                             <span>エルゴ</span>
                         </button>
-                        <button class="toggle-btn schedule-type-btn" data-value="乗艇">
+                        <button class="toggle-btn schedule-type-btn" data-value="乗艇"
+                            data-roles="member,executive,admin,cox">
                             <span class="btn-icon">🚣</span>
                             <span>乗艇</span>
                         </button>
-                        <button class="toggle-btn schedule-type-btn" data-value="ウェイト">
+                        <button class="toggle-btn schedule-type-btn" data-value="ウェイト"
+                            data-roles="member,executive,admin">
                             <span class="btn-icon">💪</span>
                             <span>ウェイト</span>
                         </button>
-                        <button class="toggle-btn schedule-type-btn" data-value="参加不可">
+                        <button class="toggle-btn schedule-type-btn" data-value="伴チャ" data-roles="cox">
+                            <span class="btn-icon">🚴</span>
+                            <span>伴チャ</span>
+                        </button>
+                        <button class="toggle-btn schedule-type-btn" data-value="炊事" data-roles="manager">
+                            <span class="btn-icon">🍳</span>
+                            <span>炊事</span>
+                        </button>
+                        <button class="toggle-btn schedule-type-btn" data-value="ビデオ" data-roles="manager">
+                            <span class="btn-icon">🎥</span>
+                            <span>ビデオ</span>
+                        </button>
+                        <button class="toggle-btn schedule-type-btn" data-value="参加不可" data-roles="all">
                             <span class="btn-icon">❌</span>
                             <span>参加不可</span>
                         </button>
@@ -606,6 +594,27 @@
                         <button class="toggle-btn reason-btn" data-value="就活">就活</button>
                         <button class="toggle-btn reason-btn" data-value="学校">学校</button>
                         <button class="toggle-btn reason-btn" data-value="その他">その他</button>
+                    </div>
+                </div>
+
+                <!-- 炊事の場合：朝昼晩選択 -->
+                <div class="form-group hidden" id="meal-type-group">
+                    <label>炊事種別（複数選択可）</label>
+                    <div class="toggle-group">
+                        <button class="toggle-btn meal-type-btn" data-value="朝">🌅 朝</button>
+                        <button class="toggle-btn meal-type-btn" data-value="昼">☀️ 昼</button>
+                        <button class="toggle-btn meal-type-btn" data-value="晩">🌙 晚</button>
+                    </div>
+                </div>
+
+                <!-- ビデオの場合：撮影時間 -->
+                <div class="form-group hidden" id="video-duration-group">
+                    <label>撮影時間</label>
+                    <div class="toggle-group">
+                        <button class="toggle-btn video-duration-btn" data-value="30">30分</button>
+                        <button class="toggle-btn video-duration-btn" data-value="60">1時間</button>
+                        <button class="toggle-btn video-duration-btn" data-value="90">1.5時間</button>
+                        <button class="toggle-btn video-duration-btn" data-value="120">2時間</button>
                     </div>
                 </div>
 

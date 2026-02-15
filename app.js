@@ -18,18 +18,23 @@ const ROLES = {
     EXECUTIVE: '幹部',
     COACH: 'コーチ',
     COX: 'Cox',
-    MEMBER: '部員'
+    MEMBER: '部員',
+    MANAGER: 'マネージャー'
 };
 
 const SCHEDULE_TYPES = {
     ERGO: 'エルゴ',
     BOAT: '乗艇',
     WEIGHT: 'ウェイト',
-    ABSENT: '参加不可'
+    ABSENT: '参加不可',
+    MEAL: '炊事',
+    VIDEO: 'ビデオ',
+    BANCHA: '伴チャ'
 };
 
 const ABSENCE_REASONS = ['体調不良', '怪我', '就活', '学校'];
 const ERGO_TYPES = ['ダイナミック', '固定'];
+const MEAL_TYPES = ['朝', '昼', '晩'];
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
 // Concept2 API設定
@@ -1844,6 +1849,7 @@ function initMainScreen() {
 function renderWeekCalendar() {
     const container = document.getElementById('week-calendar');
     const weekRange = document.getElementById('week-range');
+    const isManager = state.currentUser?.role === ROLES.MANAGER;
 
     const weekEnd = new Date(state.currentWeekStart);
     weekEnd.setDate(weekEnd.getDate() + 6);
@@ -1868,16 +1874,29 @@ function renderWeekCalendar() {
         if (display.dayOfWeek === 0) weekdayClass = 'sunday';
         if (display.dayOfWeek === 6) weekdayClass = 'saturday';
 
-        dayCard.innerHTML = `
-            <div class="day-header">
-                <span class="day-date">${display.month}/${display.day}<span class="weekday ${weekdayClass}">(${display.weekday})</span></span>
-                <span class="expand-icon">▼</span>
-            </div>
-            <div class="day-slots">
-                ${createTimeSlotHTML(dateStr, '午前')}
-                ${createTimeSlotHTML(dateStr, '午後')}
-            </div>
-        `;
+        if (isManager) {
+            // マネージャー：午前/午後なし、その日の全スケジュールを表示
+            dayCard.innerHTML = `
+                <div class="day-header">
+                    <span class="day-date">${display.month}/${display.day}<span class="weekday ${weekdayClass}">(${display.weekday})</span></span>
+                    <span class="expand-icon">▼</span>
+                </div>
+                <div class="day-slots">
+                    ${createManagerDayHTML(dateStr)}
+                </div>
+            `;
+        } else {
+            dayCard.innerHTML = `
+                <div class="day-header">
+                    <span class="day-date">${display.month}/${display.day}<span class="weekday ${weekdayClass}">(${display.weekday})</span></span>
+                    <span class="expand-icon">▼</span>
+                </div>
+                <div class="day-slots">
+                    ${createTimeSlotHTML(dateStr, '午前')}
+                    ${createTimeSlotHTML(dateStr, '午後')}
+                </div>
+            `;
+        }
 
         dayCard.querySelector('.day-header').addEventListener('click', () => {
             dayCard.classList.toggle('expanded');
@@ -1888,8 +1907,16 @@ function renderWeekCalendar() {
 
     // スロットクリックイベント
     container.querySelectorAll('.time-slot').forEach(slot => {
+        const scheduleId = slot.dataset.scheduleId || null;
         slot.addEventListener('click', () => {
-            openInputModal(slot.dataset.date, slot.dataset.slot);
+            openInputModal(slot.dataset.date, slot.dataset.slot, scheduleId);
+        });
+    });
+
+    // マネージャー追加ボタン
+    container.querySelectorAll('.manager-add-slot').forEach(slot => {
+        slot.addEventListener('click', () => {
+            openInputModal(slot.dataset.date, '終日');
         });
     });
 }
@@ -1925,6 +1952,20 @@ function createTimeSlotHTML(dateStr, timeSlot) {
                 badgeText = `❌ ${schedule.scheduleType}`;
                 details = schedule.absenceReason || '';
                 break;
+            case SCHEDULE_TYPES.MEAL:
+                badgeClass = 'meal';
+                badgeText = `🍳 ${schedule.scheduleType}`;
+                details = schedule.mealTypes ? schedule.mealTypes.join('/') : '';
+                break;
+            case SCHEDULE_TYPES.VIDEO:
+                badgeClass = 'video';
+                badgeText = `🎥 ${schedule.scheduleType}`;
+                details = schedule.videoDuration ? `${schedule.videoDuration}分` : '';
+                break;
+            case SCHEDULE_TYPES.BANCHA:
+                badgeClass = 'bancha';
+                badgeText = `🚴 ${schedule.scheduleType}`;
+                break;
         }
         if (schedule.startTime) {
             details = (details ? details + ' ' : '') + schedule.startTime + '〜';
@@ -1942,22 +1983,82 @@ function createTimeSlotHTML(dateStr, timeSlot) {
     `;
 }
 
+// マネージャー用：その日の全スケジュールを表示（午前/午後なし）
+function createManagerDayHTML(dateStr) {
+    const schedules = state.schedules.filter(s =>
+        s.userId === state.currentUser?.id && s.date === dateStr
+    );
+
+    if (schedules.length === 0) {
+        return `<div class="time-slot manager-slot" data-date="${dateStr}" data-slot="終日">
+            <div class="slot-content">
+                <span class="slot-type-badge empty">入力する</span>
+            </div>
+        </div>`;
+    }
+
+    return schedules.map((s, idx) => {
+        let badgeClass = '', badgeText = '', details = '';
+        switch (s.scheduleType) {
+            case SCHEDULE_TYPES.MEAL:
+                badgeClass = 'meal';
+                badgeText = `🍳 炊事`;
+                details = s.mealTypes ? s.mealTypes.join('/') : '';
+                break;
+            case SCHEDULE_TYPES.VIDEO:
+                badgeClass = 'video';
+                badgeText = `🎥 ビデオ`;
+                details = [s.startTime ? s.startTime + '〜' : '', s.videoDuration ? `${s.videoDuration}分` : ''].filter(d => d).join(' ');
+                break;
+            case SCHEDULE_TYPES.ABSENT:
+                badgeClass = 'absent';
+                badgeText = `❌ 参加不可`;
+                details = s.absenceReason || '';
+                break;
+            default:
+                badgeClass = 'other';
+                badgeText = s.scheduleType;
+        }
+        return `<div class="time-slot manager-slot" data-date="${dateStr}" data-slot="終日" data-schedule-id="${s.id}">
+            <div class="slot-content">
+                <span class="slot-type-badge ${badgeClass}">${badgeText}</span>
+                ${details ? `<div class="slot-details">${details}</div>` : ''}
+            </div>
+        </div>`;
+    }).join('') + `<div class="time-slot manager-add-slot" data-date="${dateStr}" data-slot="終日">
+        <div class="slot-content">
+            <span class="slot-type-badge empty">+ 追加</span>
+        </div>
+    </div>`;
+}
+
 // =========================================
 // 入力モーダル
 // =========================================
 let currentInputData = null;
 
-function openInputModal(dateStr, timeSlot) {
+function openInputModal(dateStr, timeSlot, scheduleId = null) {
 
     const modal = document.getElementById('input-modal');
     const title = document.getElementById('input-modal-title');
     const display = formatDisplayDate(dateStr);
+    const isManager = state.currentUser?.role === ROLES.MANAGER;
 
-    title.textContent = `予定入力 ${display.month}/${display.day}（${display.weekday}）${timeSlot}`;
+    title.textContent = isManager
+        ? `予定入力 ${display.month}/${display.day}（${display.weekday}）`
+        : `予定入力 ${display.month}/${display.day}（${display.weekday}）${timeSlot}`;
 
-    const schedule = state.schedules.find(s =>
-        s.userId === state.currentUser?.id && s.date === dateStr && s.timeSlot === timeSlot
-    );
+    // スケジュール検索：マネージャーはIDで、それ以外はdate+timeSlotで
+    let schedule;
+    if (scheduleId) {
+        schedule = state.schedules.find(s => s.id === scheduleId);
+    } else if (isManager) {
+        schedule = null; // マネージャーは新規追加
+    } else {
+        schedule = state.schedules.find(s =>
+            s.userId === state.currentUser?.id && s.date === dateStr && s.timeSlot === timeSlot
+        );
+    }
 
     currentInputData = { dateStr, timeSlot, schedule };
 
@@ -1966,21 +2067,37 @@ function openInputModal(dateStr, timeSlot) {
         populateBoatOarSelects();
     }
 
+    // ロール別ボタン表示制御
+    const userRole = state.currentUser?.role || '';
+    const roleKey = userRole === ROLES.MANAGER ? 'manager'
+        : userRole === ROLES.COX ? 'cox'
+            : userRole === ROLES.ADMIN ? 'admin'
+                : userRole === ROLES.EXECUTIVE ? 'executive'
+                    : 'member';
+
+    document.querySelectorAll('.schedule-type-btn').forEach(btn => {
+        const allowedRoles = (btn.dataset.roles || 'all').split(',');
+        const visible = allowedRoles.includes('all') || allowedRoles.includes(roleKey);
+        btn.style.display = visible ? '' : 'none';
+    });
+
     // フォームリセット
     document.querySelectorAll('#input-modal .toggle-btn').forEach(btn => btn.classList.remove('active'));
     document.getElementById('input-start-time').value = '';
     document.getElementById('input-memo').value = '';
-    document.getElementById('input-distance').value = ''; // 距離リセット
+    document.getElementById('input-distance').value = '';
     document.getElementById('absence-reason-group').classList.add('hidden');
     document.getElementById('ergo-type-group').classList.add('hidden');
     document.getElementById('ergo-record-group').classList.add('hidden');
     document.getElementById('boat-group').classList.add('hidden');
     document.getElementById('oar-group').classList.add('hidden');
     document.getElementById('crew-group').classList.add('hidden');
+    document.getElementById('meal-type-group').classList.add('hidden');
+    document.getElementById('video-duration-group').classList.add('hidden');
     document.getElementById('ergo-records-container').innerHTML = '';
 
     document.getElementById('delete-schedule-btn').classList.add('hidden');
-    document.getElementById('seat-assignment-container').innerHTML = ''; // シート割り当てをクリア
+    document.getElementById('seat-assignment-container').innerHTML = '';
 
     if (schedule) {
         document.getElementById('delete-schedule-btn').classList.remove('hidden');
@@ -1993,7 +2110,7 @@ function openInputModal(dateStr, timeSlot) {
 
         document.getElementById('input-start-time').value = schedule.startTime || '';
         document.getElementById('input-memo').value = schedule.memo || '';
-        document.getElementById('input-distance').value = schedule.distance || ''; // 距離読み込み
+        document.getElementById('input-distance').value = schedule.distance || '';
 
         if (schedule.absenceReason) {
             const reasonBtn = document.querySelector(`.reason-btn[data-value="${schedule.absenceReason}"]`);
@@ -2013,13 +2130,23 @@ function openInputModal(dateStr, timeSlot) {
         if (schedule.boatId) document.getElementById('input-boat').value = schedule.boatId;
         if (schedule.oarId) document.getElementById('input-oar').value = schedule.oarId;
 
+        // 炊事の復元
+        if (schedule.mealTypes && schedule.mealTypes.length > 0) {
+            schedule.mealTypes.forEach(mt => {
+                const mealBtn = document.querySelector(`.meal-type-btn[data-value="${mt}"]`);
+                if (mealBtn) mealBtn.classList.add('active');
+            });
+        }
+
+        // ビデオ撮影時間の復元
+        if (schedule.videoDuration) {
+            const vidBtn = document.querySelector(`.video-duration-btn[data-value="${schedule.videoDuration}"]`);
+            if (vidBtn) vidBtn.classList.add('active');
+        }
+
         // シート情報を復元
-        // schedule.crewIds は単なるIDリストかもしれないが、新仕様では seat assignment が必要
-        // 互換性のため、crewIdsがある場合は適当に割り当てるか、savedCrewDataがあればそちらを使う
-        // 今回は schedule.crewDetailsMap (seat -> userId) を保存すると仮定、なければ crewIds から順に
         const crewMap = schedule.crewDetailsMap || {};
         if (Object.keys(crewMap).length === 0 && schedule.crewIds) {
-            // 旧データ互換: 単なるリストなら上から順に埋める
             const seats = getSeatDefinitions(schedule.boatType);
             schedule.crewIds.forEach((uid, idx) => {
                 if (seats[idx]) crewMap[seats[idx].id] = uid;
@@ -2030,8 +2157,6 @@ function openInputModal(dateStr, timeSlot) {
         // エルゴ記録を読み込み
         const records = state.ergoRecords.filter(r => r.scheduleId === schedule.id);
         records.forEach(r => addErgoRecordInput(r));
-
-
     }
 
     modal.classList.remove('hidden');
@@ -2051,14 +2176,13 @@ function handleScheduleTypeChange(type) {
     document.getElementById('boat-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.BOAT);
     document.getElementById('oar-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.BOAT);
     document.getElementById('crew-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.BOAT);
+    document.getElementById('meal-type-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.MEAL);
+    document.getElementById('video-duration-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.VIDEO);
 
-    // 乗艇選択時はクルー候補を自動表示…ではなく、シートを表示
+    // 乗艇選択時はシートUI表示
     if (type === SCHEDULE_TYPES.BOAT) {
-        // デフォルトでは現在選択されているboatType、なければ 8+ か 1x など
         const activeBoatTypeBtn = document.querySelector('.boat-type-btn.active');
-        const boatType = activeBoatTypeBtn ? activeBoatTypeBtn.dataset.value : '8+'; // デフォルト8+
-
-        // 既存のシート割り当てがあれば保持したいが、切り替え時はクリアされてもやむなし
+        const boatType = activeBoatTypeBtn ? activeBoatTypeBtn.dataset.value : '8+';
         renderSeatInputs(boatType);
     }
 }
@@ -2276,16 +2400,17 @@ function saveSchedule() {
         timeSlot: timeSlot,
         scheduleType: scheduleType,
         startTime: document.getElementById('input-start-time').value || null,
-        distance: document.getElementById('input-distance').value ? parseInt(document.getElementById('input-distance').value) : null, // 距離保存
+        distance: document.getElementById('input-distance').value ? parseInt(document.getElementById('input-distance').value) : null,
         absenceReason: document.querySelector('.reason-btn.active')?.dataset.value || null,
         reflection: document.getElementById('input-reflection')?.value || null,
         ergoType: document.querySelector('.ergo-type-btn.active')?.dataset.value || null,
         boatType: document.querySelector('.boat-type-btn.active')?.dataset.value || null,
         boatId: document.getElementById('input-boat').value || null,
         oarId: document.getElementById('input-oar').value || null,
-        // crewIds: Array.from(document.querySelectorAll('.selected-crew-tag')).map(t => t.dataset.userId), // 旧ロジック
-        crewIds: [], // 後で生成
-        crewDetailsMap: {}, // Seat -> UserId
+        crewIds: [],
+        crewDetailsMap: {},
+        mealTypes: Array.from(document.querySelectorAll('.meal-type-btn.active')).map(b => b.dataset.value),
+        videoDuration: document.querySelector('.video-duration-btn.active')?.dataset.value || null,
         memo: document.getElementById('input-memo').value || null,
         updatedAt: new Date().toISOString()
     };
@@ -2688,71 +2813,183 @@ document.getElementById('crew-search').addEventListener('input', (e) => {
 // 全体（閲覧・調整）タブ - 概要描画
 // =========================================
 function initOverviewDate() {
-    document.getElementById('overview-date').value = formatDate(new Date());
+    const dateInput = document.getElementById('overview-date');
+    dateInput.value = formatDate(new Date());
+
+    // 前後日ボタン
+    document.getElementById('overview-prev-day')?.addEventListener('click', () => {
+        const d = new Date(dateInput.value);
+        d.setDate(d.getDate() - 1);
+        dateInput.value = formatDate(d);
+        renderOverview();
+    });
+    document.getElementById('overview-next-day')?.addEventListener('click', () => {
+        const d = new Date(dateInput.value);
+        d.setDate(d.getDate() + 1);
+        dateInput.value = formatDate(d);
+        renderOverview();
+    });
+    document.getElementById('overview-today-btn')?.addEventListener('click', () => {
+        dateInput.value = formatDate(new Date());
+        renderOverview();
+    });
 }
 
 function renderOverview() {
     const dateStr = document.getElementById('overview-date').value;
-    const timeSlot = document.querySelector('.slot-btn.active')?.dataset.slot || '午前';
+    const container = document.getElementById('schedule-timeline');
+    const boatSection = document.getElementById('available-boats-section');
 
-    const schedules = state.schedules.filter(s => s.date === dateStr && s.timeSlot === timeSlot);
+    // その日の全スケジュール（全ユーザー）
+    const schedules = state.schedules.filter(s => s.date === dateStr);
 
-    // 乗艇
-    const boatList = document.getElementById('overview-boat');
-    const boatSchedules = schedules.filter(s => s.scheduleType === SCHEDULE_TYPES.BOAT);
+    // startTimeでグルーピング
+    const timeGroups = {};
+    const noTimeSchedules = [];
+    const absentSchedules = [];
 
-    // 使用中の艇IDを収集
-    const usedBoatIds = boatSchedules.map(s => s.boatId).filter(id => id);
-
-    boatList.innerHTML = boatSchedules.length ? boatSchedules.map(s => {
-        const user = state.users.find(u => u.id === s.userId);
-        const boat = state.boats.find(b => b.id === s.boatId);
-        const oar = state.oars.find(o => o.id === s.oarId);
-
-        let equipText = '';
-        if (boat) {
-            equipText = boat.name;
-        } else if (s.boatType) {
-            equipText = `${s.boatType} (艇未定)`;
+    schedules.forEach(s => {
+        if (s.scheduleType === SCHEDULE_TYPES.ABSENT) {
+            absentSchedules.push(s);
+        } else if (s.startTime) {
+            if (!timeGroups[s.startTime]) timeGroups[s.startTime] = [];
+            timeGroups[s.startTime].push(s);
         } else {
-            equipText = '未定';
+            noTimeSchedules.push(s);
         }
+    });
 
-        if (oar) {
-            equipText += ` / ${oar.name}`;
-        }
+    // 時間順にソート
+    const sortedTimes = Object.keys(timeGroups).sort();
 
-        const distance = s.distance ? `${s.distance}m` : '';
-        const menu = s.memo ? `📝 ${s.memo}` : '';
-        const details = [distance, menu].filter(d => d).join(' / ');
+    let html = '';
 
-        return `<div class="overview-item">
-            <div class="overview-main">
-                <span class="name">${user?.name || ''}</span>
-                <span class="grade">${user?.grade}年</span>
-                <span class="equipment">${equipText}</span>
-            </div>
-            ${details ? `<div class="overview-sub">${details}</div>` : ''}
-        </div>`;
-    }).join('') : '<div class="empty-state"><p>予定なし</p></div>';
+    // 日付ヘッダー
+    const display = formatDisplayDate(dateStr);
+    html += `<div class="timeline-date-header">${display.month}/${display.day}（${display.weekday}）のスケジュール</div>`;
 
-    // 空き艇表示 (Available Boats)
-    // 既存のエレメントがあれば削除・再生成 (簡易実装)
-    let availableContainer = document.getElementById('available-boats-container');
-    if (!availableContainer) {
-        availableContainer = document.createElement('div');
-        availableContainer.id = 'available-boats-container';
-        availableContainer.className = 'available-boats-section';
-        // 乗艇リストの後ろに追加
-        boatList.parentNode.appendChild(availableContainer);
+    if (sortedTimes.length === 0 && noTimeSchedules.length === 0 && absentSchedules.length === 0) {
+        html += '<div class="empty-state"><p>予定なし</p></div>';
     }
+
+    // 時間帯ごとに表示
+    sortedTimes.forEach(time => {
+        html += renderTimeBlock(time, timeGroups[time]);
+    });
+
+    // 時間未定
+    if (noTimeSchedules.length > 0) {
+        html += renderTimeBlock('未定', noTimeSchedules);
+    }
+
+    // 参加不可
+    if (absentSchedules.length > 0) {
+        html += `<div class="timeline-block absent-block">
+            <div class="timeline-time-label">❌ 参加不可</div>
+            <div class="timeline-entries">
+                ${absentSchedules.map(s => {
+            const user = state.users.find(u => u.id === s.userId);
+            return `<div class="timeline-entry absent">
+                        <span class="entry-name">${user?.name || ''}</span>
+                        <span class="entry-detail">${s.absenceReason || ''}</span>
+                    </div>`;
+        }).join('')}
+            </div>
+        </div>`;
+    }
+
+    container.innerHTML = html;
+
+    // 空き艇セクション
+    renderAvailableBoats(dateStr, boatSection);
+}
+
+function renderTimeBlock(timeLabel, entries) {
+    const displayTime = timeLabel === '未定' ? '🕐 時間未定' : `⏰ ${timeLabel}`;
+
+    const entriesHtml = entries.map(s => {
+        const user = state.users.find(u => u.id === s.userId);
+        let icon = '', colorClass = '', detail = '';
+
+        switch (s.scheduleType) {
+            case SCHEDULE_TYPES.BOAT: {
+                icon = '🚣';
+                colorClass = 'boat';
+                const boat = state.boats.find(b => b.id === s.boatId);
+                const oar = state.oars.find(o => o.id === s.oarId);
+                const parts = [];
+                if (s.boatType) parts.push(s.boatType);
+                if (boat) parts.push(boat.name);
+                if (oar) parts.push(oar.name);
+                // クルー表示
+                if (s.crewDetailsMap && Object.keys(s.crewDetailsMap).length > 0) {
+                    const crewNames = Object.values(s.crewDetailsMap)
+                        .map(uid => state.users.find(u => u.id === uid)?.name)
+                        .filter(n => n);
+                    if (crewNames.length > 0) parts.push(crewNames.join('・'));
+                } else if (s.crewIds && s.crewIds.length > 0) {
+                    const crewNames = s.crewIds
+                        .map(uid => state.users.find(u => u.id === uid)?.name)
+                        .filter(n => n);
+                    if (crewNames.length > 0) parts.push(crewNames.join('・'));
+                }
+                detail = parts.join(' / ');
+                break;
+            }
+            case SCHEDULE_TYPES.ERGO:
+                icon = '🏋️';
+                colorClass = 'ergo';
+                detail = [s.ergoType, s.distance ? `${s.distance}m` : ''].filter(d => d).join(' ');
+                break;
+            case SCHEDULE_TYPES.WEIGHT:
+                icon = '💪';
+                colorClass = 'weight';
+                break;
+            case SCHEDULE_TYPES.MEAL:
+                icon = '🍳';
+                colorClass = 'meal';
+                detail = s.mealTypes ? s.mealTypes.join('/') : '';
+                break;
+            case SCHEDULE_TYPES.VIDEO:
+                icon = '🎥';
+                colorClass = 'video';
+                detail = s.videoDuration ? `${s.videoDuration}分` : '';
+                break;
+            case SCHEDULE_TYPES.BANCHA:
+                icon = '🚴';
+                colorClass = 'bancha';
+                break;
+        }
+
+        const memoHtml = s.memo ? `<span class="entry-memo">📝 ${s.memo}</span>` : '';
+
+        return `<div class="timeline-entry ${colorClass}">
+            <span class="entry-icon">${icon}</span>
+            <span class="entry-name">${user?.name || ''}</span>
+            <span class="entry-type">${s.scheduleType}</span>
+            ${detail ? `<span class="entry-detail">${detail}</span>` : ''}
+            ${memoHtml}
+        </div>`;
+    }).join('');
+
+    return `<div class="timeline-block">
+        <div class="timeline-time-label">${displayTime}</div>
+        <div class="timeline-entries">${entriesHtml}</div>
+    </div>`;
+}
+
+function renderAvailableBoats(dateStr, container) {
+    if (!container) return;
+
+    const usedBoatIds = state.schedules
+        .filter(s => s.date === dateStr && s.scheduleType === SCHEDULE_TYPES.BOAT && s.boatId)
+        .map(s => s.boatId);
 
     const availableBoats = state.boats.filter(b => !usedBoatIds.includes(b.id) && b.availability === '使用可能');
 
     // 艇種ごとにグループ化
     const groupedBoats = {};
     availableBoats.forEach(b => {
-        // 名前から艇種を推測 (簡易: "Empacher 8+" -> "8+")
         let type = 'その他';
         if (b.name.includes('8+')) type = '8+';
         else if (b.name.includes('4+')) type = '4+';
@@ -2760,7 +2997,6 @@ function renderOverview() {
         else if (b.name.includes('2-')) type = '2-';
         else if (b.name.includes('2x')) type = '2x';
         else if (b.name.includes('1x')) type = '1x';
-
         if (!groupedBoats[type]) groupedBoats[type] = [];
         groupedBoats[type].push(b);
     });
@@ -2771,75 +3007,13 @@ function renderOverview() {
             return `<div class="boat-group"><span class="boat-type-label">${type}:</span> ${boats}</div>`;
         }).join('');
 
-        availableContainer.innerHTML = `
-            <h4 class="subsection-title">空き艇状況</h4>
+        container.innerHTML = `
+            <h4 class="subsection-title">🚣 空き艇状況</h4>
             <div class="available-boats-list">${groupsHtml}</div>
         `;
     } else {
-        availableContainer.innerHTML = `<h4 class="subsection-title">空き艇状況</h4><div class="empty-state sub-empty"><p>空き艇なし</p></div>`;
+        container.innerHTML = `<h4 class="subsection-title">🚣 空き艇状況</h4><div class="empty-state sub-empty"><p>空き艇なし</p></div>`;
     }
-
-
-    // エルゴ
-    const ergoList = document.getElementById('overview-ergo');
-    const ergoSchedules = schedules.filter(s => s.scheduleType === SCHEDULE_TYPES.ERGO);
-
-    const dynamicCount = ergoSchedules.filter(s => s.ergoType === 'ダイナミック').length;
-    const fixedCount = ergoSchedules.filter(s => s.ergoType === '固定').length;
-    const dynamicAvail = state.ergos.filter(e => e.type === 'ダイナミック' && e.availability === '使用可能').length;
-    const fixedAvail = state.ergos.filter(e => e.type === '固定' && e.availability === '使用可能').length;
-
-    document.getElementById('dynamic-count').textContent = `${dynamicCount} / ${dynamicAvail}`;
-    document.getElementById('dynamic-count').classList.toggle('warning', dynamicCount > dynamicAvail);
-    document.getElementById('fixed-count').textContent = `${fixedCount} / ${fixedAvail}`;
-    document.getElementById('fixed-count').classList.toggle('warning', fixedCount > fixedAvail);
-
-    ergoList.innerHTML = ergoSchedules.length ? ergoSchedules.map(s => {
-        const user = state.users.find(u => u.id === s.userId);
-        const distance = s.distance ? `${s.distance}m` : '';
-        const menu = s.memo ? `📝 ${s.memo}` : '';
-        const details = [distance, menu].filter(d => d).join(' / ');
-
-        return `<div class="overview-item">
-            <div class="overview-main">
-                <span class="name">${user?.name || ''}</span>
-                <span class="grade">${user?.grade}年</span>
-                <span class="equipment">${s.ergoType || ''}</span>
-            </div>
-            ${details ? `<div class="overview-sub">${details}</div>` : ''}
-        </div>`;
-    }).join('') : '<div class="empty-state"><p>予定なし</p></div>';
-
-    // ウェイト
-    const weightList = document.getElementById('overview-weight');
-    const weightSchedules = schedules.filter(s => s.scheduleType === SCHEDULE_TYPES.WEIGHT);
-    weightList.innerHTML = weightSchedules.length ? weightSchedules.map(s => {
-        const user = state.users.find(u => u.id === s.userId);
-
-        let content = '';
-        // 女子部員の体重は非公開（本人と管理者のみ表示）
-        if (user && user.gender === 'woman') {
-            const isAllowed = state.currentUser?.id === user.id || state.currentUser?.role === ROLES.ADMIN;
-            // 具体的なウェイト値が記録されている場合を想定（現状はs.memoに入っている前提か、あるいは詳細レコードを見るかだが、
-            // ここではスケジュール表示なので、詳細値があるとしても隠すという意思表示）
-            content = isAllowed ? `${user.grade}年` : '記録済み';
-        } else {
-            content = `${user?.grade || ''}年`;
-        }
-
-        return `<div class="overview-item"><span class="name">${user?.name || ''}</span><span class="grade">${content}</span></div>`;
-    }).join('') : '<div class="empty-state"><p>予定なし</p></div>';
-
-    // 参加不可
-    const absentList = document.getElementById('overview-absent');
-    const absentSchedules = schedules.filter(s => s.scheduleType === SCHEDULE_TYPES.ABSENT);
-    absentList.innerHTML = absentSchedules.length ? absentSchedules.map(s => {
-        const user = state.users.find(u => u.id === s.userId);
-        return `<div class="overview-item">
-            <span class="name">${user?.name || ''}</span>
-            <span class="reason">${s.absenceReason || ''}</span>
-        </div>`;
-    }).join('') : '<div class="empty-state"><p>なし</p></div>';
 }
 
 
@@ -4216,8 +4390,8 @@ const initializeApp = async () => {
             });
         });
 
-        // トグルボタン
-        ['reason-btn', 'ergo-type-btn'].forEach(cls => {
+        // トグルボタン（単一選択）
+        ['reason-btn', 'ergo-type-btn', 'video-duration-btn'].forEach(cls => {
             document.querySelectorAll(`.${cls} `).forEach(btn => {
                 btn.addEventListener('click', () => {
                     document.querySelectorAll(`.${cls} `).forEach(b => b.classList.remove('active'));
@@ -4226,18 +4400,18 @@ const initializeApp = async () => {
             });
         });
 
+        // 炊事ボタン（複数選択可―トグル）
+        document.querySelectorAll('.meal-type-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.classList.toggle('active');
+            });
+        });
+
         // クルー検索
         document.getElementById('crew-search').addEventListener('input', (e) => filterCrew(e.target.value));
 
         // 全体タブ
         document.getElementById('overview-date').addEventListener('change', renderOverview);
-        document.querySelectorAll('.slot-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                renderOverview();
-            });
-        });
 
         // Concept2バナー
         document.getElementById('connect-from-data-btn')?.addEventListener('click', connectConcept2);
