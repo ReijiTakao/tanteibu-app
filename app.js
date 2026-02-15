@@ -2164,6 +2164,9 @@ function openInputModal(dateStr, timeSlot, scheduleId = null) {
             const reasonBtn = document.querySelector(`.reason-btn[data-value="${schedule.absenceReason}"]`);
             if (reasonBtn) reasonBtn.classList.add('active');
         }
+        if (schedule.absenceDetail) {
+            document.getElementById('input-absence-detail').value = schedule.absenceDetail;
+        }
 
         if (schedule.ergoType) {
             const ergoBtn = document.querySelector(`.ergo-type-btn[data-value="${schedule.ergoType}"]`);
@@ -2450,6 +2453,7 @@ function saveSchedule() {
         startTime: document.getElementById('input-start-time').value || null,
         distance: document.getElementById('input-distance').value ? parseInt(document.getElementById('input-distance').value) : null,
         absenceReason: document.querySelector('.reason-btn.active')?.dataset.value || null,
+        absenceDetail: document.getElementById('input-absence-detail')?.value || null,
 
         ergoType: document.querySelector('.ergo-type-btn.active')?.dataset.value || null,
         boatType: document.querySelector('.boat-type-btn.active')?.dataset.value || null,
@@ -3249,10 +3253,50 @@ function renderLinkedErgoRecords(note) {
     note.ergoRecordIds.forEach(recId => {
         const rec = state.ergoRecords.find(r => r.id === recId);
         if (rec) {
+            const distLabel = rec.distance ? `${rec.distance}m` : '?m';
+            const timeLabel = rec.timeDisplay || '?';
+            const splitLabel = rec.split ? `${rec.split}/500m` : '';
+            const rateLabel = rec.strokeRate ? `${rec.strokeRate} spm` : '';
+            const sourceLabel = rec.source === 'concept2' ? 'Concept2同期' : '手入力';
+            const weightLabel = rec.weight ? `${rec.weight}kg` : '';
+
             html += `
-                <div class="linked-ergo-item">
-                    <span>📊 ${rec.distance || '?'}m — ${rec.timeDisplay || '?'} ${rec.split ? `(${rec.split}/500m)` : ''}</span>
-                    <button class="btn-icon-sm" onclick="unlinkErgoRecord('${recId}')">✕</button>
+                <div class="linked-ergo-item-wrapper">
+                    <div class="linked-ergo-item" onclick="this.parentElement.classList.toggle('expanded')">
+                        <span>📊 ${distLabel} — ${timeLabel} ${splitLabel ? `(${splitLabel})` : ''}</span>
+                        <div class="linked-ergo-actions">
+                            <span class="ergo-expand-icon">▶</span>
+                            <button class="btn-icon-sm" onclick="event.stopPropagation(); unlinkErgoRecord('${recId}')">✕</button>
+                        </div>
+                    </div>
+                    <div class="linked-ergo-detail">
+                        <div class="ergo-detail-grid">
+                            <div class="ergo-detail-cell">
+                                <span class="ergo-detail-label">距離</span>
+                                <span class="ergo-detail-value">${distLabel}</span>
+                            </div>
+                            <div class="ergo-detail-cell">
+                                <span class="ergo-detail-label">タイム</span>
+                                <span class="ergo-detail-value">${timeLabel}</span>
+                            </div>
+                            ${splitLabel ? `<div class="ergo-detail-cell">
+                                <span class="ergo-detail-label">スプリット</span>
+                                <span class="ergo-detail-value">${splitLabel}</span>
+                            </div>` : ''}
+                            ${rateLabel ? `<div class="ergo-detail-cell">
+                                <span class="ergo-detail-label">レート</span>
+                                <span class="ergo-detail-value">${rateLabel}</span>
+                            </div>` : ''}
+                            ${weightLabel ? `<div class="ergo-detail-cell">
+                                <span class="ergo-detail-label">体重</span>
+                                <span class="ergo-detail-value">${weightLabel}</span>
+                            </div>` : ''}
+                            <div class="ergo-detail-cell">
+                                <span class="ergo-detail-label">ソース</span>
+                                <span class="ergo-detail-value">${sourceLabel}</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             `;
         }

@@ -2725,6 +2725,62 @@ textarea {
     border-radius: 8px;
     margin-bottom: 4px;
     font-size: 13px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.linked-ergo-item:hover {
+    background: #e8eaed;
+}
+
+.linked-ergo-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ergo-expand-icon {
+    font-size: 9px;
+    color: var(--text-tertiary);
+    transition: transform 0.3s ease;
+}
+
+.linked-ergo-item-wrapper.expanded .ergo-expand-icon {
+    transform: rotate(90deg);
+}
+
+.linked-ergo-detail {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.linked-ergo-item-wrapper.expanded .linked-ergo-detail {
+    max-height: 200px;
+    padding: 8px 10px 10px;
+}
+
+.ergo-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.ergo-detail-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ergo-detail-label {
+    font-size: 11px;
+    color: var(--text-tertiary);
+}
+
+.ergo-detail-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
 }
 
 .btn-icon-sm {
