@@ -1004,34 +1004,38 @@ function initiateConcept2OAuth() {
     window.location.href = authUrl;
 }
 
-// アクセストークンを検証して連携
+// アクセストークンを検証して連携（Vercel APIプロキシ経由）
 async function validateAndConnectConcept2(accessToken) {
     try {
-        // Concept2 APIで現在のユーザー情報を取得してトークンを検証
-        const response = await fetch('https://log.concept2.com/api/users/me', {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Accept': 'application/vnd.c2logbook.v1+json',
-            },
+        // Vercel APIプロキシ経由でConcept2 APIを呼び出し（CORS回避）
+        const response = await fetch('/api/concept2-proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'verify',
+                access_token: accessToken
+            })
         });
 
-        if (!response.ok) {
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
             if (response.status === 401) {
                 showToast('アクセストークンが無効です', 'error');
             } else {
-                showToast('接続エラー: ' + response.status, 'error');
+                showToast('接続エラー: ' + (result.error || response.status), 'error');
             }
             return;
         }
 
-        const userData = await response.json();
-        console.log('Concept2 user verified:', userData.data?.username);
+        const userData = result.user;
+        console.log('Concept2 user verified:', userData?.username);
 
         // 成功 - ユーザー情報を更新
         state.currentUser.concept2Connected = true;
         state.currentUser.concept2Token = accessToken;
-        state.currentUser.concept2UserId = userData.data?.id;
-        state.currentUser.concept2Username = userData.data?.username;
+        state.currentUser.concept2UserId = userData?.id;
+        state.currentUser.concept2Username = userData?.username;
         state.currentUser.concept2LastSync = new Date().toISOString();
 
         const idx = state.users.findIndex(u => u.id === state.currentUser.id);
@@ -1039,7 +1043,13 @@ async function validateAndConnectConcept2(accessToken) {
         DB.save('users', state.users);
         DB.save('current_user', state.currentUser);
 
-        showToast('Concept2と連携しました！(' + (userData.data?.username || 'User') + ')', 'success');
+        // Supabaseにも保存
+        syncProfileToSupabase({
+            concept2_connected: true,
+            concept2_last_sync: new Date().toISOString()
+        });
+
+        showToast('Concept2と連携しました！(' + (userData?.username || 'User') + ')', 'success');
 
         // UI更新
         updateConcept2UI();
@@ -1055,33 +1065,7 @@ async function validateAndConnectConcept2(accessToken) {
 
     } catch (error) {
         console.error('Connection error:', error);
-
-        // CORSエラーの場合: トークンをそのまま保存して連携完了にする
-        // （Concept2 APIはブラウザ直接呼出しでCORSを拒否するため）
-        if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
-            console.log('Direct API failed (likely CORS), saving token directly...');
-
-            // トークンを信頼して保存
-            state.currentUser.concept2Connected = true;
-            state.currentUser.concept2Token = accessToken;
-            state.currentUser.concept2LastSync = new Date().toISOString();
-
-            const idx = state.users.findIndex(u => u.id === state.currentUser.id);
-            if (idx !== -1) state.users[idx] = state.currentUser;
-            DB.save('users', state.users);
-            DB.save('current_user', state.currentUser);
-
-            // Supabaseにも保存
-            syncProfileToSupabase({
-                concept2_connected: true,
-                concept2_last_sync: new Date().toISOString()
-            });
-
-            showToast('Concept2と連携しました！（トークン保存済み）', 'success');
-            updateConcept2UI();
-        } else {
-            showToast('接続エラー: ' + error.message, 'error');
-        }
+        showToast('接続エラー: ' + error.message, 'error');
     }
 }
 
@@ -1605,9 +1589,9 @@ function parseTimeString(timeStr) {
     return parseFloat(timeStr) || 0;
 }
 
-// Concept2データを同期（Edge Function経由）
+// Concept2データを同期（Vercel APIプロキシ経由）
 async function syncConcept2() {
-    if (!state.currentUser?.concept2Connected) {
+    if (!state.currentUser?.concept2Connected || !state.currentUser?.concept2Token) {
         showToast('Concept2と連携してください', 'error');
         return;
     }
@@ -1620,47 +1604,76 @@ async function syncConcept2() {
     if (settingSyncBtn) settingSyncBtn.disabled = true;
 
     try {
-        if (!window.supabaseClient) {
-            showToast('Supabase接続エラー', 'error');
-            return;
-        }
-
-        // Edge Function呼び出し
-        const { data, error } = await window.supabaseClient.functions.invoke('concept2-sync', {
-            body: {
-                user_id: state.currentUser.id
-            }
+        // Vercel APIプロキシ経由でデータ取得
+        const response = await fetch('/api/concept2-proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'sync',
+                access_token: state.currentUser.concept2Token
+            })
         });
 
-        if (error) throw error;
+        const data = await response.json();
 
-        console.log('Sync result:', data);
-
-        if (data.success) {
-            const count = (data.inserted || 0) + (data.updated || 0);
-            showToast(`同期完了: ${count}件のデータを更新しました`, 'success');
-
-            // 最終同期日時を更新
-            state.currentUser.concept2LastSync = new Date().toISOString();
-            DB.save('current_user', state.currentUser);
-
-            // UI更新
-            updateConcept2UI();
-            if (typeof renderSettings === 'function') renderSettings();
-
-            // データを再取得して表示更新
-            if (DB.useSupabase) {
-                await DB.syncFromSupabase();
-                if (typeof renderErgoRecords === 'function') renderErgoRecords();
-            }
-
-        } else {
-            showToast('同期失敗: ' + (data.error || '不明なエラー'), 'error');
-            if (data.need_refresh) {
-                showToast('再連携が必要です', 'warning');
+        if (!response.ok || !data.success) {
+            if (response.status === 401) {
+                showToast('トークンが期限切れです。再連携してください', 'error');
+                state.currentUser.concept2Connected = false;
+                DB.save('current_user', state.currentUser);
                 updateConcept2UI();
+                return;
+            }
+            throw new Error(data.error || '同期に失敗しました');
+        }
+
+        const results = data.results || [];
+        console.log(`Fetched ${results.length} results from Concept2`);
+
+        // ローカルのエルゴ記録に統合
+        let existingRecords = DB.load('ergo_records') || [];
+        let insertedCount = 0;
+
+        for (const result of results) {
+            const concept2Id = String(result.id);
+            // 既存データにあるか確認
+            const exists = existingRecords.some(r => r.concept2Id === concept2Id);
+            if (!exists) {
+                // 新しいレコードを追加
+                const newRecord = {
+                    id: 'c2_' + concept2Id,
+                    concept2Id: concept2Id,
+                    userId: state.currentUser.id,
+                    userName: state.currentUser.name,
+                    date: result.date?.split('T')[0] || new Date().toISOString().split('T')[0],
+                    distance: result.distance || 0,
+                    time: result.time ? Math.round(result.time / 10) : 0, // 1/10秒 → 秒
+                    strokeRate: result.stroke_rate || 0,
+                    heartRate: result.heart_rate?.average || null,
+                    workoutType: result.workout_type || 'FixedDistanceSplits',
+                    intervals: result.workout?.intervals || [],
+                    rawData: result,
+                    source: 'concept2',
+                    createdAt: new Date().toISOString()
+                };
+                existingRecords.push(newRecord);
+                insertedCount++;
             }
         }
+
+        // 保存
+        DB.save('ergo_records', existingRecords);
+
+        // 最終同期日時を更新
+        state.currentUser.concept2LastSync = new Date().toISOString();
+        DB.save('current_user', state.currentUser);
+
+        showToast(`同期完了: ${insertedCount}件の新しいデータを取得しました`, 'success');
+
+        // UI更新
+        updateConcept2UI();
+        if (typeof renderSettings === 'function') renderSettings();
+        if (typeof renderErgoRecords === 'function') renderErgoRecords();
 
     } catch (err) {
         console.error('Sync error:', err);
