@@ -16,22 +16,18 @@ let _supabaseClient = null;
  * Supabaseクライアントを初期化
  */
 function initSupabaseClient() {
-    console.log('Initializing Supabase client...');
 
     if (_supabaseClient) {
-        console.log('✅ Supabase client already initialized');
         return true;
     }
 
     if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
         _supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         window.supabaseClient = _supabaseClient;
-        console.log('✅ Supabase client initialized (window.supabase)');
         return true;
     } else if (typeof window.supabase_js !== 'undefined') {
         _supabaseClient = window.supabase_js.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         window.supabaseClient = _supabaseClient;
-        console.log('✅ Supabase client initialized (window.supabase_js)');
         return true;
     } else {
         console.error('❌ Supabase SDK not loaded. Checked window.supabase and window.supabase_js');
@@ -115,7 +111,6 @@ function onAuthStateChange(callback) {
     if (!isSupabaseReady()) return;
 
     _supabaseClient.auth.onAuthStateChange((event, session) => {
-        console.log('Auth state changed:', event);
         callback(event, session);
     });
 }

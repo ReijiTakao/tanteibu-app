@@ -1,14 +1,11 @@
-document.title = 'APP STARTED';
-console.log('APP JS START');
+/**
+ * 端艇部 総合管理アプリ - メインロジック v2
+ */
 
 // APIプロキシURL（ローカルfile://では絶対URL、Vercelでは相対パス）
 const API_BASE = window.location.protocol === 'file:'
     ? 'https://tanteibu-app.vercel.app'
     : '';
-
-/**
- * 端艇部 総合管理アプリ - メインロジック v2
- */
 
 // =========================================
 // 定数・設定
@@ -47,12 +44,6 @@ const ERGO_TYPES = ['ダイナミック', '固定'];
 const MEAL_TYPES = ['朝', '昼', '晩'];
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
-// Concept2 API設定
-// （メイン定義は後述）
-
-// =========================================
-// Google認証 ハンドラー
-// =========================================
 // =========================================
 // 認証 ハンドラー (Email/Password)
 // =========================================
@@ -244,7 +235,6 @@ const DB = {
                 };
                 const tableName = syncTable[key];
                 if (tableName && Array.isArray(data) && data.length > 0) {
-                    console.log(`📤 Syncing ${key} to Supabase (${data.length} items)...`);
                     // 個別のupsertは各操作関数で行うため、ここではログのみ
                 }
             } catch (e) {
@@ -263,7 +253,6 @@ const DB = {
         // Supabaseクライアントを初期化
         if (window.SupabaseConfig) {
             this.useSupabase = window.SupabaseConfig.init();
-            console.log('Supabase mode:', this.useSupabase ? 'enabled' : 'disabled (demo mode)');
         }
 
         // ローカルストレージからロード
@@ -300,7 +289,6 @@ const DB = {
     async syncFromSupabase() {
         if (!this.useSupabase || !window.SupabaseConfig.isReady()) return;
 
-        console.log('Syncing from Supabase...');
         try {
             // マスタデータ
             // usersは別途handleAuthSessionでロード済みだが、ここでも念のため
@@ -359,7 +347,6 @@ const DB = {
                 this.saveLocal('crew_notes', state.crewNotes);
             }
 
-            console.log('Sync complete');
         } catch (e) {
             console.warn('Sync failed:', e);
         }
@@ -903,7 +890,6 @@ function renderUserSelectList() {
     if (!container) return;
 
     // ユーザーがいない場合のハンドリング（デモデータ作成またはリロード）
-    console.log('renderUserSelectList: state.users=', state.users);
     if (!state.users || state.users.length === 0) {
         // ローカルストレージを確認
         const storedUsers = DB.loadLocal('users');
@@ -1097,7 +1083,6 @@ async function validateAndConnectConcept2(accessToken) {
         }
 
         const userData = result.user;
-        console.log('Concept2 user verified:', userData?.username);
 
         // 成功 - ユーザー情報を更新
         state.currentUser.concept2Connected = true;
@@ -1158,7 +1143,6 @@ async function validateAndConnectConcept2ViaEdgeFunction(accessToken) {
         }
 
         const userData = data.user;
-        console.log('Concept2 user verified (Edge):', userData.username);
 
         // 成功 - ユーザー情報を更新
         state.currentUser.concept2Connected = true;
@@ -1264,16 +1248,13 @@ function toggleConcept2() {
 
 // Concept2からデータを取得（全ページ対応）
 async function fetchConcept2Data() {
-    console.log('fetchConcept2Data called', state.currentUser?.concept2Connected);
     if (!state.currentUser?.concept2Connected) {
-        console.log('User not connected to Concept2');
         return;
     }
 
     const accessToken = state.currentUser.concept2Token;
 
     if (!accessToken) {
-        console.log('No access token found');
         return;
     }
 
@@ -1281,7 +1262,6 @@ async function fetchConcept2Data() {
 
     try {
         // 直接Concept2 APIを呼び出す（全ページ取得）
-        console.log('Fetching data from Concept2 API...');
 
         let allResults = [];
         let page = 1;
@@ -1289,7 +1269,6 @@ async function fetchConcept2Data() {
 
         while (hasMore) {
             const url = `https://log.concept2.com/api/users/me/results?type=rower&number=250&page=${page}`;
-            console.log(`Fetching page ${page}...`);
 
             const response = await fetch(url, {
                 headers: {
@@ -1308,7 +1287,6 @@ async function fetchConcept2Data() {
 
             const data = await response.json();
             const pageResults = data.data || [];
-            console.log(`Page ${page}: ${pageResults.length} results`);
 
             allResults = allResults.concat(pageResults);
 
@@ -1325,7 +1303,6 @@ async function fetchConcept2Data() {
             }
         }
 
-        console.log(`Total fetched: ${allResults.length} results from Concept2 API`);
 
         if (allResults.length > 0) {
             let newCount = 0;
@@ -1367,7 +1344,6 @@ async function fetchConcept2Data() {
             });
 
             DB.save('ergoRaw', state.ergoRaw);
-            console.log('ergoRaw saved, count:', state.ergoRaw.length, 'new:', newCount);
 
             // 最終同期時刻を更新
             state.currentUser.concept2LastSync = new Date().toISOString();
@@ -1391,7 +1367,6 @@ async function fetchConcept2Data() {
 
         // CORSエラーの場合はEdge Functionを使用
         if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
-            console.log('Direct API failed (CORS), trying Edge Function...');
             await fetchConcept2DataViaEdgeFunction(accessToken);
         } else {
             showToast('データ取得エラー: ' + error.message, 'error');
@@ -1418,7 +1393,6 @@ async function fetchConcept2DataViaEdgeFunction(accessToken) {
         if (!response.ok) {
             // トークン期限切れの場合、リフレッシュを試みる
             if (response.status === 401 && result.need_refresh) {
-                console.log('Access token expired, attempting refresh...');
                 const refreshed = await refreshConcept2Token();
                 if (refreshed) {
                     // リフレッシュ成功したら再試行
@@ -1432,7 +1406,6 @@ async function fetchConcept2DataViaEdgeFunction(accessToken) {
         }
 
         if (result.results && result.results.length > 0) {
-            console.log(`Fetched ${result.results.length} results via Edge Function`);
             processConceptData(result.results);
 
             // 最終同期時刻を更新
@@ -1500,7 +1473,6 @@ async function refreshConcept2Token() {
         // もし厳密にやるなら、refresh成功時にEdge Function側でusersテーブル更新してもらうのがベストだが、
         // concept2-authはresponse返すだけなので、クライアント側で保存が必要。
 
-        console.log('Token refreshed successfully');
         return true;
 
     } catch (e) {
@@ -1512,19 +1484,15 @@ async function refreshConcept2Token() {
 // エルゴセッションを分類（拡張メニュー対応）
 function classifyErgoSessions(reclassify = false) {
     try {
-        console.log('classifyErgoSessions started, reclassify:', reclassify);
         // CONCEPT2_API.classificationRulesを使用
         const rules = CONCEPT2_API.classificationRules;
-        console.log('Rules loaded:', rules?.length || 0);
 
         const userRaw = state.ergoRaw.filter(r => r.userId === state.currentUser.id);
-        console.log('User raw data count:', userRaw.length);
 
         // 再分類の場合は既存データをクリア
         if (reclassify) {
             state.ergoSessions = state.ergoSessions.filter(s => s.userId !== state.currentUser.id);
             state.ergoRecords = state.ergoRecords.filter(r => r.userId !== state.currentUser.id);
-            console.log('Cleared existing data for reclassification');
         }
 
         userRaw.forEach(raw => {
@@ -1592,7 +1560,6 @@ function classifyErgoSessions(reclassify = false) {
             };
 
             state.ergoSessions.push(session);
-            console.log('Session created:', session.menuKey, session.category, session.distance);
 
             // ergoRecordsにも追加（データタブで表示）
             state.ergoRecords.push({
@@ -1613,7 +1580,6 @@ function classifyErgoSessions(reclassify = false) {
 
         DB.save('ergoSessions', state.ergoSessions);
         DB.save('ergo_records', state.ergoRecords);
-        console.log('classifyErgoSessions finished. Sessions:', state.ergoSessions.length, 'Records:', state.ergoRecords.length);
     } catch (error) {
         console.error('Error in classifyErgoSessions:', error);
     }
@@ -1775,11 +1741,9 @@ async function syncConcept2() {
             hasMore = data.hasMore || false;
             currentPage++;
 
-            console.log(`Page ${data.page}: ${pageResults.length} results (total: ${allResults.length})`);
         }
 
         const results = allResults;
-        console.log(`Fetched ${results.length} results from Concept2 (${currentPage - 1} pages)`);
 
         // ローカルのエルゴ記録・セッションに統合
         let existingRecords = DB.load('ergo_records') || [];
@@ -1915,7 +1879,6 @@ function initMainScreen() {
     const CLASSIFICATION_VERSION = 2; // workoutType判定追加
     const savedVersion = parseInt(localStorage.getItem('ergo_classification_version') || '0');
     if (savedVersion < CLASSIFICATION_VERSION) {
-        console.log(`Ergo classification migration: v${savedVersion} → v${CLASSIFICATION_VERSION}`);
         classifyErgoSessions(true);
         localStorage.setItem('ergo_classification_version', String(CLASSIFICATION_VERSION));
     }
@@ -2569,7 +2532,7 @@ function saveSchedule() {
     DB.addAuditLog('予定', newSchedule.id, schedule ? '更新' : '作成', { after: newSchedule });
 
     // Supabase同期（非同期）
-    DB.saveSchedule(newSchedule).then(() => console.log('Schedule synced to Supabase'));
+    DB.saveSchedule(newSchedule).catch(e => console.warn('Schedule sync failed:', e));
 
     // 自動でクルーノートを作成（乗艇練習の場合）
     if (newSchedule.scheduleType === SCHEDULE_TYPES.BOAT) {
@@ -2599,14 +2562,13 @@ function deleteSchedule() {
 
     // Supabase同期
     const deleteId = currentInputData.schedule.id;
-    DB.deleteSchedule(deleteId).then(() => console.log('Schedule deleted from Supabase'));
+    DB.deleteSchedule(deleteId).catch(e => console.warn('Schedule delete sync failed:', e));
     DB.deleteErgoRecordsByScheduleId(deleteId);
 
     closeInputModal();
     renderWeekCalendar();
     showToast('削除しました', 'success');
 }
-
 
 
 // =========================================
@@ -2890,7 +2852,6 @@ window.deletePreset = deletePreset; // global exposure
 document.getElementById('crew-search').addEventListener('input', (e) => {
     filterCrew(e.target.value);
 });
-
 
 
 // =========================================
@@ -4259,11 +4220,6 @@ function renderAllTimeRanking() {
         // 手入力とインポートの記録を統合
         const allRecords = [...userRecords, ...importedRecords];
 
-        if (allRecords.length > 0) {
-            console.log(`DEBUG: User ${user.name} has ${allRecords.length} records for ${selectedMenu}`);
-        } else {
-            // console.log(`DEBUG: User ${ user.name } has NO records`);
-        }
 
         if (allRecords.length === 0) return;
 
@@ -4429,8 +4385,6 @@ function parseTimeStr(timeStr) {
     }
     return parseFloat(timeStr);
 }
-
-
 
 
 // =========================================
@@ -4986,7 +4940,6 @@ function deleteMasterItem() {
 // =========================================
 const initializeApp = async () => {
     try {
-        console.log('App starting...');
 
         // デモモード判定 (?demo=true)
         const urlParams = new URLSearchParams(window.location.search);
@@ -4994,7 +4947,6 @@ const initializeApp = async () => {
         state.isDemoMode = isDemoMode;
 
         if (isDemoMode) {
-            console.log('🧪 Demo mode enabled');
         }
 
         // Supabaseクライアントの初期化
@@ -5005,7 +4957,6 @@ const initializeApp = async () => {
 
         // デモモード時のみデモデータを作成
         if (isDemoMode && !DB.loadLocal('users')) {
-            console.log('Demo mode: Creating demo data...');
             DB.createDemoData();
         }
 
@@ -5016,7 +4967,6 @@ const initializeApp = async () => {
         if (supabaseReady) {
             const session = await window.SupabaseConfig.getSession();
             if (session) {
-                console.log('✅ Supabase session found:', session.user.email);
                 const authSuccess = await handleAuthSession(session);
                 if (authSuccess) {
                     loggedIn = true;
@@ -5045,7 +4995,6 @@ const initializeApp = async () => {
 
             // 認証状態変更の監視（ログイン/ログアウト時に自動反映）
             window.SupabaseConfig.onAuthStateChange(async (event, session) => {
-                console.log('Auth state changed:', event);
                 if (event === 'SIGNED_IN' && session) {
                     const authSuccess = await handleAuthSession(session);
                     if (authSuccess && state.currentUser?.approvalStatus === '承認済み') {
@@ -5620,7 +5569,6 @@ async function syncProfileToSupabase(updates) {
     if (DB.useSupabase && window.SupabaseConfig?.isReady() && state.currentUser?.id) {
         try {
             await window.SupabaseConfig.db.updateProfile(state.currentUser.id, updates);
-            console.log('📤 Profile synced to Supabase:', updates);
         } catch (e) {
             console.warn('Profile sync to Supabase failed:', e);
         }
@@ -5843,7 +5791,6 @@ function renderSettings() {
 }
 
 function disconnectConcept2() {
-    console.log('disconnectConcept2 called');
     showConfirmModal('Concept2との連携を解除しますか？', () => {
         try {
             state.currentUser.concept2Connected = false;
@@ -5858,7 +5805,6 @@ function disconnectConcept2() {
                 DB.save('users', state.users);
             }
 
-            console.log('Concept2 disconnected successfully');
             showToast('連携を解除しました', 'success');
             renderSettings();
         } catch (e) {
@@ -6725,7 +6671,6 @@ function autoCreateCrewNotesFromSchedule(schedule) {
         // クルーリストも更新
         extractCrewsFromSchedules();
 
-        console.log('Auto-created crew note:', newNote);
         showToast('クルーノートを自動作成しました', 'success');
     }
 }
