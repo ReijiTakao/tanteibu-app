@@ -15,14 +15,14 @@ const ROLES = {
     COACH: 'コーチ',
     COX: 'Cox',
     ROWER: '漕手',
+    KANBU: '幹部',
     MANAGER: 'マネージャー',
     DATA_ANALYST: 'データ班'
 };
 
 // 旧ロールからのマイグレーションマップ
 const ROLE_MIGRATION = {
-    '部員': '漕手',
-    '幹部': '漕手'
+    '部員': '漕手'
 };
 
 function migrateRole(role) {
@@ -827,7 +827,12 @@ function canEditMaster(user) {
 }
 
 function canViewOverview(user) {
-    return [ROLES.ADMIN, ROLES.COACH].includes(user?.role);
+    return [ROLES.ADMIN, ROLES.COACH, ROLES.KANBU].includes(user?.role);
+}
+
+// 幹部はスケジュール管理（全体タブでの編集）権限を持つ
+function canEditSchedule(user) {
+    return [ROLES.ADMIN, ROLES.KANBU].includes(user?.role);
 }
 
 // =========================================
@@ -855,11 +860,13 @@ function showScreen(screenId) {
 // ロール別タブ表示/非表示
 function applyRoleBasedTabs() {
     const role = state.currentUser?.role || '';
+    // 幹部は漕手の全タブ + overviewタブを持つ
     const roleKey = {
         [ROLES.ADMIN]: 'admin',
         [ROLES.COACH]: 'coach',
         [ROLES.COX]: 'cox',
         [ROLES.ROWER]: 'rower',
+        [ROLES.KANBU]: 'kanbu',
         [ROLES.MANAGER]: 'manager',
         [ROLES.DATA_ANALYST]: 'data'
     }[role] || 'rower';
@@ -867,7 +874,11 @@ function applyRoleBasedTabs() {
     let firstVisibleTab = null;
     document.querySelectorAll('#bottom-nav .nav-item').forEach(item => {
         const roles = item.dataset.roles || 'all';
-        const visible = roles === 'all' || roles.split(',').includes(roleKey);
+        let visible = roles === 'all' || roles.split(',').includes(roleKey);
+        // 幹部はrowerのタブも表示
+        if (!visible && roleKey === 'kanbu' && roles.split(',').includes('rower')) {
+            visible = true;
+        }
         item.style.display = visible ? '' : 'none';
         if (visible && !firstVisibleTab) firstVisibleTab = item.dataset.tab;
     });
@@ -879,19 +890,21 @@ function applyRoleBasedTabs() {
     }
 }
 
-// 5分刻み時間セレクター初期化
+// 時間入力のデフォルト時間を取得（曜日・時間帯に基づく）
+function getDefaultStartTime(dateStr, timeSlot) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr + 'T00:00:00');
+    const dayOfWeek = date.getDay(); // 0=日, 1=月, 2=火 ...
+
+    if (timeSlot === '午後') return '14:40';
+    // 午前のデフォルト: 火曜日は08:30、それ以外は05:40
+    if (dayOfWeek === 2) return '08:30'; // 火曜
+    return '05:40';
+}
+
+// initTimeSelectは不要（input type=timeに移行済み）だが後方互換のため空関数として残す
 function initTimeSelect() {
-    const sel = document.getElementById('input-start-time');
-    if (!sel || sel.options.length > 1) return; // 既に生成済みなら不要
-    for (let h = 5; h <= 21; h++) {
-        for (let m = 0; m < 60; m += 5) {
-            const val = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-            const opt = document.createElement('option');
-            opt.value = val;
-            opt.textContent = val;
-            sel.appendChild(opt);
-        }
-    }
+    // input type="time" を使用するため、selectへのoption追加は不要
 }
 
 function switchTab(tabId) {
@@ -912,7 +925,7 @@ function switchTab(tabId) {
 
     // 各タブの初期化（エラーがタブ遷移をブロックしないようtry-catch）
     try {
-        if (tabId === 'overview') { renderOverview(); renderMileageRanking(); }
+        if (tabId === 'overview') { renderOverview(); }
         if (tabId === 'ergo-data') {
             initCoachErgoView();
             renderErgoRecords();
@@ -923,6 +936,8 @@ function switchTab(tabId) {
         if (tabId === 'crew-note') {
             initCrewNoteFeatures();
             renderPracticeNotesList();
+            renderMileageRanking();
+            updateMileageWeekSummary();
         }
         if (tabId === 'settings') renderSettings();
     } catch (error) {
@@ -2236,7 +2251,8 @@ function openInputModal(dateStr, timeSlot, scheduleId = null) {
         : userRole === ROLES.COX ? 'cox'
             : userRole === ROLES.ADMIN ? 'admin'
                 : userRole === ROLES.COACH ? 'coach'
-                    : 'rower';
+                    : userRole === ROLES.KANBU ? 'rower'
+                        : 'rower';
 
     document.querySelectorAll('.schedule-type-btn').forEach(btn => {
         const allowedRoles = (btn.dataset.roles || 'all').split(',');
@@ -2246,7 +2262,12 @@ function openInputModal(dateStr, timeSlot, scheduleId = null) {
 
     // フォームリセット
     document.querySelectorAll('#input-modal .toggle-btn').forEach(btn => btn.classList.remove('active'));
-    document.getElementById('input-start-time').value = '';
+    // デフォルト時間を設定（新規のみ、既存スケジュールがない場合）
+    if (!schedule) {
+        document.getElementById('input-start-time').value = getDefaultStartTime(dateStr, timeSlot);
+    } else {
+        document.getElementById('input-start-time').value = '';
+    }
     document.getElementById('input-memo').value = '';
     document.getElementById('absence-reason-group').classList.add('hidden');
     document.getElementById('ergo-type-group').classList.add('hidden');
@@ -3293,6 +3314,41 @@ function renderMileageRanking(period) {
     }
 
     container.innerHTML = html;
+}
+
+// マイレージウィジェットの展開/折りたたみ
+function toggleMileageExpand() {
+    const body = document.getElementById('mileage-widget-body');
+    const icon = document.getElementById('mileage-expand-icon');
+    if (body) {
+        body.classList.toggle('hidden');
+        if (icon) icon.textContent = body.classList.contains('hidden') ? '▼' : '▲';
+    }
+}
+
+// 週間距離サマリーを更新
+function updateMileageWeekSummary() {
+    const summary = document.getElementById('mileage-week-summary');
+    if (!summary || !state.currentUser) return;
+
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - mondayOffset);
+    const startDateStr = startDate.toISOString().slice(0, 10);
+    const todayStr = today.toISOString().slice(0, 10);
+
+    let myTotal = 0;
+    (state.practiceNotes || []).forEach(note => {
+        if (note.userId !== state.currentUser.id) return;
+        if (!note.rowingDistance || note.rowingDistance <= 0) return;
+        if (note.date < startDateStr || note.date > todayStr) return;
+        myTotal += note.rowingDistance;
+    });
+
+    const km = (myTotal / 1000).toFixed(1);
+    summary.textContent = `今週 ${km}km`;
 }
 
 
@@ -4797,10 +4853,19 @@ function renderMasterList() {
                     </div>`;
             }
 
+            // 使用団体バッジ
+            const orgColors = { '男子部': '#3b82f6', '女子部': '#ec4899', '医学部': '#10b981', 'OB': '#f59e0b' };
+            const orgLabel = item.organization || '';
+            const orgBadge = orgLabel ? `<span class="org-badge" style="background:${orgColors[orgLabel] || '#6b7280'};color:#fff;padding:2px 6px;border-radius:4px;font-size:0.7em;margin-left:4px;">${orgLabel}</span>` : '';
+
+            // 艇種別バッジ色
+            const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
+            const btColor = boatTypeColors[item.type] || '#6b7280';
+
             return `
             <div class="master-item" data-id="${item.id}">
                 <div class="info">
-                    <div class="name">${item.name} <span class="badge" style="font-size:0.8em">${item.type}</span></div>
+                    <div class="name">${item.name} <span class="badge" style="font-size:0.8em;background:${btColor};color:#fff;padding:2px 6px;border-radius:4px;">${item.type}</span>${orgBadge}</div>
                     ${riggingBadgeHtml}
                     <div class="sub">${item.memo || ''}</div>
                 </div>
@@ -4938,6 +5003,16 @@ function openMasterEditModal(item = null) {
                     <option value="4+" ${item?.type === '4+' ? 'selected' : ''}>4+ (付きフォア)</option>
                     <option value="4-" ${item?.type === '4-' ? 'selected' : ''}>4- (なしフォア)</option>
                     <option value="8+" ${item?.type === '8+' ? 'selected' : ''}>8+ (エイト)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>使用団体</label>
+                <select id="master-boat-org">
+                    <option value="" ${!item?.organization ? 'selected' : ''}>未設定</option>
+                    <option value="男子部" ${item?.organization === '男子部' ? 'selected' : ''}>男子部</option>
+                    <option value="女子部" ${item?.organization === '女子部' ? 'selected' : ''}>女子部</option>
+                    <option value="医学部" ${item?.organization === '医学部' ? 'selected' : ''}>医学部</option>
+                    <option value="OB" ${item?.organization === 'OB' ? 'selected' : ''}>OB</option>
                 </select>
             </div>
             ${riggingModeHtml}
@@ -5086,6 +5161,7 @@ function saveMasterItem() {
             id: currentMasterItem?.id || generateId(),
             name: document.getElementById('master-name').value,
             type: boatType,
+            organization: document.getElementById('master-boat-org')?.value || '',
             currentRiggingMode: isConvertibleBoat(boatType) ? (riggingMode || boatType) : null,
             status: status,
             availability: availability,
@@ -6000,6 +6076,25 @@ function renderSettings() {
         };
     }
 
+    // サイド (S/B) 設定
+    const sideSelect = document.getElementById('settings-side-select');
+    if (sideSelect) {
+        sideSelect.value = user.side || '';
+        sideSelect.onchange = (e) => {
+            const newSide = e.target.value;
+            state.currentUser.side = newSide;
+            DB.save('current_user', state.currentUser);
+
+            const idx = state.users.findIndex(u => u.id === state.currentUser.id);
+            if (idx !== -1) {
+                state.users[idx] = state.currentUser;
+                DB.save('users', state.users);
+            }
+            syncProfileToSupabase({ side: newSide });
+            showToast('サイドを変更しました', 'success');
+        };
+    }
+
     // 体重管理
     try {
         initWeightSection();
@@ -6647,7 +6742,7 @@ async function loadRigging(boatId) {
             };
             let allHistory = DB.loadLocal('rigging_history') || [];
             allHistory.push(migratedEntry);
-            saveLocal('rigging_history', allHistory);
+            DB.saveLocal('rigging_history', allHistory);
         }
     }
 
@@ -6711,7 +6806,7 @@ async function saveRigging(boatId) {
         allHistory = allHistory.filter(r => !toRemoveIds.includes(r.id));
     }
 
-    saveLocal('rigging_history', allHistory);
+    DB.saveLocal('rigging_history', allHistory);
 
     // 旧形式（riggings）にも最新値を保存（後方互換性）
     let riggings = DB.loadLocal('riggings') || [];
@@ -6737,7 +6832,7 @@ async function saveRigging(boatId) {
             created_at: newEntry.saved_at
         });
     }
-    saveLocal('riggings', riggings);
+    DB.saveLocal('riggings', riggings);
 
     // Supabase保存
     if (window.supabaseClient) {

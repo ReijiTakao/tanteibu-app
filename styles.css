@@ -4287,3 +4287,78 @@ textarea {
     color: var(--text-secondary);
     white-space: nowrap;
 }
+
+/* =========================================
+   マイレージウィジェット (ノートタブ内)
+   ========================================= */
+.mileage-widget {
+    background: linear-gradient(135deg, #1e3a5f, #2d5a8c);
+    border-radius: var(--border-radius);
+    margin-bottom: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.mileage-widget-header {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    cursor: pointer;
+    gap: 8px;
+}
+
+.mileage-widget-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #e0e7ff;
+    flex: 1;
+}
+
+.mileage-widget-summary {
+    font-size: 13px;
+    font-weight: 600;
+    color: #93c5fd;
+    padding: 2px 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+}
+
+.mileage-widget-expand {
+    font-size: 12px;
+    color: #93c5fd;
+    transition: transform 0.2s ease;
+}
+
+.mileage-widget-body {
+    padding: 0 16px 16px;
+}
+
+.mileage-widget-body .mileage-period-toggle {
+    margin-bottom: 12px;
+}
+
+.mileage-widget-body .period-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.mileage-widget-body .period-btn.active {
+    background: rgba(59, 130, 246, 0.3);
+    color: #fff;
+    border-color: rgba(59, 130, 246, 0.5);
+}
+
+.mileage-widget-body .mileage-ranking {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.mileage-widget-body .mileage-row {
+    color: #e2e8f0;
+}
+
+.mileage-widget-body .mileage-bar {
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+}

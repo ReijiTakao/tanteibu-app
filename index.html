@@ -182,21 +182,6 @@
                 <div id="available-boats-section" class="available-boats-section">
                     <!-- 空き艇セクション: JSで動的生成 -->
                 </div>
-
-                <!-- マイレージランキング -->
-                <div class="mileage-section">
-                    <div class="mileage-header">
-                        <h3>🏅 Mile Makes Champion</h3>
-                        <div class="mileage-period-toggle">
-                            <button class="period-btn active" data-period="week">今週</button>
-                            <button class="period-btn" data-period="month">今月</button>
-                            <button class="period-btn" data-period="all">累計</button>
-                        </div>
-                    </div>
-                    <div id="mileage-ranking" class="mileage-ranking">
-                        <!-- JSで動的生成 -->
-                    </div>
-                </div>
             </div>
 
 
@@ -463,6 +448,24 @@
 
                 <!-- サブタブ: 練習記録 -->
                 <div id="subtab-practice" class="note-subtab-content">
+                    <!-- Mile Makes Champion ウィジェット -->
+                    <div class="mileage-widget" id="mileage-widget">
+                        <div class="mileage-widget-header" onclick="toggleMileageExpand()">
+                            <span class="mileage-widget-title">🏅 Mile Makes Champion</span>
+                            <span class="mileage-widget-summary" id="mileage-week-summary">--km</span>
+                            <span class="mileage-widget-expand" id="mileage-expand-icon">▼</span>
+                        </div>
+                        <div class="mileage-widget-body hidden" id="mileage-widget-body">
+                            <div class="mileage-period-toggle">
+                                <button class="period-btn active" data-period="week">今週</button>
+                                <button class="period-btn" data-period="month">今月</button>
+                                <button class="period-btn" data-period="all">累計</button>
+                            </div>
+                            <div id="mileage-ranking" class="mileage-ranking">
+                                <!-- JSで動的生成 -->
+                            </div>
+                        </div>
+                    </div>
                     <div id="practice-notes-list" class="practice-notes-list">
                         <!-- JSで動的生成 -->
                     </div>
@@ -517,6 +520,7 @@
                                 <option value="コーチ">コーチ</option>
                                 <option value="Cox">Cox</option>
                                 <option value="漕手">漕手</option>
+                                <option value="幹部">幹部</option>
                                 <option value="マネージャー" disabled>マネージャー (Coming Soon)</option>
                                 <option value="データ班" disabled>データ班 (Coming Soon)</option>
                             </select>
@@ -538,6 +542,15 @@
                                 style="padding: 4px; border-radius: 4px; border: 1px solid #ccc;">
                                 <option value="man">男性</option>
                                 <option value="woman">女性</option>
+                            </select>
+                        </div>
+                        <div class="settings-item">
+                            <span class="settings-label">サイド（スイープ）</span>
+                            <select id="settings-side-select"
+                                style="padding: 4px; border-radius: 4px; border: 1px solid #ccc;">
+                                <option value="">未設定</option>
+                                <option value="S">S（ストローク）</option>
+                                <option value="B">B（バウ）</option>
                             </select>
                         </div>
                     </div>
@@ -649,7 +662,7 @@
 
         <!-- 下タブナビゲーション（6つ） -->
         <nav id="bottom-nav" class="bottom-nav">
-            <button class="nav-item active" data-tab="input" data-roles="rower,cox,admin">
+            <button class="nav-item active" data-tab="input" data-roles="rower,cox,admin,kanbu">
                 <span class="nav-icon">📝</span>
                 <span class="nav-label">練習登録</span>
             </button>
@@ -657,15 +670,15 @@
                 <span class="nav-icon">📅</span>
                 <span class="nav-label">全体</span>
             </button>
-            <button class="nav-item" data-tab="ergo-data" data-roles="rower,admin,coach">
+            <button class="nav-item" data-tab="ergo-data" data-roles="rower,admin,coach,kanbu">
                 <span class="nav-icon">📊</span>
                 <span class="nav-label">エルゴデータ</span>
             </button>
-            <button class="nav-item" data-tab="rigging" data-roles="rower,cox,admin,coach">
+            <button class="nav-item" data-tab="rigging" data-roles="rower,cox,admin,coach,kanbu">
                 <span class="nav-icon">🔧</span>
                 <span class="nav-label">リギング</span>
             </button>
-            <button class="nav-item" data-tab="crew-note" data-roles="rower,cox,admin,coach">
+            <button class="nav-item" data-tab="crew-note" data-roles="rower,cox,admin,coach,kanbu">
                 <span class="nav-icon">📖</span>
                 <span class="nav-label">ノート</span>
             </button>
@@ -715,9 +728,8 @@
                 <!-- 開始予定時刻 -->
                 <div class="form-group" id="start-time-group">
                     <label>開始予定時刻</label>
-                    <select id="input-start-time">
-                        <option value="">選択してください</option>
-                    </select>
+                    <input type="time" id="input-start-time" step="300"
+                        style="padding: 8px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; width: 100%; box-sizing: border-box;">
                 </div>
 
                 <!-- 参加不可の場合：理由 -->
