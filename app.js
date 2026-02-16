@@ -870,6 +870,7 @@ function switchTab(tabId) {
 
     if (tabId === 'overview') { renderOverview(); renderMileageRanking(); }
     if (tabId === 'ergo-data') {
+        initCoachErgoView();
         renderErgoRecords();
         renderWeeklyRanking();
         renderTeamRecords();
@@ -1562,16 +1563,20 @@ function classifyErgoSessions(reclassify = false) {
             state.ergoSessions.push(session);
 
             // ergoRecordsにも追加（データタブで表示）
+            // 当日の体重を自動付与
+            const dayWeight = getWeightForDate(state.currentUser.id, raw.date);
             state.ergoRecords.push({
                 id: generateId(),
                 rawId: raw.id, // rawDataへの参照を保持
                 userId: state.currentUser.id,
                 date: raw.date,
                 distance: raw.distance,
+                time: raw.time,
                 timeSeconds: Math.round(raw.time),
                 timeDisplay: formatTime(raw.time),
                 split: session.split,
                 strokeRate: raw.averageSPM,
+                weight: dayWeight,
                 menuKey: menuKey,
                 category: category,
                 source: 'Concept2'
@@ -3573,6 +3578,51 @@ let ergoNavState = {
     period: 'all'
 };
 
+// コーチ用エルゴビュー：閲覧対象ユーザーID取得
+function getErgoViewUserId() {
+    const select = document.getElementById('coach-player-select');
+    if (select && select.value && !select.closest('.hidden')) {
+        return select.value;
+    }
+    return state.currentUser?.id;
+}
+
+// コーチ用エルゴビュー初期化
+function initCoachErgoView() {
+    const selector = document.getElementById('coach-player-selector');
+    const select = document.getElementById('coach-player-select');
+    if (!selector || !select) return;
+
+    const role = state.currentUser?.role;
+    const isCoachOrAdmin = role === ROLES.ADMIN || role === ROLES.COACH;
+
+    if (!isCoachOrAdmin) {
+        selector.classList.add('hidden');
+        return;
+    }
+
+    // 選手リスト作成
+    selector.classList.remove('hidden');
+    const currentVal = select.value;
+    select.innerHTML = '<option value="">自分のデータ</option>';
+    state.users
+        .filter(u => u.id !== state.currentUser.id)
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+        .forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.id;
+            opt.textContent = u.name || u.id;
+            select.appendChild(opt);
+        });
+    // 前回の選択を復元
+    if (currentVal) select.value = currentVal;
+
+    // 変更イベント
+    select.onchange = () => {
+        renderErgoRecords();
+    };
+}
+
 function renderErgoRecords() {
     const list = document.getElementById('ergo-records-list');
     if (!list) return;
@@ -3638,7 +3688,7 @@ function renderAllRecords() {
     const list = document.getElementById('ergo-records-list');
 
     let records = state.ergoRecords.filter(r => {
-        if (r.userId !== state.currentUser?.id) return false;
+        if (r.userId !== getErgoViewUserId()) return false;
         if (r.menuKey === 'JustRow' || r.menuKey === 'その他') return false;
         return applyPeriodFilter(r);
     }).sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -3659,7 +3709,7 @@ function renderMenuSelection() {
 
     // 選択されたカテゴリのメニューを集計
     const records = state.ergoRecords.filter(r => {
-        if (r.userId !== state.currentUser?.id) return false;
+        if (r.userId !== getErgoViewUserId()) return false;
         if (r.menuKey === 'JustRow' || r.menuKey === 'その他') return false;
         if (r.category !== ergoNavState.category) return false;
         return true;
@@ -3735,7 +3785,7 @@ function renderMenuRecords() {
     const list = document.getElementById('ergo-records-list');
 
     let records = state.ergoRecords.filter(r => {
-        if (r.userId !== state.currentUser?.id) return false;
+        if (r.userId !== getErgoViewUserId()) return false;
         if (r.menuKey !== ergoNavState.menuKey) return false;
         return applyPeriodFilter(r);
     }).sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -3852,6 +3902,42 @@ function openErgoDetail(recordId) {
     document.getElementById('ergo-detail-split').textContent = record.split || '-';
     document.getElementById('ergo-detail-rate').textContent = record.strokeRate || '-';
 
+    // IDT表示（2000m TTの場合）
+    const idtDiv = document.getElementById('ergo-detail-idt');
+    if (idtDiv) {
+        if (record.menuKey === '2000m TT') {
+            const weight = record.weight || getWeightForDate(record.userId, record.date);
+            const user = state.users.find(u => u.id === record.userId);
+            const gender = user?.gender || 'man';
+            const actualTime = record.time || parseTimeStr(record.timeDisplay);
+
+            if (weight && actualTime) {
+                const idtSeconds = calculateIDTSeconds(weight, gender);
+                const pct = calculateIDTPercent(actualTime, idtSeconds);
+                const idtFormatted = formatTime(idtSeconds);
+
+                let pctClass = 'idt-low';
+                if (pct >= 100) pctClass = 'idt-high';
+                else if (pct >= 95) pctClass = 'idt-mid';
+
+                idtDiv.innerHTML = `
+                    <div class="idt-detail-label">⚖️ IDT（体重 ${weight}kg）</div>
+                    <div style="display:flex;align-items:baseline;gap:8px;">
+                        <span class="idt-detail-value">${idtFormatted}</span>
+                        <span class="idt-detail-percent ${pctClass}">${pct.toFixed(1)}%</span>
+                    </div>
+                `;
+                idtDiv.classList.remove('hidden');
+            } else {
+                idtDiv.innerHTML = '';
+                idtDiv.classList.add('hidden');
+            }
+        } else {
+            idtDiv.innerHTML = '';
+            idtDiv.classList.add('hidden');
+        }
+    }
+
     // スプリット/インターバルを表示
     renderSplits(record, raw);
 
@@ -3938,24 +4024,25 @@ function closeErgoDetailModal() {
 }
 
 // 週間ランキング
+let weeklyRankingSortMode = 'time'; // 'time' or 'idt'
+
 function renderWeeklyRanking() {
     const container = document.getElementById('weekly-ranking');
     if (!container) return;
 
     const menuSelect = document.getElementById('ranking-menu');
     const selectedMenu = menuSelect?.value || '2000m TT';
-    const genderBtn = document.querySelector('.gender-btn.active');
+    const genderBtn = document.querySelector('#weekly-ranking-section .gender-btn.active');
     const selectedGender = genderBtn?.dataset.gender || (state.currentUser?.gender || 'man');
 
-    // UIのトグル状態を初期化時に合わせる（初回レンダリング時など）
+    // UIのトグル状態を初期化時に合わせる
     if (!genderBtn && state.currentUser) {
-        const btn = document.querySelector(`.gender - btn[data - gender="${selectedGender}"]`);
+        const btn = document.querySelector(`#weekly-ranking-section .gender-btn[data-gender="${selectedGender}"]`);
         if (btn) {
-            document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('#weekly-ranking-section .gender-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
         }
     }
-
 
     // 今週の開始日を計算（月曜日）
     const now = new Date();
@@ -3965,83 +4052,93 @@ function renderWeeklyRanking() {
     monday.setDate(now.getDate() + mondayOffset);
     monday.setHours(0, 0, 0, 0);
 
-    // 全ユーザーの今週のベスト記録を取得
-    const weeklyBests = [];
+    const isTimeMenu = selectedMenu.includes('分');
+    const is2000m = selectedMenu === '2000m TT';
 
-    // ergoSessionsから今週のデータを抽出
+    // ergoRecords + ergoSessions を統合・重複排除してユーザーごとのベストを取得
+    const userBestMap = {}; // userId -> bestRecord
+    const seenRawIds = new Set();
+
+    // ergoSessionsから今週のデータ収集
     state.ergoSessions.forEach(session => {
         const user = state.users.find(u => u.id === session.userId);
-        if (!user || user.gender !== selectedGender) return; // 性別フィルタ
-
+        if (!user || user.gender !== selectedGender) return;
         const sessionDate = new Date(session.date);
-        if (sessionDate >= monday && session.menuKey === selectedMenu) {
-            // このユーザーの既存の記録よりも良いか確認
-            const existingIdx = weeklyBests.findIndex(b => b.userId === session.userId);
+        if (sessionDate < monday || session.menuKey !== selectedMenu) return;
+        if (session.rawId) seenRawIds.add(session.rawId);
+        // 体重フォールバック
+        if (!session.weight) session.weight = getWeightForDate(session.userId, session.date);
 
-            // 距離メニューはタイムで比較、時間メニューは距離で比較
-            const isBetter = (existing, newSession) => {
-                if (session.category === 'time') {
-                    return (newSession.distance || 0) > (existing.distance || 0);
-                }
-                return (newSession.time || Infinity) < (existing.time || Infinity);
-            };
-
-            if (existingIdx === -1) {
-                weeklyBests.push(session);
-            } else if (isBetter(weeklyBests[existingIdx], session)) {
-                weeklyBests[existingIdx] = session;
-            }
+        const existing = userBestMap[session.userId];
+        if (!existing || _isBetterRecord(session, existing, isTimeMenu)) {
+            userBestMap[session.userId] = session;
         }
     });
 
-    // ランキングソート
-    const isTimeMenu = selectedMenu.includes('分');
-    weeklyBests.sort((a, b) => {
-        if (isTimeMenu) {
-            return (b.distance || 0) - (a.distance || 0);
+    // ergoRecordsから今週のデータ収集（重複排除）
+    state.ergoRecords.forEach(record => {
+        const user = state.users.find(u => u.id === record.userId);
+        if (!user || user.gender !== selectedGender) return;
+        const recordDate = new Date(record.date);
+        if (recordDate < monday || record.menuKey !== selectedMenu) return;
+        if (record.rawId && seenRawIds.has(record.rawId)) return; // 重複スキップ
+        if (!record.weight) record.weight = getWeightForDate(record.userId, record.date);
+        // timeDisplayしかない場合はtime(秒)をパース
+        if (!record.time && record.timeDisplay) record.time = parseTimeStr(record.timeDisplay);
+
+        const existing = userBestMap[record.userId];
+        if (!existing || _isBetterRecord(record, existing, isTimeMenu)) {
+            userBestMap[record.userId] = record;
         }
-        return (a.time || Infinity) - (b.time || Infinity);
     });
+
+    const weeklyBests = Object.values(userBestMap);
+
+    // ソート
+    if (is2000m && weeklyRankingSortMode === 'idt') {
+        // IDT順：IDT%が高い順（体重なしは末尾）
+        weeklyBests.sort((a, b) => {
+            const userA = state.users.find(u => u.id === a.userId);
+            const userB = state.users.find(u => u.id === b.userId);
+            const idtA = _getIDTPercent(a, userA);
+            const idtB = _getIDTPercent(b, userB);
+            if (idtA === null && idtB === null) return (a.time || Infinity) - (b.time || Infinity);
+            if (idtA === null) return 1;
+            if (idtB === null) return -1;
+            return idtB - idtA;
+        });
+    } else {
+        weeklyBests.sort((a, b) => {
+            if (isTimeMenu) return (b.distance || 0) - (a.distance || 0);
+            return (a.time || Infinity) - (b.time || Infinity);
+        });
+    }
 
     if (weeklyBests.length === 0) {
-        container.innerHTML = '<div class="empty-state"><p>今週のデータがありません</p></div>';
+        let toggleHtml = '';
+        if (is2000m) toggleHtml = _renderSortToggle('weekly');
+        container.innerHTML = toggleHtml + '<div class="empty-state"><p>今週のデータがありません</p></div>';
         return;
     }
 
     const rankMedals = ['🥇', '🥈', '🥉'];
 
-    // 自分のベストを計算
-    let myBestRecord = null;
-    const myRecords = state.ergoRecords.filter(r =>
-        r.userId === state.currentUser?.id &&
-        r.menuKey === selectedMenu &&
-        applyPeriodFilter(r) // 期間フィルタも適用するか？ -> 週間ランキングなら「今週の自分のベスト」を表示すべき
-    );
-
-    // 今週の自分のデータを抽出 (weeklyBestsにはすでに入っているはずだが、ランク外の可能性もあるので再検索)
-    // いや、renderWeeklyRankingは「今週」固定なので、period filterは不要、日付でフィルタ
-    const myWeeklyRecords = state.ergoRecords.filter(r => {
-        if (r.userId !== state.currentUser?.id) return false;
-        if (r.menuKey !== selectedMenu) return false;
-        const d = new Date(r.date);
-        return d >= monday;
-    });
-
-    if (myWeeklyRecords.length > 0) {
-        myWeeklyRecords.sort((a, b) => {
-            if (isTimeMenu) return (b.distance || 0) - (a.distance || 0);
-            return (a.time || Infinity) - (b.time || Infinity);
-        });
-        myBestRecord = myWeeklyRecords[0];
-    }
+    // 自分のベスト
+    const myBest = userBestMap[state.currentUser?.id] || null;
 
     let html = '';
 
+    // 2000m用ソートトグル
+    if (is2000m) {
+        html += _renderSortToggle('weekly');
+    }
+
     // 自己ベスト表示エリア
     if (state.currentUser && state.currentUser.gender === selectedGender) {
-        if (myBestRecord) {
-            const display = formatDisplayDate(myBestRecord.date);
-            html += `< div class="my-best-section" >
+        if (myBest) {
+            const display = formatDisplayDate(myBest.date);
+            const idtHtml = is2000m ? renderIDTBadge(myBest.weight, selectedGender, myBest.time) : '';
+            html += `<div class="my-best-section">
     <div class="ranking-item my-best">
         <div class="rank">YOU</div>
         <div class="user-info">
@@ -4049,28 +4146,30 @@ function renderWeeklyRanking() {
             <div class="date">${display.month}/${display.day}</div>
         </div>
         <div>
-            <div class="time">${formatTime(myBestRecord.time)}</div>
-            <div class="split">Split ${getSplit(myBestRecord)}</div>
+            <div class="time">${formatTime(myBest.time)}</div>
+            <div class="split">Split ${getSplit(myBest)}</div>
+            ${idtHtml}
         </div>
     </div>
-            </div > `;
+            </div>`;
         } else {
-            html += `< div class="my-best-section" >
+            html += `<div class="my-best-section">
     <div class="ranking-item my-best empty">
         <div class="rank">YOU</div>
         <div class="user-info"><div class="name">今週の記録なし</div></div>
     </div>
-            </div > `;
+            </div>`;
         }
     }
 
-    html += weeklyBests.slice(0, 10).map((record, idx) => {
+    html += weeklyBests.slice(0, 20).map((record, idx) => {
         const user = state.users.find(u => u.id === record.userId);
         const display = formatDisplayDate(record.date);
-        const rankSymbol = idx < 3 ? rankMedals[idx] : `${idx + 1} `;
+        const rankSymbol = idx < 3 ? rankMedals[idx] : `${idx + 1}`;
         const isMe = user && user.id === state.currentUser?.id;
+        const idtHtml = is2000m ? renderIDTBadge(record.weight, selectedGender, record.time) : '';
 
-        return `< div class="ranking-item ${isMe ? 'highlight' : ''}" >
+        return `<div class="ranking-item ${isMe ? 'highlight' : ''}">
             <div class="rank">${rankSymbol}</div>
             <div class="user-info">
                 <div class="name">${user?.name || '不明'}</div>
@@ -4079,11 +4178,53 @@ function renderWeeklyRanking() {
             <div>
                 <div class="time">${formatTime(record.time)}</div>
                 <div class="split">Split ${getSplit(record)}</div>
+                ${idtHtml}
             </div>
-        </div > `;
+        </div>`;
     }).join('');
 
     container.innerHTML = html;
+}
+
+// 内部ヘルパー：記録比較
+function _isBetterRecord(newRec, existingRec, isTimeMenu) {
+    if (isTimeMenu) {
+        return (newRec.distance || 0) > (existingRec.distance || 0);
+    }
+    const newTime = newRec.time || parseTimeStr(newRec.timeDisplay) || Infinity;
+    const existTime = existingRec.time || parseTimeStr(existingRec.timeDisplay) || Infinity;
+    return newTime < existTime;
+}
+
+// 内部ヘルパー：IDT%取得
+function _getIDTPercent(record, user) {
+    if (!record.weight || !record.time) return null;
+    const gender = user?.gender || 'man';
+    const idt = calculateIDTSeconds(record.weight, gender);
+    if (!idt) return null;
+    return calculateIDTPercent(record.time, idt);
+}
+
+// ソートトグルHTML
+function _renderSortToggle(rankingType) {
+    const mode = rankingType === 'weekly' ? weeklyRankingSortMode : allTimeRankingSortMode;
+    return `<div style="display:flex;align-items:center;margin-bottom:8px;">
+        <span style="font-size:12px;color:#888;">並び替え:</span>
+        <div class="sort-toggle">
+            <button class="sort-toggle-btn ${mode === 'time' ? 'active' : ''}" onclick="set${rankingType === 'weekly' ? 'Weekly' : 'AllTime'}RankingSort('time')">⏱ タイム順</button>
+            <button class="sort-toggle-btn ${mode === 'idt' ? 'active' : ''}" onclick="set${rankingType === 'weekly' ? 'Weekly' : 'AllTime'}RankingSort('idt')">📊 IDT順</button>
+        </div>
+    </div>`;
+}
+
+function setWeeklyRankingSort(mode) {
+    weeklyRankingSortMode = mode;
+    renderWeeklyRanking();
+}
+
+function setAllTimeRankingSort(mode) {
+    allTimeRankingSortMode = mode;
+    renderAllTimeRanking();
 }
 
 // チーム練習記録
@@ -4202,123 +4343,110 @@ function initDataViewToggle() {
 }
 
 // 歴代ランキング (Personal Best)
+let allTimeRankingSortMode = 'time'; // 'time' or 'idt'
+
 function renderAllTimeRanking() {
     const container = document.getElementById('all-time-ranking-list');
     if (!container) return;
 
     const menuSelect = document.getElementById('all-time-ranking-menu');
     const selectedMenu = menuSelect?.value || '2000m TT';
+    const isTimeMenu = selectedMenu.includes('分');
+    const is2000m = selectedMenu === '2000m TT';
 
-    // 全ユーザーの自己ベストを取得
+    // 性別トグルをDOMから取得
+    const genderBtn = document.querySelector('#all-time-data-view .gender-btn.active');
+    const selectedGender = genderBtn?.dataset.gender || (state.currentUser?.gender || 'man');
+
+    // 初回にアクティブ設定
+    if (!genderBtn && state.currentUser) {
+        const btn = document.querySelector(`#all-time-data-view .gender-btn[data-gender="${selectedGender}"]`);
+        if (btn) {
+            document.querySelectorAll('#all-time-data-view .gender-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+    }
+
+    // ユーザーごとにベストを収集
     const allTimeBests = [];
-
-    // ユーザーごとにベストを探す
     state.users.forEach(user => {
-        const userRecords = state.ergoRecords.filter(r => r.userId === user.id && r.menuKey === selectedMenu);
-        const importedRecords = state.ergoSessions.filter(s => s.userId === user.id && s.menuKey === selectedMenu);
+        if (user.gender !== selectedGender) return; // 性別フィルタ
 
-        // 手入力とインポートの記録を統合
-        const allRecords = [...userRecords, ...importedRecords];
+        const seenRawIds = new Set();
+        const allRecords = [];
 
+        // ergoSessions優先
+        state.ergoSessions.filter(s => s.userId === user.id && s.menuKey === selectedMenu).forEach(r => {
+            if (r.rawId) seenRawIds.add(r.rawId);
+            if (!r.weight) r.weight = getWeightForDate(r.userId, r.date);
+            allRecords.push(r);
+        });
+
+        // ergoRecords（重複排除）
+        state.ergoRecords.filter(r => r.userId === user.id && r.menuKey === selectedMenu).forEach(r => {
+            if (r.rawId && seenRawIds.has(r.rawId)) return;
+            if (!r.weight) r.weight = getWeightForDate(r.userId, r.date);
+            if (!r.time && r.timeDisplay) r.time = parseTimeStr(r.timeDisplay);
+            allRecords.push(r);
+        });
 
         if (allRecords.length === 0) return;
 
         // ベスト記録を特定
-        // 距離メニューはタイムで比較、時間メニューは距離で比較
-        const isTimeMenu = selectedMenu.includes('分');
-
         let bestRecord = allRecords[0];
         for (let i = 1; i < allRecords.length; i++) {
-            const current = allRecords[i];
-
-            if (isTimeMenu) {
-                // 時間制: 距離が長い方が良い
-                if ((current.distance || 0) > (bestRecord.distance || 0)) {
-                    bestRecord = current;
-                }
-            } else {
-                // 距離制: タイムが短い方が良い
-                // timeDisplay "mm:ss.f" をパースして比較する必要があるが、
-                // インポートデータ(ergoSessions)は time (秒) を持っている。
-                // 手入力データ(ergoRecords)は timeDisplay しかないかも？
-                // 統一的に time (秒) を使うのが安全。
-                // 手入力時に timeDisplay から秒換算していない場合はここで簡易パース必要だが
-                // 今回は saveSchedule で timeDisplay しか保存していないため注意。
-                // 一旦、インポートデータの time を優先し、なければ timeDisplay 文字列比較(簡易)
-
-                const timeA = bestRecord.time || parseTimeStr(bestRecord.timeDisplay) || Infinity;
-                const timeB = current.time || parseTimeStr(current.timeDisplay) || Infinity;
-
-                if (timeB < timeA) {
-                    bestRecord = current;
-                }
+            if (_isBetterRecord(allRecords[i], bestRecord, isTimeMenu)) {
+                bestRecord = allRecords[i];
             }
         }
-
         allTimeBests.push(bestRecord);
     });
 
-    // ランキングソート
-    const isTimeMenu = selectedMenu.includes('分');
-    allTimeBests.sort((a, b) => {
-        if (isTimeMenu) {
-            return (b.distance || 0) - (a.distance || 0); // 距離降順
-        }
-        // タイム昇順
-        const timeA = a.time || parseTimeStr(a.timeDisplay) || Infinity;
-        const timeB = b.time || parseTimeStr(b.timeDisplay) || Infinity;
-        return timeA - timeB;
-    });
+    // ソート
+    if (is2000m && allTimeRankingSortMode === 'idt') {
+        allTimeBests.sort((a, b) => {
+            const userA = state.users.find(u => u.id === a.userId);
+            const userB = state.users.find(u => u.id === b.userId);
+            const idtA = _getIDTPercent(a, userA);
+            const idtB = _getIDTPercent(b, userB);
+            if (idtA === null && idtB === null) return (a.time || Infinity) - (b.time || Infinity);
+            if (idtA === null) return 1;
+            if (idtB === null) return -1;
+            return idtB - idtA;
+        });
+    } else {
+        allTimeBests.sort((a, b) => {
+            if (isTimeMenu) return (b.distance || 0) - (a.distance || 0);
+            const timeA = a.time || parseTimeStr(a.timeDisplay) || Infinity;
+            const timeB = b.time || parseTimeStr(b.timeDisplay) || Infinity;
+            return timeA - timeB;
+        });
+    }
 
     if (allTimeBests.length === 0) {
-        container.innerHTML = '<div class="empty-state"><p>データがありません</p></div>';
+        let toggleHtml = is2000m ? _renderSortToggle('allTime') : '';
+        container.innerHTML = toggleHtml + '<div class="empty-state"><p>データがありません</p></div>';
         return;
     }
 
-    // ----------------------------------------------------
-    // 自己ベスト表示 (My Best)
-    // ----------------------------------------------------
-    let myBestHtml = '';
-    // 現在のユーザーがランキングに含まれているか、または別途自己ベストを持っているか確認
-    // allTimeBestsには全ユーザーのベストが含まれているので、そこから探すのが早い
-    const myRecordInRanking = allTimeBests.find(r => r.userId === state.currentUser?.id);
-
-    // もしランキングに入っていなくても、自分のベストを表示したい場合は別途計算が必要だが
-    // allTimeBestsは全ユーザーのベストを集めているので、ここに無ければ記録なしか、フィルタされているか。
-    // ここでは allTimeBests から抽出する。
-
-    // 性別フィルタが適用されていない？ renderAllTimeRankingには性別フィルタの実装がまだだった！
-    // ここで性別フィルタも追加する。
-
     const rankMedals = ['🥇', '🥈', '🥉'];
-    let listHtml = '';
 
-    // 表示するリスト（性別フィルタ適用）
-    // フィルタ用の性別を取得 (UIにトグルがない場合はユーザーの性別)
-    // 週次ランキングと同じクラスを使っているので、DOMから取得できるかも？
-    // ただしAllTimeRanking用のトグルがあるか確認が必要。
-    // 実装計画では「ランキングビューにトグルを追加」としたので、共通のクラス '.gender-toggle' があるはずだが
-    // IDが被らないように注意が必要。週次と歴代で別の場所にトグルがあるならOK。
-    // index.htmlの構造上、タブ切り替えなので、それぞれのセクションにトグルが必要か、共通のフィルタエリアがあるか。
-    // 現状 index.html には weekly-ranking-section にしかトグルを追加していない。
-    // all-time-data-view にもトグルを追加する必要がある。
-    // いったん、現在のユーザーの性別でフィルタするロジックを入れる。
+    // 自己ベスト
+    const myRecord = allTimeBests.find(r => r.userId === state.currentUser?.id);
 
-    const currentGender = state.currentUser?.gender || 'man';
-    // ※ トグル対応は後ほどHTML側で行うとして、ここではロジックのみ先行させるか、
-    // 週次ランキングのトグル状態を共有するか。
-    // 簡易的に「自分と同じ性別のランキング」を表示するデフォルト挙動にする。
+    let html = '';
 
-    const filteredBests = allTimeBests.filter(r => {
-        const u = state.users.find(user => user.id === r.userId);
-        const uGender = u?.gender || 'man';
-        return u && uGender === currentGender;
-    });
+    // 2000m用ソートトグル
+    if (is2000m) {
+        html += _renderSortToggle('allTime');
+    }
 
-    // 自分と同じ性別の記録から自分のベストを探す
-    if (myRecordInRanking && state.currentUser.gender === currentGender) {
-        const display = formatDisplayDate(myRecordInRanking.date);
-        myBestHtml = `< div class="my-best-section" >
+    // 自己ベスト表示
+    if (state.currentUser && state.currentUser.gender === selectedGender) {
+        if (myRecord) {
+            const display = formatDisplayDate(myRecord.date);
+            const idtHtml = is2000m ? renderIDTBadge(myRecord.weight, selectedGender, myRecord.time) : '';
+            html += `<div class="my-best-section">
     <div class="ranking-item my-best">
         <div class="rank">YOU</div>
         <div class="user-info">
@@ -4326,42 +4454,44 @@ function renderAllTimeRanking() {
             <div class="date">${display.year}/${display.month}/${display.day}</div>
         </div>
         <div>
-            <div class="time">${myRecordInRanking.timeDisplay || formatTime(myRecordInRanking.time)}</div>
-            <div class="split">Split ${myRecordInRanking.split || '-'}</div>
+            <div class="time">${myRecord.timeDisplay || formatTime(myRecord.time)}</div>
+            <div class="split">Split ${myRecord.split || getSplit(myRecord)}</div>
+            ${idtHtml}
         </div>
     </div>
-        </div > `;
-    } else if (state.currentUser.gender === currentGender) {
-        myBestHtml = `< div class="my-best-section" >
+            </div>`;
+        } else {
+            html += `<div class="my-best-section">
     <div class="ranking-item my-best empty">
         <div class="rank">YOU</div>
         <div class="user-info"><div class="name">記録なし</div></div>
     </div>
-        </div > `;
+            </div>`;
+        }
     }
 
-    listHtml = filteredBests.map((record, idx) => {
+    html += allTimeBests.map((record, idx) => {
         const user = state.users.find(u => u.id === record.userId);
         const display = formatDisplayDate(record.date);
-        const rankSymbol = idx < 3 ? rankMedals[idx] : `${idx + 1} `;
-        // 女子体重プライバシー
+        const rankSymbol = idx < 3 ? rankMedals[idx] : `${idx + 1}`;
+        const isMe = user && user.id === state.currentUser?.id;
+        const idtHtml = is2000m ? renderIDTBadge(record.weight, selectedGender, record.time) : '';
+
+        // 体重表示（女子プライバシー対応）
         let weightInfo = '';
         if (record.weight) {
-            if (user.gender === 'woman') {
-                // 自分か管理者なら表示
+            if (user?.gender === 'woman') {
                 if (state.currentUser?.id === user.id || state.currentUser?.role === ROLES.ADMIN) {
-                    weightInfo = `< span class="weight-info" > (${record.weight}kg)</span > `;
+                    weightInfo = `<span class="weight-info"> (${record.weight}kg)</span>`;
                 } else {
-                    weightInfo = `< span class="weight-info private" > (記録済)</span > `;
+                    weightInfo = `<span class="weight-info private"> (記録済)</span>`;
                 }
             } else {
-                weightInfo = `< span class="weight-info" > (${record.weight}kg)</span > `;
+                weightInfo = `<span class="weight-info"> (${record.weight}kg)</span>`;
             }
         }
 
-        const isMe = user && user.id === state.currentUser?.id;
-
-        return `< div class="ranking-item ${isMe ? 'highlight' : ''}" >
+        return `<div class="ranking-item ${isMe ? 'highlight' : ''}">
             <div class="rank">${rankSymbol}</div>
             <div class="user-info">
                 <div class="name">${user?.name || '不明'} ${weightInfo}</div>
@@ -4369,12 +4499,13 @@ function renderAllTimeRanking() {
             </div>
             <div>
                 <div class="time">${record.timeDisplay || formatTime(record.time)}</div>
-                <div class="split">Split ${record.split || '-'}</div>
+                <div class="split">Split ${record.split || getSplit(record)}</div>
+                ${idtHtml}
             </div>
-        </div > `;
+        </div>`;
     }).join('');
 
-    container.innerHTML = myBestHtml + listHtml;
+    container.innerHTML = html;
 }
 
 function parseTimeStr(timeStr) {
@@ -5907,22 +6038,45 @@ function initWeightSection() {
     const weightHistory = getWeightHistory();
     const latestWeight = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1] : null;
 
-    // 現在の体重を表示
-    const display = document.getElementById('current-weight-display');
-    if (display) {
+    // 大きな体重表示を更新
+    const displayLarge = document.getElementById('current-weight-display-large');
+    if (displayLarge) {
         if (latestWeight) {
-            display.textContent = `${latestWeight.weight} kg`;
-            display.className = 'settings-value success';
+            displayLarge.textContent = latestWeight.weight.toFixed(1);
         } else {
-            display.textContent = '未登録';
-            display.className = 'settings-value';
+            displayLarge.textContent = '--.-';
         }
     }
 
     // 体重入力フィールドに最新値をプリセット
     const input = document.getElementById('weight-input');
     if (input && latestWeight) {
-        input.placeholder = `前回: ${latestWeight.weight} kg`;
+        input.value = latestWeight.weight.toFixed(1);
+    }
+
+    // ±ステッパーボタン
+    document.querySelectorAll('.weight-step-btn').forEach(btn => {
+        btn.onclick = () => {
+            const step = parseFloat(btn.dataset.step);
+            const input = document.getElementById('weight-input');
+            if (!input) return;
+            let current = parseFloat(input.value) || (latestWeight ? latestWeight.weight : 70);
+            current = Math.round((current + step) * 10) / 10;
+            current = Math.max(30, Math.min(150, current));
+            input.value = current.toFixed(1);
+            // 大きな表示も即時更新
+            if (displayLarge) displayLarge.textContent = current.toFixed(1);
+        };
+    });
+
+    // 入力フィールドの変更で大きな表示も更新
+    if (input) {
+        input.oninput = () => {
+            const val = parseFloat(input.value);
+            if (displayLarge && !isNaN(val) && val >= 30 && val <= 150) {
+                displayLarge.textContent = val.toFixed(1);
+            }
+        };
     }
 
     // 記録ボタン
@@ -5942,6 +6096,14 @@ function getWeightHistory() {
     return history
         .filter(w => w.userId === state.currentUser?.id)
         .sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
+// 指定ユーザーの指定日の体重を取得（当日中に記録されていればOK）
+function getWeightForDate(userId, dateStr) {
+    const history = DB.load('weight_history') || [];
+    const targetDate = dateStr?.split('T')[0] || dateStr; // YYYY-MM-DD形式に正規化
+    const entry = history.find(w => w.userId === userId && w.date === targetDate);
+    return entry ? entry.weight : null;
 }
 
 function saveWeight() {
@@ -7140,28 +7302,13 @@ function calculateIDT() {
     const weight = parseFloat(weightInput);
 
     if (!weight || weight <= 0) {
-        // showToast('体重を入力してください', 'error');
         return;
     }
 
     const genderBtn = document.querySelector('#idt-gender-toggle .gender-btn.active');
     const gender = genderBtn?.dataset.gender || 'man';
 
-    // 新計算式 (2026/02/12 User提供)
-    // Men: 335.8 * (98 / W)^(2/9)
-    // Women: 384.4 * (81 / W)^0.2455
-
-    let targetSeconds;
-
-    if (gender === 'man') {
-        const base = 98.0 / weight;
-        const exponent = 2.0 / 9.0;
-        targetSeconds = 335.8 * Math.pow(base, exponent);
-    } else {
-        const base = 81.0 / weight;
-        const exponent = 0.2455;
-        targetSeconds = 384.4 * Math.pow(base, exponent);
-    }
+    const targetSeconds = calculateIDTSeconds(weight, gender);
 
     // フォーマット (MM:SS.s)
     const formattedTime = formatTime(targetSeconds);
@@ -7177,3 +7324,34 @@ function calculateIDT() {
     document.getElementById('idt-target-split').textContent = formattedSplit;
 }
 
+// =========================================
+// IDT計算ヘルパー関数（共用）
+// =========================================
+// 体重と性別からIDT目標タイム（秒）を算出
+function calculateIDTSeconds(weight, gender) {
+    if (!weight || weight <= 0) return null;
+    if (gender === 'man') {
+        return 335.8 * Math.pow(98.0 / weight, 2.0 / 9.0);
+    } else {
+        return 384.4 * Math.pow(81.0 / weight, 0.2455);
+    }
+}
+
+// 実際のタイムとIDT目標タイムからIDT達成率(%)を算出
+function calculateIDTPercent(actualSeconds, idtSeconds) {
+    if (!actualSeconds || !idtSeconds || actualSeconds <= 0 || idtSeconds <= 0) return null;
+    return (idtSeconds / actualSeconds) * 100;
+}
+
+// IDTバッジHTML生成（ランキング用）
+function renderIDTBadge(weight, gender, actualSeconds) {
+    if (!weight || !actualSeconds) return '';
+    const idtSeconds = calculateIDTSeconds(weight, gender);
+    if (!idtSeconds) return '';
+    const pct = calculateIDTPercent(actualSeconds, idtSeconds);
+    if (!pct) return '';
+    let cls = 'idt-low';
+    if (pct >= 100) cls = 'idt-high';
+    else if (pct >= 95) cls = 'idt-mid';
+    return `<span class="idt-badge ${cls}">IDT ${pct.toFixed(1)}%</span>`;
+}

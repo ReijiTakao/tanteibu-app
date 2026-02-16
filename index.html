@@ -336,6 +336,14 @@
 
                 <!-- マイデータビュー -->
                 <div id="personal-data-view" class="data-view">
+                    <h3 class="section-title">マイデータ</h3>
+                    <!-- コーチ用選手選択（JSで表示制御） -->
+                    <div id="coach-player-selector" class="coach-player-select hidden">
+                        <span class="coach-player-label">👤 選手:</span>
+                        <select id="coach-player-select">
+                            <option value="">選手を選択...</option>
+                        </select>
+                    </div>
                     <!-- パン屑ナビゲーション -->
                     <div id="ergo-breadcrumb" class="ergo-breadcrumb">
                         <span class="breadcrumb-item active" data-level="all">すべて</span>
@@ -408,6 +416,12 @@
                 <div id="all-time-data-view" class="ranking-section data-view hidden">
                     <h3 class="section-title">🥇 歴代最高記録 (Personal Best)</h3>
                     <div class="ranking-filters">
+                        <div class="toggle-group gender-toggle" style="margin-bottom: 8px;">
+                            <button class="toggle-btn gender-btn active" data-gender="man"
+                                onclick="this.parentElement.querySelectorAll('.gender-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active'); renderAllTimeRanking();">男子</button>
+                            <button class="toggle-btn gender-btn" data-gender="woman"
+                                onclick="this.parentElement.querySelectorAll('.gender-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active'); renderAllTimeRanking();">女子</button>
+                        </div>
                         <select id="all-time-ranking-menu">
                             <option value="2000m TT">2000m TT</option>
                             <option value="1000m TT">1000m TT</option>
@@ -519,16 +533,20 @@
                     <!-- 体重管理 -->
                     <div class="settings-section">
                         <h3>⚖️ 体重管理</h3>
-                        <div class="settings-item">
-                            <span class="settings-label">現在の体重</span>
-                            <span id="current-weight-display" class="settings-value">未登録</span>
-                        </div>
-                        <div class="weight-input-row"
-                            style="display: flex; gap: 8px; align-items: center; margin: 8px 0;">
-                            <input type="number" id="weight-input" placeholder="体重 (kg)" step="0.1" min="30" max="150"
-                                style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px;">
-                            <button id="save-weight-btn" class="primary-btn"
-                                style="white-space: nowrap; padding: 8px 16px;">記録</button>
+                        <div class="weight-input-enhanced">
+                            <div class="weight-display-large">
+                                <span id="current-weight-display-large" class="weight-value-large">--.-</span>
+                                <span class="weight-unit">kg</span>
+                            </div>
+                            <div class="weight-stepper">
+                                <button class="weight-step-btn" id="weight-minus-1" data-step="-1">-1</button>
+                                <button class="weight-step-btn" id="weight-minus-01" data-step="-0.1">-0.1</button>
+                                <input type="number" id="weight-input" placeholder="0.0" step="0.1" min="30" max="150"
+                                    class="weight-input-field">
+                                <button class="weight-step-btn" id="weight-plus-01" data-step="0.1">+0.1</button>
+                                <button class="weight-step-btn" id="weight-plus-1" data-step="1">+1</button>
+                            </div>
+                            <button id="save-weight-btn" class="primary-btn weight-save-btn">体重を記録</button>
                         </div>
                         <div id="weight-history-section" style="margin-top: 12px;">
                             <div
@@ -857,6 +875,8 @@
                         <span class="detail-label">平均Rate</span>
                         <span id="ergo-detail-rate" class="detail-value"></span>
                     </div>
+                    <!-- IDT情報（2000m TTの場合のみ表示） -->
+                    <div id="ergo-detail-idt" class="idt-detail-row hidden"></div>
                 </div>
 
                 <!-- 500mスプリット -->

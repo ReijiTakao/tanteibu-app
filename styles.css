@@ -4095,3 +4095,195 @@ textarea {
 }
 
 /* SR */
+
+/* =========================================
+   体重入力 Enhanced UI
+   ========================================= */
+.weight-input-enhanced {
+    text-align: center;
+    padding: 16px 0;
+}
+
+.weight-display-large {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 4px;
+    margin-bottom: 16px;
+}
+
+.weight-value-large {
+    font-size: 48px;
+    font-weight: 800;
+    color: var(--accent-color);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+.weight-unit {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.weight-stepper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.weight-step-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1.5px solid var(--accent-color);
+    background: rgba(59, 130, 246, 0.06);
+    color: var(--accent-color);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.weight-step-btn:active {
+    background: var(--accent-gradient);
+    color: white;
+    border-color: transparent;
+    transform: scale(0.92);
+}
+
+.weight-input-field {
+    width: 80px;
+    padding: 10px 4px;
+    border-radius: 10px;
+    border: 1.5px solid #ccc;
+    font-size: 18px;
+    font-weight: 700;
+    text-align: center;
+    color: var(--text-primary);
+    background: var(--bg-white);
+}
+
+.weight-input-field:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.weight-save-btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    border-radius: 12px;
+}
+
+/* =========================================
+   IDT Badge in Rankings
+   ========================================= */
+.idt-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 2px;
+}
+
+.idt-badge.idt-high {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+}
+
+.idt-badge.idt-mid {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+}
+
+.idt-badge.idt-low {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
+
+/* 2000m用ソートトグル */
+.sort-toggle {
+    display: inline-flex;
+    gap: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1.5px solid var(--accent-color);
+    margin-left: 8px;
+}
+
+.sort-toggle-btn {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    background: transparent;
+    color: var(--accent-color);
+    transition: all var(--transition-fast);
+}
+
+.sort-toggle-btn.active {
+    background: var(--accent-color);
+    color: white;
+}
+
+/* IDT detail in ergo detail modal */
+.idt-detail-row {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(16, 185, 129, 0.06));
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-top: 8px;
+}
+
+.idt-detail-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.idt-detail-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--accent-color);
+}
+
+.idt-detail-percent {
+    font-size: 14px;
+    font-weight: 700;
+    margin-left: 8px;
+}
+
+/* Coach ergo player select */
+.coach-player-select {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    margin-bottom: 8px;
+}
+
+.coach-player-select select {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1.5px solid #ccc;
+    font-size: 14px;
+    font-weight: 500;
+    background: var(--bg-white);
+}
+
+.coach-player-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
