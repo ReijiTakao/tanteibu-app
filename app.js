@@ -6070,8 +6070,77 @@ function renderSettings() {
     if (logoutBtn) {
         logoutBtn.onclick = handleLogout;
     }
+
+    // 登録者名簿
+    renderMemberRoster();
 }
 
+// 登録者名簿をレンダリング
+function renderMemberRoster() {
+    const container = document.getElementById('member-roster');
+    if (!container) return;
+
+    const members = (state.users || []).filter(u => u.approvalStatus === '承認済み' && u.status !== '非在籍');
+
+    if (members.length === 0) {
+        container.innerHTML = '<p style="color:#888;font-size:13px;">登録者がいません</p>';
+        return;
+    }
+
+    // 学年でグループ化（降順: 4年→1年→コーチ/OB）
+    const gradeGroups = {};
+    members.forEach(m => {
+        const grade = m.grade || 0;
+        const label = grade === 0 ? 'コーチ / OB' : `${grade}年`;
+        if (!gradeGroups[grade]) gradeGroups[grade] = { label, members: [] };
+        gradeGroups[grade].members.push(m);
+    });
+
+    // 学年降順でソート（4→3→2→1→0）
+    const sortedGrades = Object.keys(gradeGroups).map(Number).sort((a, b) => b - a);
+
+    const roleEmoji = (role) => {
+        switch (role) {
+            case '管理者': return '👑';
+            case 'コーチ': return '🎓';
+            case 'Cox': return '📣';
+            case '漕手': return '🚣';
+            default: return '👤';
+        }
+    };
+
+    const genderLabel = (g) => g === 'woman' ? '女' : '男';
+
+    let html = `<div style="font-size:13px;color:#666;margin-bottom:8px;">合計 ${members.length}名</div>`;
+
+    sortedGrades.forEach(grade => {
+        const group = gradeGroups[grade];
+        const sorted = group.members.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
+
+        html += `<div style="margin-bottom:12px;">`;
+        html += `<div style="font-weight:600;font-size:14px;margin-bottom:4px;color:#333;">${group.label}（${sorted.length}名）</div>`;
+        html += `<table style="width:100%;border-collapse:collapse;font-size:13px;">`;
+        html += `<thead><tr style="background:#f5f5f5;border-bottom:1px solid #ddd;">
+            <th style="text-align:left;padding:6px 8px;">名前</th>
+            <th style="text-align:center;padding:6px 4px;">権限</th>
+            <th style="text-align:center;padding:6px 4px;">性別</th>
+        </tr></thead><tbody>`;
+
+        sorted.forEach(m => {
+            const isMe = state.currentUser && m.id === state.currentUser.id;
+            const bgStyle = isMe ? 'background:#e8f4fd;' : '';
+            html += `<tr style="border-bottom:1px solid #eee;${bgStyle}">
+                <td style="padding:6px 8px;">${m.name || '不明'}${isMe ? ' <span style="color:#2196f3;font-size:11px;">（自分）</span>' : ''}</td>
+                <td style="text-align:center;padding:6px 4px;">${roleEmoji(m.role)} ${m.role || '-'}</td>
+                <td style="text-align:center;padding:6px 4px;">${genderLabel(m.gender)}</td>
+            </tr>`;
+        });
+
+        html += `</tbody></table></div>`;
+    });
+
+    container.innerHTML = html;
+}
 function disconnectConcept2() {
     showConfirmModal('Concept2との連携を解除しますか？', () => {
         try {
