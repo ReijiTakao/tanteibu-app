@@ -5204,6 +5204,9 @@ const initializeApp = async () => {
 
         if (isDemoMode) {
             DB.setDemoMode(true);
+            // デモモード時のみリセットボタンを表示
+            const resetBtn = document.getElementById('reset-data-btn');
+            if (resetBtn) resetBtn.classList.remove('hidden');
         }
 
         // Supabaseクライアントの初期化
