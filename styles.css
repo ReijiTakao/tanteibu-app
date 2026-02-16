@@ -1934,7 +1934,7 @@ textarea {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    max-height: 400px;
+    max-height: 60vh;
     overflow-y: auto;
 }
 
@@ -1946,10 +1946,16 @@ textarea {
     background-color: var(--bg-primary);
     border-radius: var(--border-radius-sm);
     cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.master-item:active {
+    background-color: var(--bg-secondary);
 }
 
 .master-item .info {
     flex: 1;
+    min-width: 0;
 }
 
 .master-item .name {
@@ -1967,6 +1973,7 @@ textarea {
     border-radius: 4px;
     font-size: 11px;
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .master-item .status.available {
@@ -1977,6 +1984,183 @@ textarea {
 .master-item .status.unavailable {
     background-color: #fed7d7;
     color: #c53030;
+}
+
+.master-item .status.repair {
+    background-color: #fefcbf;
+    color: #975a16;
+}
+
+/* 編集・削除アクションボタン */
+.master-item-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.master-item-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.master-action-btn {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.master-action-btn:active {
+    transform: scale(0.9);
+}
+
+.master-action-btn.edit-btn:active {
+    background-color: rgba(59, 130, 246, 0.15);
+}
+
+.master-action-btn.delete-btn:active {
+    background-color: rgba(239, 68, 68, 0.15);
+}
+
+/* リギング状態バッジ */
+.rigging-mode-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.rigging-mode-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+}
+
+.rigging-toggle-btn {
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    cursor: pointer;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.rigging-toggle-btn:active {
+    transform: scale(0.85);
+    background-color: rgba(59, 130, 246, 0.15);
+}
+
+/* オール基準値テーブル */
+.oar-spec-section {
+    background: linear-gradient(135deg, #1e293b, #334155);
+    border-radius: var(--border-radius-sm);
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+
+.oar-spec-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.oar-spec-toggle {
+    font-size: 12px;
+    transition: transform 0.2s ease;
+}
+
+.oar-spec-section.open .oar-spec-toggle {
+    transform: rotate(180deg);
+}
+
+.oar-spec-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.oar-spec-section.open .oar-spec-body {
+    max-height: 500px;
+}
+
+.oar-spec-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.oar-spec-table th {
+    padding: 8px 10px;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+    font-weight: 600;
+    text-align: left;
+    font-size: 11px;
+}
+
+.oar-spec-table td {
+    padding: 7px 10px;
+    color: #e2e8f0;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.oar-spec-table tr.spec-category-header td {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #60a5fa;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 6px 10px;
+    letter-spacing: 0.05em;
+}
+
+.oar-spec-note {
+    padding: 6px 10px 10px;
+    color: #94a3b8;
+    font-size: 10px;
+    margin: 0;
+}
+
+/* 最終使用船情報 */
+.last-boat-info {
+    font-size: 11px;
+    color: #3b82f6;
+    margin-top: 2px;
+}
+
+/* リギング状態トグル（編集モーダル内） */
+.rigging-mode-group .rigging-mode-btn {
+    min-width: auto;
+    flex: 1;
+}
+
+.rigging-mode-btn.active {
+    background-color: rgba(59, 130, 246, 0.12);
+    color: #3b82f6;
+    border-color: #3b82f6;
 }
 
 /* =========================================
@@ -2832,6 +3016,221 @@ textarea {
     font-size: 10px;
 }
 
+/* リギングボタン行 */
+.rigging-btn-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.rigging-btn-row .primary-btn {
+    flex: 1;
+}
+
+.rigging-btn-row .secondary-btn {
+    position: relative;
+    white-space: nowrap;
+}
+
+.history-count-badge {
+    display: inline-block;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: #3b82f6;
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    margin-left: 4px;
+}
+
+/* リギング履歴パネル */
+.rigging-history-panel,
+.rigging-comparison-panel {
+    margin-top: 16px;
+    background: var(--bg-white);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color, #e2e8f0);
+    overflow: hidden;
+    animation: fadeIn 0.2s ease;
+}
+
+.rigging-history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #1e293b, #334155);
+    color: white;
+}
+
+.rigging-history-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.rigging-history-header .close-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.rigging-history-list {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+/* 履歴アイテム */
+.rigging-history-item {
+    padding: 12px;
+    margin-bottom: 6px;
+    border-radius: 8px;
+    background: var(--bg-primary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.rigging-history-item:active {
+    transform: scale(0.98);
+}
+
+.rigging-history-item.latest {
+    border-left: 3px solid #3b82f6;
+    cursor: default;
+}
+
+.rigging-history-item.latest:active {
+    transform: none;
+}
+
+.rigging-history-item-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.rigging-history-date {
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.rigging-latest-badge {
+    font-size: 11px;
+    font-weight: 600;
+    color: #3b82f6;
+}
+
+.rigging-diff-count {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 8px;
+    background: #fef3c7;
+    color: #92400e;
+    font-weight: 600;
+}
+
+.rigging-history-preview {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+.rigging-history-memo {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 3px;
+}
+
+.rigging-history-compare-hint {
+    font-size: 11px;
+    color: #3b82f6;
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+/* 比較テーブル */
+.rigging-comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.rigging-comparison-table th {
+    padding: 10px;
+    background: #f8fafc;
+    font-weight: 600;
+    text-align: left;
+    font-size: 11px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.rigging-comparison-table td {
+    padding: 10px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.rigging-cmp-label {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 12px;
+    width: 30%;
+}
+
+.rigging-cmp-old {
+    color: var(--text-muted);
+}
+
+.rigging-cmp-new {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.rigging-cmp-memo {
+    font-size: 11px;
+    max-width: 120px;
+    word-break: break-word;
+}
+
+.rigging-diff-highlight {
+    background-color: #fef9c3 !important;
+}
+
+.rigging-diff-arrow {
+    font-size: 11px;
+    font-weight: 700;
+    margin-left: 4px;
+}
+
+.rigging-diff-arrow.up {
+    color: #16a34a;
+}
+
+.rigging-diff-arrow.down {
+    color: #dc2626;
+}
+
+.rigging-restore-btn {
+    display: block;
+    width: calc(100% - 24px);
+    margin: 12px;
+}
+
 /* =========================================
    クルーノートタブ
    ========================================= */
@@ -3622,6 +4021,77 @@ textarea {
 /* Cal */
 .c2-col:nth-child(6) {
     flex: 0.8;
+}
+
+/* =========================================
+   クルーリギング閲覧（コックス/コーチ用）
+   ========================================= */
+
+.crew-rigging-content {
+    padding: 0 4px;
+}
+
+.crew-rigging-boat-card {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.crew-rigging-boat-title {
+    margin: 0 0 12px 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #e0e7ff;
+}
+
+.crew-rigging-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+}
+
+.crew-rigging-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    min-width: 400px;
+}
+
+.crew-rigging-table thead {
+    background: rgba(99, 102, 241, 0.2);
+}
+
+.crew-rigging-table th {
+    padding: 8px 6px;
+    text-align: center;
+    font-weight: 600;
+    color: #a5b4fc;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.crew-rigging-table td {
+    padding: 10px 6px;
+    text-align: center;
+    color: #e2e8f0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    white-space: nowrap;
+}
+
+.crew-rigging-table tbody tr:hover {
+    background: rgba(99, 102, 241, 0.08);
+}
+
+.crew-rig-name {
+    text-align: left !important;
+    font-weight: 600;
+    color: #c7d2fe !important;
+    padding-left: 8px !important;
 }
 
 /* SR */

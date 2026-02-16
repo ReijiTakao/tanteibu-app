@@ -15,12 +15,22 @@ const API_BASE = window.location.protocol === 'file:'
 // =========================================
 const ROLES = {
     ADMIN: '管理者',
-    EXECUTIVE: '幹部',
     COACH: 'コーチ',
     COX: 'Cox',
-    MEMBER: '部員',
-    MANAGER: 'マネージャー'
+    ROWER: '漕手',
+    MANAGER: 'マネージャー',
+    DATA_ANALYST: 'データ班'
 };
+
+// 旧ロールからのマイグレーションマップ
+const ROLE_MIGRATION = {
+    '部員': '漕手',
+    '幹部': '漕手'
+};
+
+function migrateRole(role) {
+    return ROLE_MIGRATION[role] || role;
+}
 
 const SCHEDULE_TYPES = {
     ERGO: 'エルゴ',
@@ -168,7 +178,7 @@ async function handleAuthSession(session) {
             email: profile.email,
             grade: profile.grade,
             gender: profile.gender || 'man',
-            role: profile.role || '部員',
+            role: migrateRole(profile.role || '漕手'),
             status: profile.status || '在籍',
             approvalStatus: profile.approval_status || '承認済み',
             concept2Connected: profile.concept2_connected || false,
@@ -416,10 +426,10 @@ const DB = {
     createDemoData() {
         state.users = [
             { id: 'u1', name: '山田太郎', gender: 'man', grade: 4, role: ROLES.ADMIN, status: '在籍', googleId: 'admin@keio.jp', approvalStatus: '承認済み', concept2Connected: false },
-            { id: 'u2', name: '鈴木花子', gender: 'woman', grade: 3, role: ROLES.EXECUTIVE, status: '在籍', googleId: 'executive@keio.jp', approvalStatus: '承認済み', concept2Connected: true },
-            { id: 'u3', name: '佐藤次郎', gender: 'man', grade: 2, role: ROLES.MEMBER, status: '在籍', googleId: 'member@keio.jp', approvalStatus: '承認済み', concept2Connected: false },
+            { id: 'u2', name: '鈴木花子', gender: 'woman', grade: 3, role: ROLES.COACH, status: '在籍', googleId: 'coach@keio.jp', approvalStatus: '承認済み', concept2Connected: true },
+            { id: 'u3', name: '佐藤次郎', gender: 'man', grade: 2, role: ROLES.ROWER, status: '在籍', googleId: 'rower@keio.jp', approvalStatus: '承認済み', concept2Connected: false },
             { id: 'u4', name: '田中三郎', gender: 'man', grade: 2, role: ROLES.COX, status: '在籍', googleId: 'cox@keio.jp', approvalStatus: '承認済み', concept2Connected: false },
-            { id: 'u5', name: '高橋四郎', gender: 'man', grade: 1, role: ROLES.MEMBER, status: '在籍', googleId: 'member2@keio.jp', approvalStatus: '承認済み', concept2Connected: false }
+            { id: 'u5', name: '高橋四郎', gender: 'man', grade: 1, role: ROLES.ROWER, status: '在籍', googleId: 'rower2@keio.jp', approvalStatus: '承認済み', concept2Connected: false }
         ];
 
         state.boats = [
@@ -789,7 +799,7 @@ function canEditMaster(user) {
 }
 
 function canViewOverview(user) {
-    return [ROLES.ADMIN, ROLES.EXECUTIVE, ROLES.COACH].includes(user?.role);
+    return [ROLES.ADMIN, ROLES.COACH].includes(user?.role);
 }
 
 // =========================================
@@ -819,12 +829,12 @@ function applyRoleBasedTabs() {
     const role = state.currentUser?.role || '';
     const roleKey = {
         [ROLES.ADMIN]: 'admin',
-        [ROLES.EXECUTIVE]: 'executive',
         [ROLES.COACH]: 'coach',
         [ROLES.COX]: 'cox',
-        [ROLES.MEMBER]: 'member',
-        [ROLES.MANAGER]: 'manager'
-    }[role] || 'member';
+        [ROLES.ROWER]: 'rower',
+        [ROLES.MANAGER]: 'manager',
+        [ROLES.DATA_ANALYST]: 'data'
+    }[role] || 'rower';
 
     let firstVisibleTab = null;
     document.querySelectorAll('#bottom-nav .nav-item').forEach(item => {
@@ -906,7 +916,7 @@ function renderUserSelectList() {
                 { id: 'u1', name: '山田太郎', role: '管理者', grade: 4, approvalStatus: '承認済み', concept2Connected: false },
                 { id: 'u2', name: '佐藤次郎', role: 'コーチ', grade: 0, approvalStatus: '承認済み', concept2Connected: false },
                 { id: 'u3', name: '鈴木花子', role: 'Cox', grade: 3, approvalStatus: '承認済み', concept2Connected: false },
-                { id: 'u4', name: '田中一郎', role: '部員', grade: 2, approvalStatus: '承認済み', concept2Connected: false },
+                { id: 'u4', name: '田中一郎', role: '漕手', grade: 2, approvalStatus: '承認済み', concept2Connected: false },
                 { id: 'u5', name: 'takaoreiji', role: '管理者', grade: 4, approvalStatus: '承認済み', concept2Connected: false }
             ];
             DB.saveLocal('users', state.users);
@@ -2145,8 +2155,8 @@ function openInputModal(dateStr, timeSlot, scheduleId = null) {
     const roleKey = userRole === ROLES.MANAGER ? 'manager'
         : userRole === ROLES.COX ? 'cox'
             : userRole === ROLES.ADMIN ? 'admin'
-                : userRole === ROLES.EXECUTIVE ? 'executive'
-                    : 'member';
+                : userRole === ROLES.COACH ? 'coach'
+                    : 'rower';
 
     document.querySelectorAll('.schedule-type-btn').forEach(btn => {
         const allowedRoles = (btn.dataset.roles || 'all').split(',');
@@ -4429,15 +4439,70 @@ function parseTimeStr(timeStr) {
 let currentMasterType = null;
 let currentMasterItem = null;
 
+// コンバーチブル艇の定義（リギングで使い分ける艇種ペア）
+const CONVERTIBLE_PAIRS = {
+    '2x': '2-',   // ダブル ⇔ ペア
+    '2-': '2x',
+    '4x': '4-',   // クォード ⇔ なしフォア
+    '4-': '4x'
+};
+
+const CONVERTIBLE_LABELS = {
+    '2x': 'ダブル',
+    '2-': 'ペア',
+    '4x': 'クォード',
+    '4-': 'なしフォア'
+};
+
+// オール長さ基準値テーブル
+const OAR_SPEC_TABLE = [
+    { type: 'ペア (2-)', length: 372, inboard: 116, span: 86, category: 'sweep' },
+    { type: '付きフォア (4+)', length: 375, inboard: 115, span: 85, category: 'sweep' },
+    { type: 'エイト (8+) / なしフォア (4-)', length: 375, inboard: 114, span: 84, category: 'sweep' },
+    { type: 'スカルオール', length: 287, inboard: 88, span: 159, category: 'scull' },
+    { type: 'スカルオール (Fat)', length: 282, inboard: 88, span: 159, category: 'scull' }
+];
+
+function isConvertibleBoat(type) {
+    return type in CONVERTIBLE_PAIRS;
+}
+
+function getBoatRiggingMode(boat) {
+    if (!isConvertibleBoat(boat.type)) return null;
+    return boat.currentRiggingMode || boat.type;
+}
+
+function getLastUsedBoatForOar(oarId) {
+    // スケジュールから最後にこのオールを使った練習を探す
+    const schedules = state.schedules || [];
+    let lastSchedule = null;
+    for (let i = schedules.length - 1; i >= 0; i--) {
+        const s = schedules[i];
+        if (s.oarId === oarId || s.oar === oarId) {
+            lastSchedule = s;
+            break;
+        }
+    }
+    if (!lastSchedule) return null;
+
+    const boatId = lastSchedule.boatId || lastSchedule.boat;
+    if (!boatId) return null;
+
+    const boat = (state.boats || []).find(b => b.id === boatId);
+    if (!boat) return null;
+
+    return { name: boat.name, type: boat.type, date: lastSchedule.date };
+}
+
 function openMasterModal(type) {
     currentMasterType = type;
     const modal = document.getElementById('master-modal');
     const title = document.getElementById('master-modal-title');
 
     const titles = {
-        boats: '艇マスタ',
-        oars: 'オールマスタ',
-        ergos: 'エルゴマスタ'
+        boats: '🚣 艇マスタ',
+        oars: '🏋️ オールマスタ',
+        ergos: '💪 エルゴマスタ'
     };
     title.textContent = titles[type];
 
@@ -4460,8 +4525,39 @@ function translateStatus(status) {
 
 function getStatusClass(status) {
     if (status === 'available' || status === '使用可能') return 'available';
-    if (status === 'repair') return 'repair'; // CSS class needed
+    if (status === 'repair') return 'repair';
     return 'unavailable';
+}
+
+function toggleBoatRiggingMode(boatId, e) {
+    e.stopPropagation();
+    const boat = state.boats.find(b => b.id === boatId);
+    if (!boat || !isConvertibleBoat(boat.type)) return;
+
+    const currentMode = getBoatRiggingMode(boat);
+    const newMode = CONVERTIBLE_PAIRS[currentMode];
+    boat.currentRiggingMode = newMode;
+
+    DB.save('boats', state.boats);
+    DB.addAuditLog('boats', boat.id, 'リギング切替', { from: currentMode, to: newMode });
+
+    renderMasterList();
+    showToast(`${boat.name}: ${CONVERTIBLE_LABELS[newMode]}モードに切替`, 'success');
+}
+
+function confirmDeleteMaster(id, e) {
+    e.stopPropagation();
+    const item = state[currentMasterType].find(d => d.id === id);
+    if (!item) return;
+    if (!confirm(`「${item.name}」を削除しますか？`)) return;
+
+    state[currentMasterType] = state[currentMasterType].filter(d => d.id !== id);
+    DB.save(currentMasterType, state[currentMasterType]);
+    DB.addAuditLog(currentMasterType, id, '削除', {});
+
+    renderMasterList();
+    populateBoatOarSelects();
+    showToast('削除しました', 'success');
 }
 
 function renderMasterList() {
@@ -4471,40 +4567,105 @@ function renderMasterList() {
     if (currentMasterType === 'boats') {
         list.innerHTML = data.map(item => {
             const status = item.status || (item.availability === '使用不可' ? 'broken' : 'available');
+            const isConvertible = isConvertibleBoat(item.type);
+            const riggingMode = getBoatRiggingMode(item);
+
+            let riggingBadgeHtml = '';
+            if (isConvertible) {
+                const label = CONVERTIBLE_LABELS[riggingMode] || riggingMode;
+                riggingBadgeHtml = `
+                    <div class="rigging-mode-row">
+                        <span class="rigging-mode-badge">${label}モード</span>
+                        <button class="rigging-toggle-btn" onclick="toggleBoatRiggingMode('${item.id}', event)" title="切替">🔄</button>
+                    </div>`;
+            }
+
             return `
-    < div class="master-item" data - id="${item.id}" >
+            <div class="master-item" data-id="${item.id}">
                 <div class="info">
                     <div class="name">${item.name} <span class="badge" style="font-size:0.8em">${item.type}</span></div>
+                    ${riggingBadgeHtml}
                     <div class="sub">${item.memo || ''}</div>
                 </div>
-                <span class="status ${getStatusClass(status)}">${translateStatus(status)}</span>
-            </div >
-    `}).join('') || '<div class="empty-state"><p>登録がありません</p></div>';
+                <div class="master-item-right">
+                    <span class="status ${getStatusClass(status)}">${translateStatus(status)}</span>
+                    <div class="master-item-actions">
+                        <button class="master-action-btn edit-btn" onclick="event.stopPropagation(); const d = state.boats.find(b=>b.id==='${item.id}'); if(d) openMasterEditModal(d);" title="編集">✏️</button>
+                        <button class="master-action-btn delete-btn" onclick="confirmDeleteMaster('${item.id}', event)" title="削除">🗑️</button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('') || '<div class="empty-state"><p>登録がありません</p></div>';
     } else if (currentMasterType === 'oars') {
-        list.innerHTML = data.map(item => {
+        // オール基準値テーブルを先頭に追加
+        let specTableHtml = `
+            <div class="oar-spec-section">
+                <div class="oar-spec-header" onclick="this.parentElement.classList.toggle('open')">
+                    📏 オール長さ基準値 <span class="oar-spec-toggle">▼</span>
+                </div>
+                <div class="oar-spec-body">
+                    <table class="oar-spec-table">
+                        <thead>
+                            <tr><th>艇種</th><th>全長</th><th>インボード</th><th>スパン</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr class="spec-category-header"><td colspan="4">スイープオール</td></tr>
+                            ${OAR_SPEC_TABLE.filter(s => s.category === 'sweep').map(s => `
+                            <tr><td>${s.type}</td><td>${s.length}</td><td>${s.inboard}</td><td>${s.span}</td></tr>`).join('')}
+                            <tr class="spec-category-header"><td colspan="4">スカルオール</td></tr>
+                            ${OAR_SPEC_TABLE.filter(s => s.category === 'scull').map(s => `
+                            <tr><td>${s.type}</td><td>${s.length}</td><td>${s.inboard}</td><td>${s.span}</td></tr>`).join('')}
+                        </tbody>
+                    </table>
+                    <p class="oar-spec-note">※ 単位はすべてcm</p>
+                </div>
+            </div>`;
+
+        const oarListHtml = data.map(item => {
             const status = item.status || (item.availability === '使用不可' ? 'broken' : 'available');
+            const lastBoat = getLastUsedBoatForOar(item.id);
+            let lastBoatHtml = '';
+            if (lastBoat) {
+                lastBoatHtml = `<div class="last-boat-info">🚣 最終: ${lastBoat.name} (${lastBoat.type})</div>`;
+            }
+
             return `
-    < div class="master-item" data - id="${item.id}" >
+            <div class="master-item" data-id="${item.id}">
                 <div class="info">
-                    <div class="name">${item.name} (${item.type})</div>
+                    <div class="name">${item.name} <span class="badge" style="font-size:0.8em">${item.type}</span></div>
                     <div class="sub">長さ: ${item.length || '-'}, シール: ${item.sealNumber || '-'}</div>
+                    ${lastBoatHtml}
                     <div class="sub">${item.memo || ''}</div>
                 </div>
-                <span class="status ${getStatusClass(status)}">${translateStatus(status)}</span>
-            </div >
-    `}).join('') || '<div class="empty-state"><p>登録がありません</p></div>';
+                <div class="master-item-right">
+                    <span class="status ${getStatusClass(status)}">${translateStatus(status)}</span>
+                    <div class="master-item-actions">
+                        <button class="master-action-btn edit-btn" onclick="event.stopPropagation(); const d = state.oars.find(o=>o.id==='${item.id}'); if(d) openMasterEditModal(d);" title="編集">✏️</button>
+                        <button class="master-action-btn delete-btn" onclick="confirmDeleteMaster('${item.id}', event)" title="削除">🗑️</button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('') || '<div class="empty-state"><p>登録がありません</p></div>';
+
+        list.innerHTML = specTableHtml + oarListHtml;
     } else if (currentMasterType === 'ergos') {
         list.innerHTML = data.map(item => {
             const status = item.status || (item.availability === '使用不可' ? 'broken' : 'available');
             return `
-    < div class="master-item" data - id="${item.id}" >
+            <div class="master-item" data-id="${item.id}">
                 <div class="info">
                     <div class="name">${item.name} (${item.type})</div>
                     <div class="sub">シール: ${item.sealNumber || '-'}</div>
                 </div>
-                <span class="status ${getStatusClass(status)}">${translateStatus(status)}</span>
-            </div >
-    `}).join('') || '<div class="empty-state"><p>登録がありません</p></div>';
+                <div class="master-item-right">
+                    <span class="status ${getStatusClass(status)}">${translateStatus(status)}</span>
+                    <div class="master-item-actions">
+                        <button class="master-action-btn edit-btn" onclick="event.stopPropagation(); const d = state.ergos.find(e=>e.id==='${item.id}'); if(d) openMasterEditModal(d);" title="編集">✏️</button>
+                        <button class="master-action-btn delete-btn" onclick="confirmDeleteMaster('${item.id}', event)" title="削除">🗑️</button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('') || '<div class="empty-state"><p>登録がありません</p></div>';
     }
 
     list.querySelectorAll('.master-item').forEach(item => {
@@ -4528,8 +4689,25 @@ function openMasterEditModal(item = null) {
 
     if (currentMasterType === 'boats') {
         const status = item?.status || (item?.availability === '使用不可' ? 'broken' : 'available');
+        const isConv = item ? isConvertibleBoat(item.type) : false;
+        const riggingMode = item ? getBoatRiggingMode(item) : null;
+
+        let riggingModeHtml = '';
+        if (isConv && item) {
+            const altType = CONVERTIBLE_PAIRS[item.type];
+            riggingModeHtml = `
+            <div class="form-group">
+                <label>現在のリギング状態</label>
+                <div class="toggle-group rigging-mode-group">
+                    <button class="toggle-btn rigging-mode-btn ${riggingMode === item.type ? 'active' : ''}" data-value="${item.type}">${CONVERTIBLE_LABELS[item.type]}</button>
+                    <button class="toggle-btn rigging-mode-btn ${riggingMode === altType ? 'active' : ''}" data-value="${altType}">${CONVERTIBLE_LABELS[altType]}</button>
+                </div>
+                <p class="help-text" style="font-size:11px; color:#888; margin-top:4px;">この艇は${CONVERTIBLE_LABELS[item.type]}と${CONVERTIBLE_LABELS[altType]}を兼用できます</p>
+            </div>`;
+        }
+
         form.innerHTML = `
-    < div class="form-group" >
+            <div class="form-group">
                 <label>艇名</label>
                 <input type="text" id="master-name" value="${item?.name || ''}" placeholder="例: 慶應丸">
             </div>
@@ -4545,6 +4723,7 @@ function openMasterEditModal(item = null) {
                     <option value="8+" ${item?.type === '8+' ? 'selected' : ''}>8+ (エイト)</option>
                 </select>
             </div>
+            ${riggingModeHtml}
             <div class="form-group">
                 <label>状態</label>
                 <div class="toggle-group status-group">
@@ -4649,6 +4828,12 @@ function openMasterEditModal(item = null) {
             btn.classList.add('active');
         });
     });
+    form.querySelectorAll('.rigging-mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            form.querySelectorAll('.rigging-mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    });
     form.querySelectorAll('.ergo-master-type-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             form.querySelectorAll('.ergo-master-type-btn').forEach(b => b.classList.remove('active'));
@@ -4677,10 +4862,14 @@ function saveMasterItem() {
 
     let newItem;
     if (currentMasterType === 'boats') {
+        const boatType = document.getElementById('master-boat-type').value;
+        const riggingModeBtn = document.querySelector('.rigging-mode-btn.active');
+        const riggingMode = riggingModeBtn ? riggingModeBtn.dataset.value : (currentMasterItem?.currentRiggingMode || null);
         newItem = {
             id: currentMasterItem?.id || generateId(),
             name: document.getElementById('master-name').value,
-            type: document.getElementById('master-boat-type').value,
+            type: boatType,
+            currentRiggingMode: isConvertibleBoat(boatType) ? (riggingMode || boatType) : null,
             status: status,
             availability: availability,
             memo: document.getElementById('master-memo').value
@@ -4841,7 +5030,7 @@ const initializeApp = async () => {
                                 name: p.name,
                                 grade: p.grade,
                                 gender: p.gender || 'man',
-                                role: p.role || '部員',
+                                role: migrateRole(p.role || '漕手'),
                                 status: p.status || '在籍',
                                 approvalStatus: p.approval_status || '承認済み',
                                 concept2Connected: p.concept2_connected || false
@@ -5104,9 +5293,27 @@ function calculateIntervalDetails(workout, defaultType = 'unknown') {
 // =========================================
 
 /**
- * リギング管理の初期化
+ * リギング管理の初期化（ロール分岐あり）
  */
 async function initRigging() {
+    const role = state.currentUser?.role;
+    const isViewer = [ROLES.COX, ROLES.COACH].includes(role);
+
+    // ビュー切替
+    const rowerView = document.getElementById('rower-rigging-view');
+    const crewView = document.getElementById('crew-rigging-view');
+
+    if (isViewer) {
+        if (rowerView) rowerView.classList.add('hidden');
+        if (crewView) crewView.classList.remove('hidden');
+        initCrewRiggingView();
+        return;
+    }
+
+    // 漕手/管理者: 通常のリギングフォーム
+    if (rowerView) rowerView.classList.remove('hidden');
+    if (crewView) crewView.classList.add('hidden');
+
     const boatSelect = document.getElementById('rigging-boat-select');
     if (!boatSelect) return;
 
@@ -5168,6 +5375,244 @@ async function initRigging() {
     }
 }
 
+// =========================================
+// クルーリギング閲覧（コックス/コーチ用）
+// =========================================
+
+/**
+ * クルーリギング閲覧の初期化
+ */
+function initCrewRiggingView() {
+    // 日付を今日に設定
+    const dateInput = document.getElementById('crew-rigging-date');
+    if (dateInput) {
+        dateInput.value = formatDate(new Date());
+        dateInput.onchange = () => loadCrewRiggingByDate(dateInput.value);
+        loadCrewRiggingByDate(dateInput.value);
+    }
+
+    // 選手セレクトにメンバーを追加
+    const memberSelect = document.getElementById('crew-rigging-member-select');
+    if (memberSelect) {
+        memberSelect.innerHTML = '<option value="">選択してください</option>';
+        const rowers = (state.users || []).filter(u => u.role === ROLES.ROWER || u.role === '漕手' || u.role === '部員');
+        rowers.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        rowers.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.id;
+            opt.textContent = `${u.name}（${u.grade || '?'}年）`;
+            memberSelect.appendChild(opt);
+        });
+        memberSelect.onchange = () => loadMemberRigging(memberSelect.value);
+    }
+}
+
+/**
+ * クルーリギング閲覧モード切替
+ */
+function switchCrewRiggingView(mode) {
+    const scheduleView = document.getElementById('crew-rigging-schedule-view');
+    const memberView = document.getElementById('crew-rigging-member-view');
+
+    if (mode === 'schedule') {
+        scheduleView.classList.remove('hidden');
+        memberView.classList.add('hidden');
+    } else {
+        scheduleView.classList.add('hidden');
+        memberView.classList.remove('hidden');
+    }
+
+    // ボタンのactive状態切替
+    document.querySelectorAll('[data-crew-view]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.crewView === mode);
+    });
+}
+
+/**
+ * 日付ベースでクルーリギング情報を読み込み
+ */
+function loadCrewRiggingByDate(dateStr) {
+    const container = document.getElementById('crew-rigging-schedule-list');
+    if (!container) return;
+
+    // その日の乗艇スケジュールを検索
+    const boatSchedules = (state.schedules || []).filter(s =>
+        s.date === dateStr && (s.type === '乗艇' || s.type === SCHEDULE_TYPES.BOAT)
+    );
+
+    if (boatSchedules.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>この日の乗艇スケジュールはありません</p></div>';
+        return;
+    }
+
+    // 艇ごとにグループ化
+    const boatGroups = {};
+    boatSchedules.forEach(s => {
+        const boatId = s.boatId || s.boat_id;
+        if (!boatId) return;
+        if (!boatGroups[boatId]) boatGroups[boatId] = [];
+        boatGroups[boatId].push(s);
+    });
+
+    let html = '';
+    const boats = state.boats || [];
+    const allHistory = DB.loadLocal('rigging_history') || [];
+    const allRiggings = DB.loadLocal('riggings') || [];
+
+    // 艇が見つからない場合は全ユーザーのリギングをまとめて表示
+    if (Object.keys(boatGroups).length === 0) {
+        // スケジュールにboatIdが無い場合、ユーザーごとにまとめて表示
+        const userIds = [...new Set(boatSchedules.map(s => s.userId))];
+        html += renderCrewBoatRigging(null, userIds, allHistory, allRiggings);
+    } else {
+        Object.keys(boatGroups).forEach(boatId => {
+            const userIds = boatGroups[boatId].map(s => s.userId);
+            html += renderCrewBoatRigging(boatId, userIds, allHistory, allRiggings);
+        });
+    }
+
+    container.innerHTML = html || '<div class="empty-state"><p>リギングデータがありません</p></div>';
+}
+
+/**
+ * 特定の艇のクルーリギングテーブルをレンダリング
+ */
+function renderCrewBoatRigging(boatId, userIds, allHistory, allRiggings) {
+    const boat = boatId ? (state.boats || []).find(b => b.id === boatId) : null;
+    const boatName = boat ? boat.name : '不明な艇';
+
+    let rows = '';
+    const uniqueUserIds = [...new Set(userIds)];
+
+    uniqueUserIds.forEach(userId => {
+        const user = (state.users || []).find(u => u.id === userId);
+        if (!user) return;
+
+        // まず履歴から最新を取得
+        let rigging = null;
+        if (boatId) {
+            const userHistory = allHistory
+                .filter(r => r.boat_id === boatId && r.user_id === userId)
+                .sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at));
+            rigging = userHistory[0] || null;
+
+            // 履歴にない場合は旧形式から取得
+            if (!rigging) {
+                rigging = allRiggings.find(r => r.boat_id === boatId && r.user_id === userId);
+            }
+        }
+
+        if (rigging) {
+            rows += `<tr>
+                <td class="crew-rig-name">${user.name}</td>
+                <td>${rigging.pin_to_heel || '-'}</td>
+                <td>${rigging.depth || '-'}</td>
+                <td>${rigging.span || '-'}</td>
+                <td>${rigging.pitch || '-'}</td>
+                <td>${rigging.height || '-'}</td>
+            </tr>`;
+        } else {
+            rows += `<tr>
+                <td class="crew-rig-name">${user.name}</td>
+                <td colspan="5" style="color: #888; text-align: center;">未設定</td>
+            </tr>`;
+        }
+    });
+
+    if (!rows) return '';
+
+    return `
+    <div class="crew-rigging-boat-card">
+        <h3 class="crew-rigging-boat-title">🚣 ${boatName}</h3>
+        <div class="crew-rigging-table-wrap">
+            <table class="crew-rigging-table">
+                <thead>
+                    <tr>
+                        <th>選手</th>
+                        <th>P2H</th>
+                        <th>デプス</th>
+                        <th>スパン</th>
+                        <th>足角</th>
+                        <th>ハイト</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    </div>`;
+}
+
+/**
+ * 選手別リギング閲覧
+ */
+function loadMemberRigging(userId) {
+    const container = document.getElementById('crew-rigging-member-detail');
+    if (!container || !userId) {
+        if (container) container.innerHTML = '<div class="empty-state"><p>選手を選択してリギング情報を表示</p></div>';
+        return;
+    }
+
+    const user = (state.users || []).find(u => u.id === userId);
+    if (!user) return;
+
+    const allHistory = DB.loadLocal('rigging_history') || [];
+    const allRiggings = DB.loadLocal('riggings') || [];
+    const boats = state.boats || [];
+
+    // この選手の全艇のリギングデータを収集
+    let html = `<h3 style="margin: 12px 0 8px; font-size: 16px;">🏋️ ${user.name} のリギング設定</h3>`;
+    let hasData = false;
+
+    boats.forEach(boat => {
+        // 履歴から最新を取得
+        const userHistory = allHistory
+            .filter(r => r.boat_id === boat.id && r.user_id === userId)
+            .sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at));
+        let latest = userHistory[0] || null;
+
+        // 旧形式からも取得
+        if (!latest) {
+            latest = allRiggings.find(r => r.boat_id === boat.id && r.user_id === userId);
+        }
+
+        if (latest) {
+            hasData = true;
+            const updatedAt = latest.saved_at || latest.updated_at;
+            const dateStr = updatedAt ? new Date(updatedAt).toLocaleDateString('ja-JP') : '不明';
+
+            html += `
+            <div class="crew-rigging-boat-card">
+                <h3 class="crew-rigging-boat-title">${boat.name}</h3>
+                <div style="font-size: 12px; color: #888; margin-bottom: 8px;">最終更新: ${dateStr}</div>
+                <div class="crew-rigging-table-wrap">
+                    <table class="crew-rigging-table">
+                        <thead>
+                            <tr><th>P2H</th><th>デプス</th><th>スパン</th><th>足角</th><th>ハイト</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>${latest.pin_to_heel || '-'}</td>
+                                <td>${latest.depth || '-'}</td>
+                                <td>${latest.span || '-'}</td>
+                                <td>${latest.pitch || '-'}</td>
+                                <td>${latest.height || '-'}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                ${latest.memo ? `<div style="margin-top: 8px; font-size: 13px; color: #aaa;">💬 ${latest.memo}</div>` : ''}
+                ${userHistory.length > 1 ? `<div style="margin-top: 4px; font-size: 12px; color: #666;">📋 ${userHistory.length}件の履歴あり</div>` : ''}
+            </div>`;
+        }
+    });
+
+    if (!hasData) {
+        html += '<div class="empty-state"><p>この選手のリギングデータはまだありません</p></div>';
+    }
+
+    container.innerHTML = html;
+}
+
 /**
  * Supabaseプロフィールを更新するヘルパー
  */
@@ -5195,7 +5640,7 @@ function renderSettings() {
     // 権限設定
     const roleSelect = document.getElementById('settings-role-select');
     if (roleSelect) {
-        roleSelect.value = user.role || '部員';
+        roleSelect.value = user.role || '漕手';
         roleSelect.onchange = (e) => {
             const newRole = e.target.value;
             const previousRole = state.currentUser.role;
@@ -5246,6 +5691,8 @@ function renderSettings() {
                 }
             }
             syncProfileToSupabase({ role: newRole });
+            // ロール変更に伴いタブの表示/非表示を再適用
+            applyRoleBasedTabs();
             showToast('権限を変更しました', 'success');
         };
     }
@@ -5736,12 +6183,31 @@ function setText(id, text) {
 }
 
 /**
- * リギングデータの読み込み
+ * リギングデータの読み込み（履歴方式）
  */
+const RIGGING_MAX_HISTORY = 10;
+const RIGGING_FIELDS = ['pin_to_heel', 'depth', 'span', 'pitch', 'height'];
+const RIGGING_FIELD_LABELS = {
+    pin_to_heel: 'ピン・トゥ・ヒール',
+    depth: 'デプス',
+    span: 'スパン',
+    pitch: '足角',
+    height: 'ハイト'
+};
+
+function getRiggingHistory(boatId, userId) {
+    const all = DB.loadLocal('rigging_history') || [];
+    return all
+        .filter(r => r.boat_id === boatId && r.user_id === userId)
+        .sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at));
+}
+
 async function loadRigging(boatId) {
     if (!boatId) {
         document.getElementById('rigging-form').classList.add('hidden');
         document.getElementById('rigging-empty-state').classList.remove('hidden');
+        document.getElementById('rigging-history-panel').classList.add('hidden');
+        document.getElementById('rigging-comparison-panel').classList.add('hidden');
         return;
     }
 
@@ -5750,8 +6216,9 @@ async function loadRigging(boatId) {
 
     document.getElementById('rigging-form').classList.remove('hidden');
     document.getElementById('rigging-empty-state').classList.add('hidden');
+    document.getElementById('rigging-history-panel').classList.add('hidden');
+    document.getElementById('rigging-comparison-panel').classList.add('hidden');
 
-    // Mocks for inputs
     const inputs = {
         pin_to_heel: document.getElementById('rigging-pin-to-heel'),
         depth: document.getElementById('rigging-depth'),
@@ -5764,10 +6231,11 @@ async function loadRigging(boatId) {
     // 入力値をリセット
     Object.values(inputs).forEach(input => { if (input) input.value = ''; });
 
-    // データ取得
-    let riggings = DB.loadLocal('riggings') || [];
-    let rigging = riggings.find(r => r.boat_id === boatId && r.user_id === currentUser.id);
+    // 旧データからのマイグレーション
+    let oldRiggings = DB.loadLocal('riggings') || [];
+    let oldRigging = oldRiggings.find(r => r.boat_id === boatId && r.user_id === currentUser.id);
 
+    // Supabaseから取得試行
     if (window.supabaseClient) {
         try {
             const { data, error } = await window.supabaseClient
@@ -5778,30 +6246,63 @@ async function loadRigging(boatId) {
                 .single();
 
             if (data && !error) {
-                rigging = data;
-                // ローカルも更新
-                const idx = riggings.findIndex(r => r.boat_id === boatId && r.user_id === currentUser.id);
-                if (idx >= 0) riggings[idx] = rigging;
-                else riggings.push(rigging);
-                saveLocal('riggings', riggings);
+                oldRigging = data;
             }
         } catch (e) {
-            // console.error('Failed to fetch rigging', e); // Not found is expected
+            // Not found is expected
         }
     }
 
-    if (rigging) {
-        if (inputs.pin_to_heel) inputs.pin_to_heel.value = rigging.pin_to_heel || '';
-        if (inputs.depth) inputs.depth.value = rigging.depth || '';
-        if (inputs.span) inputs.span.value = rigging.span || '';
-        if (inputs.pitch) inputs.pitch.value = rigging.pitch || '';
-        if (inputs.height) inputs.height.value = rigging.height || '';
-        if (inputs.memo) inputs.memo.value = rigging.memo || '';
+    // 旧データがあれば履歴にマイグレーション
+    if (oldRigging) {
+        const history = getRiggingHistory(boatId, currentUser.id);
+        const alreadyMigrated = history.some(h => h.migrated_from_old);
+        if (!alreadyMigrated) {
+            const migratedEntry = {
+                id: generateId(),
+                boat_id: boatId,
+                user_id: currentUser.id,
+                pin_to_heel: oldRigging.pin_to_heel || '',
+                depth: oldRigging.depth || '',
+                span: oldRigging.span || '',
+                pitch: oldRigging.pitch || '',
+                height: oldRigging.height || '',
+                memo: oldRigging.memo || '',
+                saved_at: oldRigging.updated_at || oldRigging.created_at || new Date().toISOString(),
+                migrated_from_old: true
+            };
+            let allHistory = DB.loadLocal('rigging_history') || [];
+            allHistory.push(migratedEntry);
+            saveLocal('rigging_history', allHistory);
+        }
+    }
+
+    // 履歴から最新を取得してフォームに反映
+    const history = getRiggingHistory(boatId, currentUser.id);
+    if (history.length > 0) {
+        const latest = history[0];
+        if (inputs.pin_to_heel) inputs.pin_to_heel.value = latest.pin_to_heel || '';
+        if (inputs.depth) inputs.depth.value = latest.depth || '';
+        if (inputs.span) inputs.span.value = latest.span || '';
+        if (inputs.pitch) inputs.pitch.value = latest.pitch || '';
+        if (inputs.height) inputs.height.value = latest.height || '';
+        if (inputs.memo) inputs.memo.value = latest.memo || '';
+    }
+
+    // 履歴カウント更新
+    updateRiggingHistoryCount(history.length);
+}
+
+function updateRiggingHistoryCount(count) {
+    const badge = document.getElementById('rigging-history-count');
+    if (badge) {
+        badge.textContent = count;
+        badge.classList.toggle('hidden', count <= 0);
     }
 }
 
 /**
- * リギングデータの保存
+ * リギングデータの保存（履歴方式）
  */
 async function saveRigging(boatId) {
     if (!boatId) return;
@@ -5809,41 +6310,64 @@ async function saveRigging(boatId) {
     const currentUser = state.currentUser;
     if (!currentUser) return;
 
-    const data = {
+    const newEntry = {
+        id: generateId(),
+        boat_id: boatId,
+        user_id: currentUser.id,
         pin_to_heel: document.getElementById('rigging-pin-to-heel').value,
         depth: document.getElementById('rigging-depth').value,
         span: document.getElementById('rigging-span').value,
         pitch: document.getElementById('rigging-pitch').value,
         height: document.getElementById('rigging-height').value,
         memo: document.getElementById('rigging-memo').value,
-        updated_at: new Date().toISOString()
+        saved_at: new Date().toISOString()
     };
 
-    // ローカル保存
-    let riggings = DB.loadLocal('riggings') || [];
-    const index = riggings.findIndex(r => r.boat_id === boatId && r.user_id === currentUser.id);
+    // 履歴に追加
+    let allHistory = DB.loadLocal('rigging_history') || [];
+    allHistory.push(newEntry);
 
-    let savedData;
+    // ボート×ユーザーごとに最大件数を制限
+    const boatUserHistory = allHistory
+        .filter(r => r.boat_id === boatId && r.user_id === currentUser.id)
+        .sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at));
+
+    if (boatUserHistory.length > RIGGING_MAX_HISTORY) {
+        const toRemoveIds = boatUserHistory.slice(RIGGING_MAX_HISTORY).map(r => r.id);
+        allHistory = allHistory.filter(r => !toRemoveIds.includes(r.id));
+    }
+
+    saveLocal('rigging_history', allHistory);
+
+    // 旧形式（riggings）にも最新値を保存（後方互換性）
+    let riggings = DB.loadLocal('riggings') || [];
+    const oldData = {
+        pin_to_heel: newEntry.pin_to_heel,
+        depth: newEntry.depth,
+        span: newEntry.span,
+        pitch: newEntry.pitch,
+        height: newEntry.height,
+        memo: newEntry.memo,
+        updated_at: newEntry.saved_at
+    };
+
+    const index = riggings.findIndex(r => r.boat_id === boatId && r.user_id === currentUser.id);
     if (index >= 0) {
-        riggings[index] = { ...riggings[index], ...data };
-        savedData = riggings[index];
+        riggings[index] = { ...riggings[index], ...oldData };
     } else {
-        savedData = {
+        riggings.push({
             id: generateId(),
             user_id: currentUser.id,
             boat_id: boatId,
-            ...data,
-            created_at: new Date().toISOString()
-        };
-        riggings.push(savedData);
+            ...oldData,
+            created_at: newEntry.saved_at
+        });
     }
     saveLocal('riggings', riggings);
 
     // Supabase保存
     if (window.supabaseClient) {
         try {
-            // upsertのためにidが必要な場合があるが、ここではuser_idとboat_idで特定したい
-            // 一旦既存があるかチェック
             const { data: existing } = await window.supabaseClient
                 .from('riggings')
                 .select('id')
@@ -5854,7 +6378,7 @@ async function saveRigging(boatId) {
             const upsertData = {
                 user_id: currentUser.id,
                 boat_id: boatId,
-                ...data
+                ...oldData
             };
 
             if (existing) {
@@ -5875,6 +6399,175 @@ async function saveRigging(boatId) {
     } else {
         showToast('リギング設定を保存しました', 'success');
     }
+
+    // 履歴カウント更新
+    const updatedHistory = getRiggingHistory(boatId, currentUser.id);
+    updateRiggingHistoryCount(updatedHistory.length);
+}
+
+/**
+ * リギング履歴パネルの表示/非表示
+ */
+function toggleRiggingHistory() {
+    const panel = document.getElementById('rigging-history-panel');
+    const compPanel = document.getElementById('rigging-comparison-panel');
+
+    if (panel.classList.contains('hidden')) {
+        compPanel.classList.add('hidden');
+        panel.classList.remove('hidden');
+        renderRiggingHistory();
+    } else {
+        panel.classList.add('hidden');
+    }
+}
+
+/**
+ * リギング履歴の描画
+ */
+function renderRiggingHistory() {
+    const boatId = document.getElementById('rigging-boat-select').value;
+    const currentUser = state.currentUser;
+    if (!boatId || !currentUser) return;
+
+    const history = getRiggingHistory(boatId, currentUser.id);
+    const listEl = document.getElementById('rigging-history-list');
+
+    if (history.length === 0) {
+        listEl.innerHTML = '<div class="empty-state"><p>履歴がありません</p></div>';
+        return;
+    }
+
+    const latest = history[0];
+
+    listEl.innerHTML = history.map((entry, idx) => {
+        const date = new Date(entry.saved_at);
+        const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+        const isLatest = idx === 0;
+
+        // 変更された項目数を計算（最新との比較）
+        let diffCount = 0;
+        if (!isLatest) {
+            RIGGING_FIELDS.forEach(f => {
+                if (String(entry[f] || '') !== String(latest[f] || '')) diffCount++;
+            });
+        }
+        const diffBadge = !isLatest && diffCount > 0 ? `<span class="rigging-diff-count">${diffCount}項目変更</span>` : '';
+
+        // 主要値のプレビュー
+        const previewParts = [];
+        if (entry.pin_to_heel) previewParts.push(`P2H: ${entry.pin_to_heel}`);
+        if (entry.span) previewParts.push(`スパン: ${entry.span}`);
+        if (entry.height) previewParts.push(`ハイト: ${entry.height}`);
+        const previewStr = previewParts.length > 0 ? previewParts.join(' / ') : '値なし';
+
+        return `
+        <div class="rigging-history-item ${isLatest ? 'latest' : ''}" onclick="${isLatest ? '' : `showRiggingComparison(${idx})`}">
+            <div class="rigging-history-item-header">
+                <span class="rigging-history-date">${dateStr}</span>
+                ${isLatest ? '<span class="rigging-latest-badge">最新 ⭐</span>' : ''}
+                ${diffBadge}
+            </div>
+            <div class="rigging-history-preview">${previewStr}</div>
+            ${entry.memo ? `<div class="rigging-history-memo">💬 ${entry.memo}</div>` : ''}
+            ${!isLatest ? '<div class="rigging-history-compare-hint">タップして最新と比較 →</div>' : ''}
+        </div>`;
+    }).join('');
+}
+
+/**
+ * リギング比較表示
+ */
+function showRiggingComparison(historyIdx) {
+    const boatId = document.getElementById('rigging-boat-select').value;
+    const currentUser = state.currentUser;
+    if (!boatId || !currentUser) return;
+
+    const history = getRiggingHistory(boatId, currentUser.id);
+    if (historyIdx >= history.length) return;
+
+    const latest = history[0];
+    const older = history[historyIdx];
+
+    const latestDate = new Date(latest.saved_at);
+    const olderDate = new Date(older.saved_at);
+    const fmtDate = (d) => `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+    let rows = RIGGING_FIELDS.map(field => {
+        const latestVal = latest[field] || '-';
+        const olderVal = older[field] || '-';
+        const isDiff = String(latestVal) !== String(olderVal);
+        const diffClass = isDiff ? 'rigging-diff-highlight' : '';
+
+        let diffArrow = '';
+        if (isDiff && latestVal !== '-' && olderVal !== '-') {
+            const diff = (parseFloat(latestVal) - parseFloat(olderVal)).toFixed(1);
+            const sign = diff > 0 ? '+' : '';
+            diffArrow = `<span class="rigging-diff-arrow ${diff > 0 ? 'up' : 'down'}">${sign}${diff}</span>`;
+        }
+
+        return `
+        <tr class="${diffClass}">
+            <td class="rigging-cmp-label">${RIGGING_FIELD_LABELS[field]}</td>
+            <td class="rigging-cmp-old">${olderVal}</td>
+            <td class="rigging-cmp-new">${latestVal} ${diffArrow}</td>
+        </tr>`;
+    }).join('');
+
+    // メモ比較
+    if (latest.memo || older.memo) {
+        const memoChanged = (latest.memo || '') !== (older.memo || '');
+        rows += `
+        <tr class="${memoChanged ? 'rigging-diff-highlight' : ''}">
+            <td class="rigging-cmp-label">メモ</td>
+            <td class="rigging-cmp-old rigging-cmp-memo">${older.memo || '-'}</td>
+            <td class="rigging-cmp-new rigging-cmp-memo">${latest.memo || '-'}</td>
+        </tr>`;
+    }
+
+    const body = document.getElementById('rigging-comparison-body');
+    body.innerHTML = `
+        <table class="rigging-comparison-table">
+            <thead>
+                <tr>
+                    <th>項目</th>
+                    <th>${fmtDate(olderDate)}</th>
+                    <th>最新 (${fmtDate(latestDate)}) ⭐</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+        <button class="secondary-btn rigging-restore-btn" onclick="restoreRigging(${historyIdx})">🔄 この設定をフォームに戻す</button>`;
+
+    document.getElementById('rigging-comparison-panel').classList.remove('hidden');
+    document.getElementById('rigging-history-panel').classList.add('hidden');
+}
+
+/**
+ * 過去のリギング値をフォームに復元
+ */
+function restoreRigging(historyIdx) {
+    const boatId = document.getElementById('rigging-boat-select').value;
+    const currentUser = state.currentUser;
+    if (!boatId || !currentUser) return;
+
+    const history = getRiggingHistory(boatId, currentUser.id);
+    if (historyIdx >= history.length) return;
+
+    const entry = history[historyIdx];
+
+    document.getElementById('rigging-pin-to-heel').value = entry.pin_to_heel || '';
+    document.getElementById('rigging-depth').value = entry.depth || '';
+    document.getElementById('rigging-span').value = entry.span || '';
+    document.getElementById('rigging-pitch').value = entry.pitch || '';
+    document.getElementById('rigging-height').value = entry.height || '';
+    document.getElementById('rigging-memo').value = entry.memo || '';
+
+    document.getElementById('rigging-comparison-panel').classList.add('hidden');
+    showToast('過去の設定をフォームに反映しました。保存すると新バージョンとして記録されます。', 'info');
+}
+
+function closeRiggingComparison() {
+    document.getElementById('rigging-comparison-panel').classList.add('hidden');
 }
 
 // =========================================
