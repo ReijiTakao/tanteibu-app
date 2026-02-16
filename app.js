@@ -309,9 +309,37 @@ const DB = {
         if (!this.useSupabase || !window.SupabaseConfig.isReady()) return;
 
         try {
+            // プロフィール（全ユーザー一覧）をSupabaseから取得
+            const profiles = await window.SupabaseConfig.db.loadProfiles();
+            if (profiles.length) {
+                // Supabaseのプロフィールをstate.users形式に変換
+                const supaUsers = profiles.map(p => ({
+                    id: p.id,
+                    authId: p.auth_id,
+                    name: p.name,
+                    email: p.email,
+                    grade: p.grade,
+                    gender: p.gender,
+                    role: p.role,
+                    status: p.status,
+                    approvalStatus: p.approval_status,
+                    concept2Connected: p.concept2_connected,
+                    concept2LastSync: p.concept2_last_sync
+                }));
+                // ローカルのユーザーとマージ
+                supaUsers.forEach(u => {
+                    const idx = state.users.findIndex(local => local.id === u.id);
+                    if (idx !== -1) {
+                        // ローカルの追加フィールドを保持しつつSupabaseのデータで更新
+                        state.users[idx] = { ...state.users[idx], ...u };
+                    } else {
+                        state.users.push(u);
+                    }
+                });
+                this.saveLocal('users', state.users);
+            }
+
             // マスタデータ
-            // usersは別途handleAuthSessionでロード済みだが、ここでも念のため
-            // boats, oars, ergos
             const boats = await window.SupabaseConfig.db.loadMasterData('boats');
             if (boats.length) { state.boats = boats; this.saveLocal('boats', boats); }
 
@@ -322,16 +350,12 @@ const DB = {
             if (ergos.length) { state.ergos = ergos; this.saveLocal('ergos', ergos); }
 
             // トランザクションデータ
-            // 直近3ヶ月分などをロードするのが理想だが、一旦全件または範囲指定
             const today = new Date();
-            const startStr = new Date(today.getFullYear(), today.getMonth() - 1, 1).toISOString().split('T')[0]; // 先月から
-            const endStr = new Date(today.getFullYear(), today.getMonth() + 2, 0).toISOString().split('T')[0]; // 来月末まで
+            const startStr = new Date(today.getFullYear(), today.getMonth() - 1, 1).toISOString().split('T')[0];
+            const endStr = new Date(today.getFullYear(), today.getMonth() + 2, 0).toISOString().split('T')[0];
 
             const schedules = await window.SupabaseConfig.db.loadSchedules(startStr, endStr);
             if (schedules.length) {
-                // ローカルとマージまたは置換。簡易的に置換（期間外が消えないように注意が必要だが、今回はロードした分をstateに反映）
-                // state.schedulesにある既存データを期間でフィルタして、ロードしたデータとマージするロジックが必要
-                // ここでは簡易的に「ロードしたデータをIDベースでstateに上書き・追加」する
                 schedules.forEach(s => {
                     const idx = state.schedules.findIndex(local => local.id === s.id);
                     if (idx !== -1) state.schedules[idx] = s;
@@ -340,19 +364,15 @@ const DB = {
                 this.saveLocal('schedules', state.schedules);
             }
 
-            // エルゴ記録は件数が多いので、currentUserのものだけロードするか、表示時にロードする方針が良い
-            // ここではcurrentUserの記録をロード
-            if (state.currentUser) {
-                const myRecords = await window.SupabaseConfig.db.loadErgoRecords(state.currentUser.id);
-                if (myRecords.length) {
-                    // 同様にマージ
-                    myRecords.forEach(r => {
-                        const idx = state.ergoRecords.findIndex(local => local.id === r.id);
-                        if (idx !== -1) state.ergoRecords[idx] = r;
-                        else state.ergoRecords.push(r);
-                    });
-                    this.saveLocal('ergo_records', state.ergoRecords);
-                }
+            // エルゴ記録: 全ユーザー分を取得（ランキング共有のため）
+            const allRecords = await window.SupabaseConfig.db.loadErgoRecords();
+            if (allRecords.length) {
+                allRecords.forEach(r => {
+                    const idx = state.ergoRecords.findIndex(local => local.id === r.id);
+                    if (idx !== -1) state.ergoRecords[idx] = r;
+                    else state.ergoRecords.push(r);
+                });
+                this.saveLocal('ergo_records', state.ergoRecords);
             }
 
             // クルーノート
@@ -1878,7 +1898,7 @@ async function syncConcept2() {
             insertedCount++;
         }
 
-        // 保存
+        // ローカル保存
         DB.save('ergo_records', existingRecords);
         DB.save('ergoSessions', existingSessions);
         DB.save('ergoRaw', state.ergoRaw);
@@ -1886,6 +1906,35 @@ async function syncConcept2() {
         // stateも更新
         state.ergoRecords = existingRecords;
         state.ergoSessions = existingSessions;
+
+        // Supabaseにもエルゴ記録を保存（非同期）
+        if (DB.useSupabase && window.SupabaseConfig?.isReady()) {
+            const newRecords = existingRecords.filter(r =>
+                r.source === 'concept2' && r.createdAt
+            ).slice(-insertedCount); // 新規追加分のみ
+
+            for (const record of newRecords) {
+                try {
+                    await DB.saveErgoRecord({
+                        id: record.id,
+                        user_id: record.userId,
+                        date: record.date,
+                        distance: record.distance,
+                        time_seconds: record.time || record.timeSeconds,
+                        time_display: record.timeDisplay,
+                        split: record.split,
+                        stroke_rate: record.strokeRate,
+                        heart_rate: record.heartRate,
+                        menu_key: record.menuKey,
+                        category: record.category,
+                        source: 'Concept2',
+                        raw_data: record.rawData || {}
+                    });
+                } catch (e) {
+                    console.warn('Supabase ergo save failed:', e);
+                }
+            }
+        }
 
         // 最終同期日時を更新
         state.currentUser.concept2LastSync = new Date().toISOString();
