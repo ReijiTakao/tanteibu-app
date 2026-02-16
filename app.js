@@ -1531,7 +1531,8 @@ function classifyErgoSessions(reclassify = false) {
             // 既に分類済みかチェック（再分類でない場合）
             if (!reclassify) {
                 const existingSession = state.ergoSessions.find(s => s.rawId === raw.id);
-                if (existingSession) return;
+                const existingByConcept2 = state.ergoRecords.find(r => r.concept2Id && r.concept2Id === String(raw.concept2Id || ''));
+                if (existingSession || existingByConcept2) return;
             }
 
             // ルール適用
@@ -1544,12 +1545,18 @@ function classifyErgoSessions(reclassify = false) {
                 menuKey = raw.intervalDisplay || 'インターバル';
                 category = 'interval';
             } else {
+                // workoutTypeに基づいて距離/時間を判別
+                const isDistanceWkt = raw.workoutType === 'FixedDistanceSplits';
+                const isTimeWkt = raw.workoutType === 'FixedTimeSplits';
+
                 for (const rule of rules) {
                     if (rule.type === 'distance' && raw.distance >= rule.min && raw.distance <= rule.max) {
+                        if (isTimeWkt) continue; // 時間ワークアウトなのに距離ルールマッチ → スキップ
                         menuKey = rule.key;
                         category = 'distance';
                         break;
                     } else if (rule.type === 'time' && raw.time >= rule.min && raw.time <= rule.max) {
+                        if (isDistanceWkt) continue; // 距離ワークアウトなのに時間ルールマッチ → スキップ
                         menuKey = rule.key;
                         category = 'time';
                         break;
@@ -1682,11 +1689,20 @@ function classifyConcept2Result(result) {
         return { menuKey: 'JustRow', category: 'other' };
     }
 
-    // 距離/時間ルールで分類（TT等）
+    // workoutTypeに基づいて距離/時間を判別
+    // FixedDistanceSplits → 距離ルールのみ適用
+    // FixedTimeSplits → 時間ルールのみ適用
+    const isDistanceWorkout = workoutType === 'FixedDistanceSplits';
+    const isTimeWorkout = workoutType === 'FixedTimeSplits';
+
     for (const rule of rules) {
         if (rule.type === 'distance' && distance >= rule.min && distance <= rule.max) {
+            // 時間ワークアウトなのに距離ルールにマッチした場合はスキップ
+            if (isTimeWorkout) continue;
             return { menuKey: rule.key, category: 'distance' };
         } else if (rule.type === 'time' && timeSec >= rule.min && timeSec <= rule.max) {
+            // 距離ワークアウトなのに時間ルールにマッチした場合はスキップ
+            if (isDistanceWorkout) continue;
             return { menuKey: rule.key, category: 'time' };
         }
     }
@@ -1884,6 +1900,15 @@ function initMainScreen() {
 
     state.currentWeekStart = getWeekStart(new Date());
     state.currentDiaryDate = new Date();
+
+    // 分類ロジック更新時のワンタイム再分類マイグレーション
+    const CLASSIFICATION_VERSION = 2; // workoutType判定追加
+    const savedVersion = parseInt(localStorage.getItem('ergo_classification_version') || '0');
+    if (savedVersion < CLASSIFICATION_VERSION) {
+        console.log(`Ergo classification migration: v${savedVersion} → v${CLASSIFICATION_VERSION}`);
+        classifyErgoSessions(true);
+        localStorage.setItem('ergo_classification_version', String(CLASSIFICATION_VERSION));
+    }
 
     renderWeekCalendar();
     initOverviewDate();
