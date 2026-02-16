@@ -208,14 +208,20 @@ let state = {
 const DB = {
     // Supabaseが利用可能かどうか
     useSupabase: false,
+    // ストレージプレフィックス（デモモードで切替）
+    storagePrefix: 'tanteibu_v2_',
+
+    setDemoMode(isDemoMode) {
+        this.storagePrefix = isDemoMode ? 'tanteibu_demo_' : 'tanteibu_v2_';
+    },
 
     // ローカルストレージ操作
     saveLocal(key, data) {
-        localStorage.setItem(`tanteibu_v2_${key}`, JSON.stringify(data));
+        localStorage.setItem(`${this.storagePrefix}${key}`, JSON.stringify(data));
     },
 
     loadLocal(key) {
-        const data = localStorage.getItem(`tanteibu_v2_${key}`);
+        const data = localStorage.getItem(`${this.storagePrefix}${key}`);
         return data ? JSON.parse(data) : null;
     },
 
@@ -241,6 +247,19 @@ const DB = {
                 console.warn('Supabase sync failed:', e);
             }
         }
+    },
+
+    // 全データリセット（現在のプレフィックスのみ）
+    resetAllData() {
+        const prefix = this.storagePrefix;
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(prefix)) {
+                keysToRemove.push(key);
+            }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
     },
 
     // 汎用読込（ローカル優先、Supabaseからの同期は別途）
@@ -860,6 +879,7 @@ function switchTab(tabId) {
     const onboardingScreen = document.getElementById('onboarding-screen');
     if (onboardingScreen) onboardingScreen.style.display = 'none';
 
+    // まずUI切り替えを確実に実行
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.toggle('active', item.dataset.tab === tabId);
     });
@@ -868,19 +888,24 @@ function switchTab(tabId) {
         content.classList.toggle('active', content.id === `tab-${tabId}`);
     });
 
-    if (tabId === 'overview') { renderOverview(); renderMileageRanking(); }
-    if (tabId === 'ergo-data') {
-        initCoachErgoView();
-        renderErgoRecords();
-        renderWeeklyRanking();
-        renderTeamRecords();
+    // 各タブの初期化（エラーがタブ遷移をブロックしないようtry-catch）
+    try {
+        if (tabId === 'overview') { renderOverview(); renderMileageRanking(); }
+        if (tabId === 'ergo-data') {
+            initCoachErgoView();
+            renderErgoRecords();
+            renderWeeklyRanking();
+            renderTeamRecords();
+        }
+        if (tabId === 'rigging') initRigging();
+        if (tabId === 'crew-note') {
+            initCrewNoteFeatures();
+            renderPracticeNotesList();
+        }
+        if (tabId === 'settings') renderSettings();
+    } catch (error) {
+        console.error(`Tab init error (${tabId}):`, error);
     }
-    if (tabId === 'rigging') initRigging();
-    if (tabId === 'crew-note') {
-        initCrewNoteFeatures();
-        renderPracticeNotesList();
-    }
-    if (tabId === 'settings') renderSettings();
 }
 
 // =========================================
@@ -5086,6 +5111,7 @@ const initializeApp = async () => {
         state.isDemoMode = isDemoMode;
 
         if (isDemoMode) {
+            DB.setDemoMode(true);
         }
 
         // Supabaseクライアントの初期化
@@ -5202,6 +5228,13 @@ const initializeApp = async () => {
         document.getElementById('skip-concept2-btn').addEventListener('click', skipConcept2);
         document.getElementById('connect-concept2-btn').addEventListener('click', connectConcept2);
         document.getElementById('logout-btn').addEventListener('click', handleLogout);
+        document.getElementById('reset-data-btn')?.addEventListener('click', () => {
+            if (!confirm('⚠️ 全てのローカルデータを削除します。この操作は取り消せません。よろしいですか？')) return;
+            if (!confirm('本当に全データを削除しますか？（最終確認）')) return;
+            DB.resetAllData();
+            showToast('データをリセットしました', 'success');
+            setTimeout(() => location.reload(), 500);
+        });
         document.getElementById('logout-pending-btn')?.addEventListener('click', handleLogout);
 
         // 設定画面のConcept2
