@@ -7661,6 +7661,45 @@ function openCrewNoteEdit(hash, date) {
         showToast('保存しました', 'success');
     };
 
+    // メンバーの振り返りを描画（既存クルーの場合のみ）
+    const reflectionsContainer = document.getElementById('crew-note-member-reflections');
+    const reflectionsGroup = document.getElementById('crew-note-member-reflections-group');
+    if (reflectionsContainer && memberIds.length > 0 && date) {
+        reflectionsGroup.classList.remove('hidden');
+        let refHtml = '';
+        memberIds.forEach(uid => {
+            const user = state.users.find(u => u.id === uid);
+            const userName = user ? user.name : '不明';
+
+            // この日・このユーザーの練習ノート（乗艇）を検索
+            const notes = (state.practiceNotes || []).filter(n =>
+                n.userId === uid && n.date === date &&
+                (n.scheduleType === '乗艇' || !n.scheduleType)
+            );
+
+            const reflection = notes.map(n => n.reflection).filter(r => r && r.trim()).join(' / ');
+            const distance = notes.reduce((sum, n) => sum + (n.rowingDistance || 0), 0);
+            const distanceText = distance > 0 ? `${(distance / 1000).toFixed(1)}km` : '';
+
+            const reflectionDisplay = reflection
+                ? `<span class="member-reflection-text">${reflection}</span>`
+                : '<span class="member-reflection-empty">未記入</span>';
+
+            refHtml += `
+                <div class="member-reflection-row">
+                    <span class="member-reflection-name">${userName}</span>
+                    <div class="member-reflection-content">
+                        ${reflectionDisplay}
+                        ${distanceText ? `<span class="member-reflection-distance">${distanceText}</span>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        reflectionsContainer.innerHTML = refHtml || '<p class="text-muted">メンバーの練習ノートがありません</p>';
+    } else if (reflectionsGroup) {
+        reflectionsGroup.classList.add('hidden');
+    }
+
     modal.classList.remove('hidden');
 }
 
