@@ -1497,9 +1497,11 @@ function classifyErgoSessions(reclassify = false) {
         }
 
         userRaw.forEach(raw => {
-            // データ補正（インターバル詳細）
-            if (raw.intervals && raw.intervals.length > 0 && (!raw.intervalDisplay || raw.workoutType === 'unknown')) {
-                const intervalInfo = calculateIntervalDetails({ intervals: raw.intervals }, raw.workoutType);
+            // データ補正（インターバル詳細）- 常に再計算して分類を修正
+            // raw.type: Concept2のオリジナルworkout_type（改変されない）
+            if (raw.intervals && raw.intervals.length > 0) {
+                const originalType = raw.type || raw.workoutType || 'unknown';
+                const intervalInfo = calculateIntervalDetails({ intervals: raw.intervals }, originalType);
                 raw.intervalDisplay = intervalInfo.display;
                 raw.workoutType = intervalInfo.type;
             }
@@ -3885,11 +3887,17 @@ function getIntervalSubtype(record) {
 
 // エルゴ詳細モーダルを開く
 function openErgoDetail(recordId) {
-    const record = state.ergoRecords.find(r => r.id === recordId);
+    let record = state.ergoRecords.find(r => r.id === recordId);
+    // ergoSessionsにもフォールバック
+    if (!record) record = state.ergoSessions.find(s => s.id === recordId);
     if (!record) return;
 
-    // rawIdから直接rawデータを取得
-    const raw = state.ergoRaw.find(r => r.id === record.rawId);
+    // rawIdから直接rawデータを取得（フォールバック付き）
+    let raw = state.ergoRaw.find(r => r.id === record.rawId);
+    // rawIdで見つからない場合、concept2Idで検索
+    if (!raw && record.concept2Id) {
+        raw = state.ergoRaw.find(r => r.concept2Id === record.concept2Id);
+    }
 
     const modal = document.getElementById('ergo-detail-modal');
     const display = formatDisplayDate(record.date);
@@ -5344,23 +5352,38 @@ function calculateIntervalDetails(workout, defaultType = 'unknown') {
         // 全セットで時間が一定か確認
         const isFixedTime = workout.intervals.every(i => i.time === firstTime);
 
-        if (isFixedDistance && (!isFixedTime || firstDist % 100 === 0)) {
-            // 距離ベース（時間が一定でない、または距離がキリの良い数字）
-            display = `${firstDist} m×${count} `;
+        // Concept2のworkout_typeを優先して判定
+        const isC2TimeWorkout = defaultType === 'FixedTimeSplits' || defaultType === 'FixedTimeInterval';
+        const isC2DistWorkout = defaultType === 'FixedDistanceSplits' || defaultType === 'FixedDistanceInterval';
+
+        if (isC2TimeWorkout || (isFixedTime && !isC2DistWorkout && !isFixedDistance)) {
+            // 時間ベースインターバル
+            const timeVal = firstTime || 0;
+            const mins = Math.round(timeVal / 600); // 1/10秒 -> 分
+            if (timeVal % 600 === 0 && mins > 0) {
+                display = `${mins}min×${count}`;
+            } else {
+                const secs = Math.round(timeVal / 10);
+                display = `${secs}sec×${count}`;
+            }
+            type = 'FixedTimeInterval';
+        } else if (isFixedDistance && firstDist > 0) {
+            // 距離ベースインターバル
+            display = `${firstDist}m×${count}`;
             type = 'FixedDistanceInterval';
-        } else if (isFixedTime) {
-            // 時間ベース
-            const mins = Math.round(firstTime / 600); // 1/10秒 -> 分
+        } else if (isFixedTime && firstTime > 0) {
+            // フォールバック: 時間が一定なら時間ベース
+            const mins = Math.round(firstTime / 600);
             if (firstTime % 600 === 0 && mins > 0) {
-                display = `${mins} min×${count} `;
+                display = `${mins}min×${count}`;
             } else {
                 const secs = Math.round(firstTime / 10);
-                display = `${secs} sec×${count} `;
+                display = `${secs}sec×${count}`;
             }
             type = 'FixedTimeInterval';
         } else {
             // 変則
-            display = `Variable×${count} `;
+            display = `Variable×${count}`;
             type = 'VariableInterval';
         }
     }
