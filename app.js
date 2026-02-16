@@ -3913,18 +3913,18 @@ function openErgoDetail(recordId) {
 
             if (weight && actualTime) {
                 const idtSeconds = calculateIDTSeconds(weight, gender);
-                const pct = calculateIDTPercent(actualTime, idtSeconds);
+                const idtValue = calculateIDTPercent(actualTime, idtSeconds);
                 const idtFormatted = formatTime(idtSeconds);
 
-                let pctClass = 'idt-low';
-                if (pct >= 100) pctClass = 'idt-high';
-                else if (pct >= 95) pctClass = 'idt-mid';
+                let idtClass = 'idt-low';
+                if (idtValue >= 100) idtClass = 'idt-high';
+                else if (idtValue >= 95) idtClass = 'idt-mid';
 
                 idtDiv.innerHTML = `
                     <div class="idt-detail-label">⚖️ IDT（体重 ${weight}kg）</div>
-                    <div style="display:flex;align-items:baseline;gap:8px;">
-                        <span class="idt-detail-value">${idtFormatted}</span>
-                        <span class="idt-detail-percent ${pctClass}">${pct.toFixed(1)}%</span>
+                    <div style="display:flex;align-items:baseline;gap:12px;">
+                        <span class="idt-detail-value ${idtClass}">${idtValue.toFixed(1)}</span>
+                        <span style="font-size:12px;color:#888;">目標: ${idtFormatted}</span>
                     </div>
                 `;
                 idtDiv.classList.remove('hidden');
@@ -7348,10 +7348,10 @@ function renderIDTBadge(weight, gender, actualSeconds) {
     if (!weight || !actualSeconds) return '';
     const idtSeconds = calculateIDTSeconds(weight, gender);
     if (!idtSeconds) return '';
-    const pct = calculateIDTPercent(actualSeconds, idtSeconds);
-    if (!pct) return '';
+    const idtValue = calculateIDTPercent(actualSeconds, idtSeconds);
+    if (!idtValue) return '';
     let cls = 'idt-low';
-    if (pct >= 100) cls = 'idt-high';
-    else if (pct >= 95) cls = 'idt-mid';
-    return `<span class="idt-badge ${cls}">IDT ${pct.toFixed(1)}%</span>`;
+    if (idtValue >= 100) cls = 'idt-high';
+    else if (idtValue >= 95) cls = 'idt-mid';
+    return `<span class="idt-badge ${cls}">IDT ${idtValue.toFixed(1)}</span>`;
 }
