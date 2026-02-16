@@ -7403,7 +7403,102 @@ function openCrewDetail(hash) {
         openCrewNoteEdit(hash, formatDate(new Date()));
     };
 
+    // メンバーの振り返り一覧を描画
+    renderCrewMemberReflections(crew);
+
     modal.classList.remove('hidden');
+}
+
+/**
+ * クルーメンバーの振り返り一覧を描画
+ * クルーに属する全メンバーの練習ノート(乗艇)を日付ごとに表示
+ */
+function renderCrewMemberReflections(crew) {
+    const container = document.getElementById('crew-member-reflections');
+    if (!container || !crew) return;
+
+    // このクルーのメンバーIDリスト
+    const memberIds = crew.memberIds || [];
+    if (memberIds.length === 0) {
+        container.innerHTML = '<p class="text-muted">メンバーがいません</p>';
+        return;
+    }
+
+    // クルーノートの日付リスト（このクルーの練習日）
+    const crewNoteDates = (state.crewNotes || [])
+        .filter(n => n.crewHash === crew.hash)
+        .map(n => n.date)
+        .sort((a, b) => b.localeCompare(a));
+
+    // 各日付のクルーノートに加え、メンバーの練習ノートも検索
+    // 乗艇スケジュールでこのクルーメンバーが同日に乗っている練習を探す
+    const allDates = new Set(crewNoteDates);
+
+    // 乗艇スケジュールから関連日付を追加
+    (state.schedules || []).forEach(s => {
+        if (s.scheduleType === '乗艇' && memberIds.includes(s.userId)) {
+            allDates.add(s.date);
+        }
+    });
+
+    const sortedDates = [...allDates].sort((a, b) => b.localeCompare(a)).slice(0, 10); // 直近10日分
+
+    if (sortedDates.length === 0) {
+        container.innerHTML = '<p class="text-muted">まだ練習記録がありません</p>';
+        return;
+    }
+
+    let html = '';
+    sortedDates.forEach(date => {
+        const display = formatDisplayDate(date);
+        let weekdayClass = '';
+        if (display.dayOfWeek === 0) weekdayClass = 'sunday';
+        if (display.dayOfWeek === 6) weekdayClass = 'saturday';
+
+        // この日の各メンバーの練習ノートを取得
+        let memberNotesHtml = '';
+        let hasAnyContent = false;
+
+        memberIds.forEach(uid => {
+            const user = state.users.find(u => u.id === uid);
+            const userName = user ? user.name : '不明';
+
+            // この日・このユーザーの練習ノート（乗艇）を検索
+            const notes = (state.practiceNotes || []).filter(n =>
+                n.userId === uid && n.date === date &&
+                (n.scheduleType === '乗艇' || !n.scheduleType) // 乗艇または未設定
+            );
+
+            const reflection = notes.map(n => n.reflection).filter(r => r && r.trim()).join(' / ');
+            const distance = notes.reduce((sum, n) => sum + (n.rowingDistance || 0), 0);
+            const distanceText = distance > 0 ? `${(distance / 1000).toFixed(1)}km` : '';
+
+            if (reflection || distance > 0) hasAnyContent = true;
+
+            const reflectionDisplay = reflection
+                ? `<span class="member-reflection-text">${reflection.substring(0, 80)}${reflection.length > 80 ? '…' : ''}</span>`
+                : '<span class="member-reflection-empty">未記入</span>';
+
+            memberNotesHtml += `
+                <div class="member-reflection-row">
+                    <span class="member-reflection-name">${userName}</span>
+                    <div class="member-reflection-content">
+                        ${reflectionDisplay}
+                        ${distanceText ? `<span class="member-reflection-distance">${distanceText}</span>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `
+            <div class="reflection-date-group">
+                <div class="reflection-date-header">${display.month}/${display.day} <span class="weekday ${weekdayClass}">(${display.weekday})</span></div>
+                ${memberNotesHtml}
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
 }
 
 // ノート編集モーダル (hashがnullの場合は新規作成)
