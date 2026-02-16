@@ -213,6 +213,8 @@ const DB = {
 
     setDemoMode(isDemoMode) {
         this.storagePrefix = isDemoMode ? 'tanteibu_demo_' : 'tanteibu_v2_';
+        // デモモードではSupabase書き込みを無効化（本番データを汚染しない）
+        if (isDemoMode) this.useSupabase = false;
     },
 
     // ローカルストレージ操作
@@ -6080,6 +6082,7 @@ function renderMemberRoster() {
     const container = document.getElementById('member-roster');
     if (!container) return;
 
+    const isAdmin = state.currentUser?.role === '管理者';
     const members = (state.users || []).filter(u => u.approvalStatus === '承認済み' && u.status !== '非在籍');
 
     if (members.length === 0) {
@@ -6096,7 +6099,6 @@ function renderMemberRoster() {
         gradeGroups[grade].members.push(m);
     });
 
-    // 学年降順でソート（4→3→2→1→0）
     const sortedGrades = Object.keys(gradeGroups).map(Number).sort((a, b) => b - a);
 
     const roleEmoji = (role) => {
@@ -6108,7 +6110,6 @@ function renderMemberRoster() {
             default: return '👤';
         }
     };
-
     const genderLabel = (g) => g === 'woman' ? '女' : '男';
 
     let html = `<div style="font-size:13px;color:#666;margin-bottom:8px;">合計 ${members.length}名</div>`;
@@ -6124,15 +6125,22 @@ function renderMemberRoster() {
             <th style="text-align:left;padding:6px 8px;">名前</th>
             <th style="text-align:center;padding:6px 4px;">権限</th>
             <th style="text-align:center;padding:6px 4px;">性別</th>
+            ${isAdmin ? '<th style="text-align:center;padding:6px 4px;width:40px;"></th>' : ''}
         </tr></thead><tbody>`;
 
         sorted.forEach(m => {
             const isMe = state.currentUser && m.id === state.currentUser.id;
             const bgStyle = isMe ? 'background:#e8f4fd;' : '';
+            const deleteBtn = (isAdmin && !isMe)
+                ? `<td style="text-align:center;padding:4px 2px;">
+                    <button onclick="deleteMember('${m.id}')" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:16px;" title="削除">✕</button>
+                   </td>`
+                : (isAdmin ? '<td></td>' : '');
             html += `<tr style="border-bottom:1px solid #eee;${bgStyle}">
                 <td style="padding:6px 8px;">${m.name || '不明'}${isMe ? ' <span style="color:#2196f3;font-size:11px;">（自分）</span>' : ''}</td>
                 <td style="text-align:center;padding:6px 4px;">${roleEmoji(m.role)} ${m.role || '-'}</td>
                 <td style="text-align:center;padding:6px 4px;">${genderLabel(m.gender)}</td>
+                ${deleteBtn}
             </tr>`;
         });
 
@@ -6140,6 +6148,39 @@ function renderMemberRoster() {
     });
 
     container.innerHTML = html;
+}
+
+// 管理者: メンバーを削除（非在籍に変更）
+async function deleteMember(userId) {
+    if (!state.currentUser || state.currentUser.role !== '管理者') {
+        showToast('管理者権限が必要です', 'error');
+        return;
+    }
+    if (userId === state.currentUser.id) {
+        showToast('自分自身は削除できません', 'error');
+        return;
+    }
+
+    const member = state.users.find(u => u.id === userId);
+    if (!member) return;
+
+    if (!confirm(`${member.name} を名簿から削除しますか？\n（アカウントは「非在籍」に変更されます）`)) return;
+
+    // ローカルで非在籍に変更
+    member.status = '非在籍';
+    DB.save('users', state.users);
+
+    // Supabase プロフィールも更新
+    if (DB.useSupabase && window.SupabaseConfig?.isReady()) {
+        try {
+            await window.SupabaseConfig.db.updateProfile(userId, { status: '非在籍' });
+        } catch (e) {
+            console.warn('Profile update failed:', e);
+        }
+    }
+
+    showToast(`${member.name} を名簿から削除しました`, 'success');
+    renderMemberRoster();
 }
 function disconnectConcept2() {
     showConfirmModal('Concept2との連携を解除しますか？', () => {
