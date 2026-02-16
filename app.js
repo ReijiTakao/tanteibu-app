@@ -1799,10 +1799,42 @@ async function syncConcept2() {
             const recordDate = result.date?.split('T')[0] || new Date().toISOString().split('T')[0];
             const splitStr = (distance > 0 && timeSec > 0) ? formatSplit(timeSec, distance) : '-';
             const recordId = 'c2_' + concept2Id;
+            const workout = result.workout || {};
+
+            // インターバル情報の計算
+            const intervalInfo = calculateIntervalDetails(workout, result.workout_type);
+
+            // ergoRawに保存（スプリット/インターバルデータ含む）
+            const existingRaw = state.ergoRaw?.find(r => r.concept2Id === concept2Id);
+            if (!existingRaw) {
+                const rawRecord = {
+                    id: recordId,
+                    concept2Id: concept2Id,
+                    date: recordDate,
+                    type: result.workout_type,
+                    distance: distance,
+                    time: timeSec,
+                    timeFormatted: result.time_formatted,
+                    averageSPM: result.stroke_rate || null,
+                    workoutType: intervalInfo.type || result.workout_type || 'FixedDistanceSplits',
+                    intervalDisplay: intervalInfo.display,
+                    splits: workout.splits || [],
+                    intervals: workout.intervals || [],
+                    restTime: result.rest_time || 0,
+                    restDistance: result.rest_distance || 0,
+                    source: result.source,
+                    verified: result.verified,
+                    userId: state.currentUser.id,
+                    createdAt: new Date().toISOString()
+                };
+                if (!state.ergoRaw) state.ergoRaw = [];
+                state.ergoRaw.push(rawRecord);
+            }
 
             // ergoRecordsに追加
             const newRecord = {
                 id: recordId,
+                rawId: recordId,
                 concept2Id: concept2Id,
                 userId: state.currentUser.id,
                 userName: state.currentUser.name,
@@ -1814,10 +1846,11 @@ async function syncConcept2() {
                 split: splitStr,
                 strokeRate: result.stroke_rate || 0,
                 heartRate: result.heart_rate?.average || null,
-                workoutType: result.workout_type || 'FixedDistanceSplits',
+                workoutType: intervalInfo.type || result.workout_type || 'FixedDistanceSplits',
                 menuKey: menuKey,
                 category: category,
-                intervals: result.workout?.intervals || [],
+                intervals: workout.intervals || [],
+                splits: workout.splits || [],
                 rawData: result,
                 source: 'concept2',
                 createdAt: new Date().toISOString()
@@ -1837,7 +1870,7 @@ async function syncConcept2() {
                 timeDisplay: formatTime(timeSec),
                 split: splitStr,
                 strokeRate: result.stroke_rate || 0,
-                workoutType: result.workout_type || 'FixedDistanceSplits',
+                workoutType: intervalInfo.type || result.workout_type || 'FixedDistanceSplits',
                 source: 'Concept2',
                 createdAt: new Date().toISOString()
             });
@@ -1848,6 +1881,7 @@ async function syncConcept2() {
         // 保存
         DB.save('ergo_records', existingRecords);
         DB.save('ergoSessions', existingSessions);
+        DB.save('ergoRaw', state.ergoRaw);
 
         // stateも更新
         state.ergoRecords = existingRecords;
@@ -3972,7 +4006,16 @@ function openErgoDetail(recordId) {
     }
 
     // スプリット/インターバルを表示
-    renderSplits(record, raw);
+    // rawデータがない場合、record内のデータからフォールバック構築
+    let effectiveRaw = raw;
+    if (!effectiveRaw) {
+        const fallbackSplits = record.splits || record.rawData?.workout?.splits || [];
+        const fallbackIntervals = record.intervals || record.rawData?.workout?.intervals || [];
+        if (fallbackSplits.length > 0 || fallbackIntervals.length > 0) {
+            effectiveRaw = { splits: fallbackSplits, intervals: fallbackIntervals };
+        }
+    }
+    renderSplits(record, effectiveRaw);
 
     modal.classList.remove('hidden');
 }
