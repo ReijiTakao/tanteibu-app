@@ -4161,6 +4161,7 @@ function renderWeeklyRanking() {
     const selectedMenu = menuSelect?.value || '2000m TT';
     const genderBtn = document.querySelector('#weekly-ranking-section .gender-btn.active');
     const selectedGender = genderBtn?.dataset.gender || (state.currentUser?.gender || 'man');
+    const includeInactive = document.getElementById('ranking-include-inactive')?.checked || false;
 
     // UIのトグル状態を初期化時に合わせる
     if (!genderBtn && state.currentUser) {
@@ -4190,6 +4191,7 @@ function renderWeeklyRanking() {
     state.ergoSessions.forEach(session => {
         const user = state.users.find(u => u.id === session.userId);
         if (!user || user.gender !== selectedGender) return;
+        if (!includeInactive && user.status === '非在籍') return;
         const sessionDate = new Date(session.date);
         if (sessionDate < monday || session.menuKey !== selectedMenu) return;
         if (session.rawId) seenRawIds.add(session.rawId);
@@ -4206,6 +4208,7 @@ function renderWeeklyRanking() {
     state.ergoRecords.forEach(record => {
         const user = state.users.find(u => u.id === record.userId);
         if (!user || user.gender !== selectedGender) return;
+        if (!includeInactive && user.status === '非在籍') return;
         const recordDate = new Date(record.date);
         if (recordDate < monday || record.menuKey !== selectedMenu) return;
         if (record.rawId && seenRawIds.has(record.rawId)) return; // 重複スキップ
@@ -4496,8 +4499,10 @@ function renderAllTimeRanking() {
 
     // ユーザーごとにベストを収集
     const allTimeBests = [];
+    const includeInactive = document.getElementById('alltime-ranking-include-inactive')?.checked || false;
     state.users.forEach(user => {
         if (user.gender !== selectedGender) return; // 性別フィルタ
+        if (!includeInactive && user.status === '非在籍') return; // 非在籍フィルタ
 
         const seenRawIds = new Set();
         const allRecords = [];

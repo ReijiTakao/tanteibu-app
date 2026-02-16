@@ -406,6 +406,12 @@
                             <button id="idt-calc-btn" class="icon-btn" onclick="openIDTModal()" title="IDT計算機"
                                 style="margin-left: 8px;">⚖️</button>
                         </div>
+                        <div style="margin-top:4px;">
+                            <label style="font-size:12px;color:#888;cursor:pointer;">
+                                <input type="checkbox" id="ranking-include-inactive" onchange="renderWeeklyRanking()"
+                                    style="margin-right:4px;">非在籍を含む
+                            </label>
+                        </div>
                         <div id="weekly-ranking" class="ranking-list"></div>
                     </div>
 
@@ -429,6 +435,12 @@
                             <option value="60分">60分</option>
                             <option value="10000m">10000m</option>
                         </select>
+                    </div>
+                    <div style="margin-top:4px;">
+                        <label style="font-size:12px;color:#888;cursor:pointer;">
+                            <input type="checkbox" id="alltime-ranking-include-inactive"
+                                onchange="renderAllTimeRanking()" style="margin-right:4px;">非在籍を含む
+                        </label>
                     </div>
                     <div id="all-time-ranking-list" class="ranking-list"></div>
                 </div>
