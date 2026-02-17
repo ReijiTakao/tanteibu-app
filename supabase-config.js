@@ -172,17 +172,35 @@ async function getOrCreateProfile(session) {
 
 /**
  * Supabase操作に同期ステータスインジケーターを付与するラッパー
- * save/delete系の操作で呼び出し、同期中→成功/失敗をUIに表示する
+ * 複数の同時操作をカウンターで管理し、全完了後に最終結果を表示
  */
+let _syncPending = 0;
+let _syncHadError = false;
+let _syncSuppressed = false; // 初期同期中はインジケーター非表示
+
+function suppressSyncIndicator(flag) { _syncSuppressed = flag; }
+
 async function withSyncIndicator(asyncFn) {
-    if (typeof showSyncStatus === 'function') showSyncStatus('syncing');
+    if (_syncSuppressed) return asyncFn();
+
+    _syncPending++;
+    if (_syncPending === 1) {
+        _syncHadError = false;
+        if (typeof showSyncStatus === 'function') showSyncStatus('syncing');
+    }
     try {
         const result = await asyncFn();
-        if (typeof showSyncStatus === 'function') showSyncStatus('success');
         return result;
     } catch (e) {
-        if (typeof showSyncStatus === 'function') showSyncStatus('error');
+        _syncHadError = true;
         throw e;
+    } finally {
+        _syncPending--;
+        if (_syncPending === 0) {
+            if (typeof showSyncStatus === 'function') {
+                showSyncStatus(_syncHadError ? 'error' : 'success');
+            }
+        }
     }
 }
 
@@ -522,5 +540,6 @@ window.SupabaseConfig = {
     onAuthStateChange,
     getOrCreateProfile,
     db: SupabaseDB,
-    supabaseUrl: SUPABASE_URL
+    supabaseUrl: SUPABASE_URL,
+    suppressSyncIndicator
 };

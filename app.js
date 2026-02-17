@@ -314,9 +314,10 @@ const DB = {
         }
     },
 
-    // Supabaseから同期
+    // Supabaseから同期（初期同期中はインジケーター非表示）
     async syncFromSupabase() {
         if (!this.useSupabase || !window.SupabaseConfig.isReady()) return;
+        window.SupabaseConfig.suppressSyncIndicator(true);
 
         try {
             // プロフィール（全ユーザー一覧）をSupabaseから取得
@@ -433,6 +434,8 @@ const DB = {
 
         } catch (e) {
             console.warn('Sync failed:', e);
+        } finally {
+            window.SupabaseConfig.suppressSyncIndicator(false);
         }
     },
 
