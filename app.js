@@ -5438,8 +5438,15 @@ function saveMasterItem() {
 
     // Supabaseにも個別保存
     if (DB.useSupabase && window.SupabaseConfig?.db) {
-        window.SupabaseConfig.db.saveMasterItem(currentMasterType, newItem).catch(e => {
-            console.warn('Master item Supabase save failed:', e);
+        window.SupabaseConfig.db.saveMasterItem(currentMasterType, newItem).then(result => {
+            if (result) {
+                console.log('✅ Master item saved to Supabase:', currentMasterType, newItem.id);
+            } else {
+                showToast('⚠️ Supabase同期に失敗しました（ローカルには保存済み）', 'error');
+            }
+        }).catch(e => {
+            console.error('Master item Supabase save failed:', e);
+            showToast('⚠️ Supabase同期エラー: ' + (e?.message || e), 'error');
         });
     }
 

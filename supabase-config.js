@@ -582,9 +582,15 @@ const SupabaseDB = {
                 .upsert(filteredRow, { onConflict: 'id' })
                 .select()
                 .single();
-            if (error) { console.error(`Save ${table} error:`, error); throw error; }
+            if (error) {
+                console.error(`Save ${table} error:`, error.message, error.details, error.hint, 'Row:', JSON.stringify(filteredRow));
+                throw error;
+            }
             return data;
-        }).catch(() => null);
+        }).catch(e => {
+            console.error(`saveMasterItem(${table}) failed:`, e?.message || e);
+            return null;
+        });
     },
 
     async deleteMasterItem(table, id) {
