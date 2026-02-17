@@ -329,6 +329,7 @@ const DB = {
                     status: p.status,
                     approvalStatus: p.approval_status,
                     concept2Connected: p.concept2_connected,
+                    concept2Token: p.concept2_access_token || null,
                     concept2LastSync: p.concept2_last_sync
                 }));
                 // ローカルのユーザーとマージ
@@ -342,6 +343,17 @@ const DB = {
                     }
                 });
                 this.saveLocal('users', state.users);
+
+                // currentUserにConcept2トークンを復元
+                if (state.currentUser) {
+                    const me = state.users.find(u => u.id === state.currentUser.id);
+                    if (me && me.concept2Token) {
+                        state.currentUser.concept2Token = me.concept2Token;
+                        state.currentUser.concept2Connected = me.concept2Connected;
+                        state.currentUser.concept2LastSync = me.concept2LastSync;
+                        this.saveLocal('current_user', state.currentUser);
+                    }
+                }
             }
 
             // マスタデータ
@@ -425,6 +437,29 @@ const DB = {
             if (riggings.length) {
                 this.saveLocal('riggings', riggings);
             }
+
+            // 体重履歴
+            try {
+                const weightHistory = await window.SupabaseConfig.db.loadWeightHistory();
+                if (weightHistory.length) {
+                    // Supabaseのデータでローカルを更新（マージ）
+                    let localHistory = this.loadLocal('weight_history') || [];
+                    weightHistory.forEach(wh => {
+                        const idx = localHistory.findIndex(l => l.id === wh.id);
+                        if (idx !== -1) localHistory[idx] = wh;
+                        else localHistory.push(wh);
+                    });
+                    this.saveLocal('weight_history', localHistory);
+                }
+            } catch (e) { console.warn('Weight history sync failed:', e); }
+
+            // 管理者パスコード
+            try {
+                const passcode = await window.SupabaseConfig.db.loadSetting('admin_passcode');
+                if (passcode) {
+                    this.saveLocal('admin_passcode', passcode);
+                }
+            } catch (e) { console.warn('Admin passcode sync failed:', e); }
 
         } catch (e) {
             console.warn('Sync failed:', e);
@@ -1247,9 +1282,10 @@ async function validateAndConnectConcept2(accessToken) {
         DB.save('users', state.users);
         DB.save('current_user', state.currentUser);
 
-        // Supabaseにも保存
+        // Supabaseにも保存（トークン含む）
         syncProfileToSupabase({
             concept2_connected: true,
+            concept2_access_token: accessToken,
             concept2_last_sync: new Date().toISOString()
         });
 
@@ -1738,6 +1774,18 @@ function classifyErgoSessions(reclassify = false) {
 
         DB.save('ergoSessions', state.ergoSessions);
         DB.save('ergo_records', state.ergoRecords);
+
+        // Supabaseにもergo_recordsを同期（バックグラウンド）
+        if (DB.useSupabase && window.SupabaseConfig?.db) {
+            const c2Records = state.ergoRecords.filter(r => r.source === 'Concept2');
+            Promise.all(c2Records.map(record =>
+                window.SupabaseConfig.db.saveErgoRecord(record).catch(e => {
+                    console.warn('Ergo record sync failed:', record.id, e);
+                })
+            )).then(() => {
+                console.log(`${c2Records.length}件のエルゴ記録をSupabaseに同期完了`);
+            });
+        }
     } catch (error) {
         console.error('Error in classifyErgoSessions:', error);
     }
@@ -6317,6 +6365,16 @@ function renderSettings() {
             const currentPasscode = DB.load('admin_passcode') || 'tanteibu';
             document.getElementById('current-admin-passcode').textContent = currentPasscode;
 
+            // Supabaseからも読み込み（非同期）
+            if (DB.useSupabase && window.SupabaseConfig?.db) {
+                window.SupabaseConfig.db.loadSetting('admin_passcode').then(val => {
+                    if (val) {
+                        DB.save('admin_passcode', val);
+                        document.getElementById('current-admin-passcode').textContent = val;
+                    }
+                }).catch(() => { });
+            }
+
             document.getElementById('set-admin-passcode-btn').onclick = () => {
                 const newPasscode = document.getElementById('new-admin-passcode').value.trim();
                 if (!newPasscode) {
@@ -6328,6 +6386,10 @@ function renderSettings() {
                     return;
                 }
                 DB.save('admin_passcode', newPasscode);
+                // Supabaseにも保存
+                if (DB.useSupabase && window.SupabaseConfig?.db) {
+                    window.SupabaseConfig.db.saveSetting('admin_passcode', newPasscode).catch(e => console.warn('Passcode sync failed:', e));
+                }
                 document.getElementById('current-admin-passcode').textContent = newPasscode;
                 document.getElementById('new-admin-passcode').value = '';
                 showToast('管理者パスコードを更新しました', 'success');
@@ -6797,6 +6859,12 @@ function saveWeight() {
     }
 
     DB.save('weight_history', allHistory);
+
+    // Supabaseにも保存
+    const entry = existingIdx !== -1 ? allHistory[existingIdx] : allHistory[allHistory.length - 1];
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.saveWeightEntry(entry).catch(e => console.warn('Weight sync failed:', e));
+    }
 
     // ユーザーの現在体重も更新
     state.currentUser.weight = weight;

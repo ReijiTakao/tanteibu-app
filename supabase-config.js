@@ -824,6 +824,70 @@ const SupabaseDB = {
         }).catch(e => {
             console.warn('Rigging history sync failed:', e);
         });
+    },
+
+    // --- 体重履歴 ---
+    async loadWeightHistory(userId) {
+        if (!isSupabaseReady()) return [];
+        let query = _supabaseClient
+            .from('weight_history')
+            .select('*')
+            .order('date', { ascending: true });
+        if (userId) {
+            query = query.eq('user_id', userId);
+        }
+        const { data, error } = await query;
+        if (error) { console.error('Load weight_history error:', error); return []; }
+        return (data || []).map(w => ({
+            id: w.id,
+            userId: w.user_id,
+            weight: parseFloat(w.weight),
+            date: w.date,
+            createdAt: w.created_at
+        }));
+    },
+
+    async saveWeightEntry(entry) {
+        if (!isSupabaseReady()) return null;
+        return withSyncIndicator(async () => {
+            const { data, error } = await _supabaseClient
+                .from('weight_history')
+                .upsert({
+                    id: entry.id,
+                    user_id: entry.userId,
+                    weight: entry.weight,
+                    date: entry.date
+                }, { onConflict: 'id' })
+                .select()
+                .single();
+            if (error) { console.error('Save weight_history error:', error); throw error; }
+            return data;
+        }).catch(() => null);
+    },
+
+    // --- アプリ設定 ---
+    async loadSetting(key) {
+        if (!isSupabaseReady()) return null;
+        const { data, error } = await _supabaseClient
+            .from('app_settings')
+            .select('value')
+            .eq('key', key)
+            .single();
+        if (error) { return null; }
+        return data?.value || null;
+    },
+
+    async saveSetting(key, value) {
+        if (!isSupabaseReady()) return null;
+        return withSyncIndicator(async () => {
+            const { data, error } = await _supabaseClient
+                .from('app_settings')
+                .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+                .select()
+                .single();
+            if (error) { console.error('Save app_setting error:', error); throw error; }
+            return data;
+        }).catch(() => null);
     }
 };
 
