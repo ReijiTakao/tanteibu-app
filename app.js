@@ -326,6 +326,8 @@ const DB = {
                     grade: p.grade,
                     gender: p.gender,
                     role: p.role,
+                    side: p.side || null,
+                    weight: p.weight || null,
                     status: p.status,
                     approvalStatus: p.approval_status,
                     concept2Connected: p.concept2_connected,
@@ -1341,6 +1343,12 @@ async function validateAndConnectConcept2ViaEdgeFunction(accessToken) {
         if (idx !== -1) state.users[idx] = state.currentUser;
         DB.save('users', state.users);
         DB.save('current_user', state.currentUser);
+
+        // Supabaseにも保存
+        syncProfileToSupabase({
+            concept2_connected: true,
+            concept2_last_sync: new Date().toISOString()
+        });
 
         showToast('Concept2と連携しました！', 'success');
         updateConcept2UI();
@@ -6661,6 +6669,13 @@ function disconnectConcept2() {
                 DB.save('users', state.users);
             }
 
+            // Supabaseのプロフィールも更新
+            syncProfileToSupabase({
+                concept2_connected: false,
+                concept2_access_token: null,
+                concept2_last_sync: null
+            });
+
             showToast('連携を解除しました', 'success');
             renderSettings();
         } catch (e) {
@@ -6874,6 +6889,9 @@ function saveWeight() {
         state.users[idx] = state.currentUser;
         DB.save('users', state.users);
     }
+
+    // Supabaseのプロフィールにも体重を同期
+    syncProfileToSupabase({ weight: weight });
 
     input.value = '';
     showToast(`体重 ${weight} kg を記録しました`, 'success');
