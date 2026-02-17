@@ -235,15 +235,12 @@ const DB = {
         // Supabaseが利用可能なら同期
         if (this.useSupabase && window.SupabaseConfig?.isReady()) {
             try {
-                // 個別レコードの保存は専用メソッドで行うため、
-                // ここでは配列データの一括同期のみ行う
-                const syncTable = {
-                    'schedules': 'schedules',
-                    'crew_notes': 'crew_notes'
-                };
-                const tableName = syncTable[key];
-                if (tableName && Array.isArray(data) && data.length > 0) {
-                    // 個別のupsertは各操作関数で行うため、ここではログのみ
+                const masterTables = ['boats', 'oars', 'ergos'];
+                if (masterTables.includes(key) && Array.isArray(data)) {
+                    // マスタデータ: 全アイテムをupsert
+                    for (const item of data) {
+                        await window.SupabaseConfig.db.saveMasterItem(key, item).catch(e => console.warn(`Supabase save ${key} failed:`, e));
+                    }
                 }
             } catch (e) {
                 console.warn('Supabase sync failed:', e);
@@ -303,6 +300,15 @@ const DB = {
         // Supabaseと同期（オンライン時）
         if (this.useSupabase && window.SupabaseConfig.isReady()) {
             await this.syncFromSupabase();
+
+            // Supabase同期後にデモデータ判定を再実行
+            // (ローカルが空でもSupabaseからデータ取得済みならデモデータ不要)
+            const approvedAfterSync = state.users.filter(u => u.approvalStatus === '承認済み');
+            if (approvedAfterSync.length > 0) {
+                // デモユーザーを削除（Supabaseから実ユーザーが取得できた場合）
+                state.users = state.users.filter(u => !u.isDemo);
+                this.saveLocal('users', state.users);
+            }
         }
     },
 
@@ -5302,6 +5308,14 @@ function saveMasterItem() {
     }
 
     DB.save(currentMasterType, state[currentMasterType]);
+
+    // Supabaseにも個別保存
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.saveMasterItem(currentMasterType, newItem).catch(e => {
+            console.warn('Master item Supabase save failed:', e);
+        });
+    }
+
     DB.addAuditLog(currentMasterType, newItem.id, currentMasterItem ? '更新' : '作成', { after: newItem });
 
     closeMasterEditModal();
