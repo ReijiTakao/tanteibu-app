@@ -3436,14 +3436,24 @@ function renderPracticeNotesList() {
     const container = document.getElementById('practice-notes-list');
     if (!container) return;
 
-    const myNotes = state.practiceNotes
+    let myNotes = state.practiceNotes
         .filter(n => n.userId === state.currentUser.id)
         .sort((a, b) => b.date.localeCompare(a.date) || (b.timeSlot || '').localeCompare(a.timeSlot || ''));
 
+    // フィルター適用
+    if (practiceNoteFilter && practiceNoteFilter !== 'all') {
+        myNotes = myNotes.filter(n => {
+            const schedule = state.schedules.find(s => s.id === n.scheduleId);
+            const type = schedule?.scheduleType || n.scheduleType || '';
+            return type === practiceNoteFilter;
+        });
+    }
+
     if (myNotes.length === 0) {
+        const filterMsg = practiceNoteFilter !== 'all' ? `（${practiceNoteFilter}）` : '';
         container.innerHTML = `
             <div class="empty-state">
-                <p>📝 練習を登録すると、ここに練習ノートが自動で作成されます</p>
+                <p>📝 ${filterMsg}の練習記録はありません</p>
             </div>
         `;
         return;
@@ -3467,9 +3477,10 @@ function renderPracticeNotesList() {
 
         byDate[date].forEach(note => {
             const schedule = state.schedules.find(s => s.id === note.scheduleId);
-            const typeLabel = schedule?.scheduleType || '不明';
+            const typeLabel = schedule?.scheduleType || note.scheduleType || '不明';
             const hasReflection = note.reflection && note.reflection.trim().length > 0;
             const hasErgo = note.ergoRecordIds && note.ergoRecordIds.length > 0;
+            const hasWeight = note.weightMenus && note.weightMenus.length > 0;
             const timeLabel = schedule?.startTime || note.timeSlot || '';
 
             let badgeClass = 'default';
@@ -3488,6 +3499,7 @@ function renderPracticeNotesList() {
                         <div class="pn-tags">
                             ${hasErgo ? '<span class="pn-tag">📊 エルゴ</span>' : ''}
                             ${note.crewNoteId ? '<span class="pn-tag">🚣 クルー</span>' : ''}
+                            ${hasWeight ? `<span class="pn-tag">💪 ${note.weightMenus.length}種目</span>` : ''}
                         </div>
                     </div>
                 </div>
@@ -3563,6 +3575,16 @@ function openPracticeNoteModal(noteId) {
     } else {
         distanceGroup.classList.add('hidden');
         document.getElementById('practice-note-distance').value = '';
+    }
+
+    // ウェイトメニュー（ウェイト時のみ表示）
+    const weightGroup = document.getElementById('weight-menu-group');
+    const schedType = schedule?.scheduleType || note.scheduleType || '';
+    if (schedType === SCHEDULE_TYPES.WEIGHT) {
+        weightGroup.classList.remove('hidden');
+        renderWeightMenuItems(note.weightMenus || []);
+    } else {
+        weightGroup.classList.add('hidden');
     }
 
     modal.dataset.noteId = noteId;
@@ -3703,12 +3725,93 @@ function savePracticeNote() {
         note.rowingDistance = null;
     }
 
+    // ウェイトメニューを保存
+    const weightGroup = document.getElementById('weight-menu-group');
+    if (weightGroup && !weightGroup.classList.contains('hidden')) {
+        note.weightMenus = getWeightMenuData();
+    }
+
     note.updatedAt = new Date().toISOString();
 
     DB.save('practice_notes', state.practiceNotes);
     modal.classList.add('hidden');
     renderPracticeNotesList();
     showToast('保存しました', 'success');
+}
+
+// =========================================
+// ウェイトメニュー管理
+// =========================================
+
+function addWeightMenuItem(exercise, weight, reps, sets) {
+    const list = document.getElementById('weight-menu-list');
+    if (!list) return;
+
+    const idx = list.querySelectorAll('.weight-menu-item').length;
+    const item = document.createElement('div');
+    item.className = 'weight-menu-item';
+    item.innerHTML = `
+        <div class="wm-row">
+            <input type="text" class="wm-exercise" placeholder="種目名 (例: ベンチプレス)" value="${exercise || ''}">
+            <button type="button" class="wm-remove-btn" onclick="this.closest('.weight-menu-item').remove()">✕</button>
+        </div>
+        <div class="wm-detail-row">
+            <div class="wm-field">
+                <label>重さ(kg)</label>
+                <input type="number" class="wm-weight" placeholder="0" min="0" step="0.5" value="${weight || ''}">
+            </div>
+            <div class="wm-field">
+                <label>回数</label>
+                <input type="number" class="wm-reps" placeholder="0" min="0" value="${reps || ''}">
+            </div>
+            <div class="wm-field">
+                <label>セット</label>
+                <input type="number" class="wm-sets" placeholder="0" min="0" value="${sets || ''}">
+            </div>
+        </div>
+    `;
+    list.appendChild(item);
+}
+
+function renderWeightMenuItems(items) {
+    const list = document.getElementById('weight-menu-list');
+    if (!list) return;
+    list.innerHTML = '';
+    if (items && items.length > 0) {
+        items.forEach(m => addWeightMenuItem(m.exercise, m.weight, m.reps, m.sets));
+    } else {
+        // 空なら1行追加
+        addWeightMenuItem();
+    }
+}
+
+function getWeightMenuData() {
+    const items = document.querySelectorAll('#weight-menu-list .weight-menu-item');
+    const data = [];
+    items.forEach(item => {
+        const exercise = item.querySelector('.wm-exercise')?.value?.trim();
+        const weight = parseFloat(item.querySelector('.wm-weight')?.value) || 0;
+        const reps = parseInt(item.querySelector('.wm-reps')?.value) || 0;
+        const sets = parseInt(item.querySelector('.wm-sets')?.value) || 0;
+        if (exercise) {
+            data.push({ exercise, weight, reps, sets });
+        }
+    });
+    return data;
+}
+
+// =========================================
+// 練習記録フィルター
+// =========================================
+
+let practiceNoteFilter = 'all';
+
+function filterPracticeNotes(filter) {
+    practiceNoteFilter = filter;
+    document.querySelectorAll('.pn-filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === filter);
+    });
+    renderPracticeNotesList();
 }
 
 function openCrewNoteFromLink(crewNoteId) {

@@ -4582,3 +4582,110 @@ textarea {
     border-radius: 8px;
     padding: 10px 12px !important;
 }
+
+/* =========================================
+   ウェイトメニュー入力
+   ========================================= */
+.weight-menu-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.weight-menu-item {
+    background: var(--bg-secondary);
+    border-radius: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+}
+
+.wm-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.wm-row .wm-exercise {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.wm-remove-btn {
+    background: none;
+    border: none;
+    color: #ef4444;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.wm-remove-btn:active {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.wm-detail-row {
+    display: flex;
+    gap: 8px;
+}
+
+.wm-field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.wm-field label {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.wm-field input {
+    padding: 5px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    text-align: center;
+}
+
+/* =========================================
+   練習記録フィルターバー
+   ========================================= */
+.pn-filter-bar {
+    display: flex;
+    gap: 6px;
+    padding: 8px 0 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.pn-filter-btn {
+    padding: 6px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    background: var(--bg-white);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+.pn-filter-btn.active {
+    background: var(--primary-color);
+    color: #fff;
+    border-color: var(--primary-color);
+}
+
+.pn-filter-btn:active {
+    transform: scale(0.95);
+}

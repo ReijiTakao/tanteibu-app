@@ -466,6 +466,17 @@
                             </div>
                         </div>
                     </div>
+                    <!-- フィルターボタン -->
+                    <div class="pn-filter-bar">
+                        <button class="pn-filter-btn active" data-filter="all"
+                            onclick="filterPracticeNotes('all')">全て</button>
+                        <button class="pn-filter-btn" data-filter="乗艇" onclick="filterPracticeNotes('乗艇')">🚣
+                            乗艇</button>
+                        <button class="pn-filter-btn" data-filter="エルゴ" onclick="filterPracticeNotes('エルゴ')">🏋️
+                            エルゴ</button>
+                        <button class="pn-filter-btn" data-filter="ウェイト" onclick="filterPracticeNotes('ウェイト')">💪
+                            ウェイト</button>
+                    </div>
                     <div id="practice-notes-list" class="practice-notes-list">
                         <!-- JSで動的生成 -->
                     </div>
@@ -1025,6 +1036,16 @@
                     <label>🏅 漕いだ距離 (m)</label>
                     <input type="number" id="practice-note-distance" placeholder="例: 12000" min="0" step="100">
                     <p class="help-text">Mile makes champion — 漕いだ距離がマイレージランキングに反映されます</p>
+                </div>
+
+                <!-- ウェイトメニュー（ウェイト時のみ表示） -->
+                <div class="form-group hidden" id="weight-menu-group">
+                    <label>💪 ウェイトメニュー</label>
+                    <div id="weight-menu-list" class="weight-menu-list">
+                        <!-- JSで動的生成 -->
+                    </div>
+                    <button type="button" id="add-weight-menu-btn" class="secondary-btn small-btn"
+                        onclick="addWeightMenuItem()">＋ メニュー追加</button>
                 </div>
 
                 <!-- クルーノートリンク（乗艇時のみ表示） -->
