@@ -5511,7 +5511,8 @@ function populateBoatOarSelects() {
     }
 }
 
-function deleteMasterItem() {
+function deleteMasterItem(e) {
+    if (e) { e.stopPropagation(); e.preventDefault(); }
     if (!currentMasterItem) return;
 
     const deleteBtn = document.getElementById('delete-master-btn');
@@ -5795,9 +5796,15 @@ const initializeApp = async () => {
 
         // マスタ編集モーダル
         document.getElementById('master-edit-close')?.addEventListener('click', closeMasterEditModal);
-        document.querySelector('#master-edit-modal .modal-overlay')?.addEventListener('click', closeMasterEditModal);
+        document.querySelector('#master-edit-modal .modal-overlay')?.addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeMasterEditModal();
+        });
         document.getElementById('save-master-btn')?.addEventListener('click', saveMasterItem);
-        document.getElementById('delete-master-btn')?.addEventListener('click', deleteMasterItem);
+        document.getElementById('delete-master-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            deleteMasterItem(e);
+        });
 
     } catch (e) {
         console.error('App init error:', e);
