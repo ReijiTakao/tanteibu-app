@@ -7403,9 +7403,6 @@ function openCrewDetail(hash) {
         openCrewNoteEdit(hash, formatDate(new Date()));
     };
 
-    // メンバーの振り返り一覧を描画
-    renderCrewMemberReflections(crew);
-
     modal.classList.remove('hidden');
 }
 
