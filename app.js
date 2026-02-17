@@ -7648,6 +7648,34 @@ function openCrewNoteEdit(hash, date) {
             authorId: state.currentUser.id
         });
 
+        // 自分の振り返りを練習ノートにも保存
+        const myReflectionEl = document.getElementById('crew-my-reflection');
+        if (myReflectionEl) {
+            const myReflection = myReflectionEl.value || '';
+            if (myPracticeNoteForCrew) {
+                // 既存の練習ノートを更新
+                myPracticeNoteForCrew.reflection = myReflection;
+                myPracticeNoteForCrew.updatedAt = new Date().toISOString();
+            } else if (myReflection.trim()) {
+                // 練習ノートがなければ新規作成
+                const newNote = {
+                    id: generateId(),
+                    scheduleId: null,
+                    userId: state.currentUser.id,
+                    date: newDate,
+                    timeSlot: '',
+                    scheduleType: '乗艇',
+                    reflection: myReflection,
+                    ergoRecordIds: [],
+                    crewNoteId: null,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                state.practiceNotes.push(newNote);
+            }
+            DB.save('practice_notes', state.practiceNotes);
+        }
+
         modal.classList.add('hidden');
 
         if (hash) {
@@ -7661,12 +7689,14 @@ function openCrewNoteEdit(hash, date) {
     // メンバーの振り返りを描画（既存クルーの場合のみ）
     const reflectionsContainer = document.getElementById('crew-note-member-reflections');
     const reflectionsGroup = document.getElementById('crew-note-member-reflections-group');
+    let myPracticeNoteForCrew = null; // 保存時に使う参照
     if (reflectionsContainer && memberIds.length > 0 && date) {
         reflectionsGroup.classList.remove('hidden');
         let refHtml = '';
         memberIds.forEach(uid => {
             const user = state.users.find(u => u.id === uid);
             const userName = user ? user.name : '不明';
+            const isMe = uid === state.currentUser.id;
 
             // この日・このユーザーの練習ノート（乗艇）を検索
             const notes = (state.practiceNotes || []).filter(n =>
@@ -7678,19 +7708,35 @@ function openCrewNoteEdit(hash, date) {
             const distance = notes.reduce((sum, n) => sum + (n.rowingDistance || 0), 0);
             const distanceText = distance > 0 ? `${(distance / 1000).toFixed(1)}km` : '';
 
-            const reflectionDisplay = reflection
-                ? `<span class="member-reflection-text">${reflection}</span>`
-                : '<span class="member-reflection-empty">未記入</span>';
-
-            refHtml += `
-                <div class="member-reflection-row">
-                    <span class="member-reflection-name">${userName}</span>
-                    <div class="member-reflection-content">
-                        ${reflectionDisplay}
-                        ${distanceText ? `<span class="member-reflection-distance">${distanceText}</span>` : ''}
+            if (isMe) {
+                // 自分の振り返り: 編集可能なtextarea
+                myPracticeNoteForCrew = notes.length > 0 ? notes[0] : null;
+                refHtml += `
+                    <div class="member-reflection-row member-reflection-me">
+                        <span class="member-reflection-name" style="color:#10b981;">✏️ ${userName}</span>
+                        <div class="member-reflection-content">
+                            <textarea id="crew-my-reflection" rows="3" placeholder="自分の振り返りを書く..."
+                                style="width:100%;font-size:13px;border:1px solid #d1d5db;border-radius:6px;padding:6px 8px;resize:vertical;">${reflection || ''}</textarea>
+                            ${distanceText ? `<span class="member-reflection-distance">${distanceText}</span>` : ''}
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
+            } else {
+                // 他メンバー: 読み取り専用
+                const reflectionDisplay = reflection
+                    ? `<span class="member-reflection-text">${reflection}</span>`
+                    : '<span class="member-reflection-empty">未記入</span>';
+
+                refHtml += `
+                    <div class="member-reflection-row">
+                        <span class="member-reflection-name">${userName}</span>
+                        <div class="member-reflection-content">
+                            ${reflectionDisplay}
+                            ${distanceText ? `<span class="member-reflection-distance">${distanceText}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
         });
         reflectionsContainer.innerHTML = refHtml || '<p class="text-muted">メンバーの練習ノートがありません</p>';
     } else if (reflectionsGroup) {
