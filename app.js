@@ -5513,11 +5513,40 @@ function populateBoatOarSelects() {
 
 function deleteMasterItem() {
     if (!currentMasterItem) return;
-    if (!confirm('削除しますか？')) return;
+
+    const deleteBtn = document.getElementById('delete-master-btn');
+
+    // 2段階確認: 1回目で「本当に削除？」に変化、2回目で実行
+    if (!deleteBtn.dataset.confirmReady) {
+        deleteBtn.dataset.confirmReady = 'true';
+        deleteBtn.textContent = '⚠️ 本当に削除';
+        deleteBtn.style.animation = 'pulse 0.5s';
+        // 3秒後にリセット
+        setTimeout(() => {
+            if (deleteBtn.dataset.confirmReady) {
+                delete deleteBtn.dataset.confirmReady;
+                deleteBtn.textContent = '削除';
+                deleteBtn.style.animation = '';
+            }
+        }, 3000);
+        return;
+    }
+
+    // 2回目のクリック → 実際に削除
+    delete deleteBtn.dataset.confirmReady;
+    deleteBtn.textContent = '削除';
+    deleteBtn.style.animation = '';
 
     state[currentMasterType] = state[currentMasterType].filter(d => d.id !== currentMasterItem.id);
     DB.save(currentMasterType, state[currentMasterType]);
     DB.addAuditLog(currentMasterType, currentMasterItem.id, '削除', {});
+
+    // Supabaseからも削除
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.deleteMasterItem(currentMasterType, currentMasterItem.id).catch(e => {
+            console.error('Master item Supabase delete failed:', e);
+        });
+    }
 
     closeMasterEditModal();
     renderMasterList();
