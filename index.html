@@ -366,7 +366,11 @@
                     <div id="concept2-sync-area" class="concept2-banner hidden"
                         style="background: linear-gradient(135deg, #38a169, #2f855a);">
                         <p>Concept2と連携済み</p>
-                        <button id="manual-sync-btn" class="small-btn" style="color: #38a169;">データを同期</button>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="manual-sync-btn" class="small-btn" style="color: #38a169;">🔄 最新データ取得</button>
+                            <button id="reclassify-btn" class="small-btn" style="color: #e53e3e; font-size:11px;"
+                                onclick="reclassifyAllErgoData()">再分類</button>
+                        </div>
                     </div>
 
 

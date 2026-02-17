@@ -532,10 +532,30 @@ const SupabaseDB = {
 
     async saveMasterItem(table, item) {
         if (!isSupabaseReady()) return null;
+
+        // DBのNOT NULL制約に対応するデフォルト値を補完
+        const now = new Date().toISOString();
+        const row = {
+            ...item,
+            updated_at: item.updated_at || now,
+            created_at: item.created_at || now
+        };
+
+        // テーブル別の必須カラム補完
+        if (table === 'boats') {
+            row.capacity = row.capacity || 0;
+            row.status = row.status || 'available';
+        } else if (table === 'oars') {
+            row.type = row.type || 'スカル';
+            row.status = row.status || 'available';
+        } else if (table === 'ergos') {
+            row.status = row.status || 'available';
+        }
+
         return withSyncIndicator(async () => {
             const { data, error } = await _supabaseClient
                 .from(table)
-                .upsert(item, { onConflict: 'id' })
+                .upsert(row, { onConflict: 'id' })
                 .select()
                 .single();
             if (error) { console.error(`Save ${table} error:`, error); throw error; }

@@ -1654,9 +1654,10 @@ function classifyErgoSessions(reclassify = false) {
 
         userRaw.forEach(raw => {
             // データ補正（インターバル詳細）- 常に再計算して分類を修正
-            // raw.type: Concept2のオリジナルworkout_type（改変されない）
+            // raw.type: Concept2のresult.type（"rower"等）であり、workout_typeではない
+            // raw.workoutType: Concept2のworkout_type（FixedDistanceInterval等）
             if (raw.intervals && raw.intervals.length > 0) {
-                const originalType = raw.type || raw.workoutType || 'unknown';
+                const originalType = raw.workoutType || 'unknown'; // raw.typeは"rower"等なので使わない
                 const intervalInfo = calculateIntervalDetails({ intervals: raw.intervals }, originalType);
                 raw.intervalDisplay = intervalInfo.display;
                 raw.workoutType = intervalInfo.type;
@@ -2028,18 +2029,18 @@ async function syncConcept2() {
                 try {
                     await DB.saveErgoRecord({
                         id: record.id,
-                        user_id: record.userId,
+                        userId: record.userId,
                         date: record.date,
                         distance: record.distance,
-                        time_seconds: record.time || record.timeSeconds,
-                        time_display: record.timeDisplay,
+                        timeSeconds: record.time || record.timeSeconds,
+                        timeDisplay: record.timeDisplay,
                         split: record.split,
-                        stroke_rate: record.strokeRate,
-                        heart_rate: record.heartRate,
-                        menu_key: record.menuKey,
+                        strokeRate: record.strokeRate,
+                        heartRate: record.heartRate,
+                        menuKey: record.menuKey,
                         category: record.category,
                         source: 'Concept2',
-                        raw_data: record.rawData || {}
+                        rawData: record.rawData || {}
                     });
                 } catch (e) {
                     console.warn('Supabase ergo save failed:', e);
@@ -2102,7 +2103,7 @@ function initMainScreen() {
     state.currentDiaryDate = new Date();
 
     // 分類ロジック更新時のワンタイム再分類マイグレーション
-    const CLASSIFICATION_VERSION = 2; // workoutType判定追加
+    const CLASSIFICATION_VERSION = 3; // インターバル分類バグ修正（raw.type優先順位）
     const savedVersion = parseInt(localStorage.getItem('ergo_classification_version') || '0');
     if (savedVersion < CLASSIFICATION_VERSION) {
         classifyErgoSessions(true);
@@ -2113,6 +2114,16 @@ function initMainScreen() {
     initOverviewDate();
     populateBoatOarSelects();
     initDataViewToggle();
+}
+
+// 手動で全エルゴデータを再分類
+function reclassifyAllErgoData() {
+    if (!confirm('全エルゴデータの分類をやり直します。よろしいですか？')) return;
+    classifyErgoSessions(true);
+    DB.save('ergo_records', state.ergoRecords);
+    DB.save('ergoSessions', state.ergoSessions);
+    renderErgoRecords();
+    showToast('エルゴデータを再分類しました', 'success');
 }
 
 // =========================================
@@ -3768,18 +3779,18 @@ function showErgoSelectList(noteId) {
     if (!note) return;
 
     const selectList = document.getElementById('ergo-select-list');
-    const dayRecords = state.ergoRecords.filter(r =>
-        r.date === note.date &&
+    // 全データから選択可能に（同日限定を解除）
+    const availableRecords = state.ergoRecords.filter(r =>
         r.userId === note.userId &&
         !(note.ergoRecordIds || []).includes(r.id)
-    );
+    ).sort((a, b) => new Date(b.date) - new Date(a.date)); // 新しい順
 
-    if (dayRecords.length === 0) {
-        selectList.innerHTML = '<p class="text-muted">この日のエルゴデータが見つかりません</p>';
+    if (availableRecords.length === 0) {
+        selectList.innerHTML = '<p class="text-muted">紐付け可能なエルゴデータがありません</p>';
     } else {
-        selectList.innerHTML = dayRecords.map(rec => `
+        selectList.innerHTML = availableRecords.map(rec => `
             <div class="ergo-select-item" data-record-id="${rec.id}">
-                <span>📊 ${rec.distance || '?'}m — ${rec.timeDisplay || '?'} ${rec.source === 'concept2' ? '(C2同期)' : '(手入力)'}</span>
+                <span>📊 ${rec.date || '日付不明'} | ${rec.distance || '?'}m — ${rec.timeDisplay || '?'} ${rec.menuKey ? `(${rec.menuKey})` : ''} ${rec.source === 'concept2' || rec.source === 'Concept2' ? '(C2)' : '(手入力)'}</span>
                 <button class="secondary-btn small-btn">追加</button>
             </div>
         `).join('');
