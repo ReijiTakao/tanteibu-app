@@ -3867,6 +3867,32 @@ function savePracticeNote() {
     showToast('保存しました', 'success');
 }
 
+/**
+ * 練習ノートを削除
+ */
+function deletePracticeNote() {
+    const modal = document.getElementById('practice-note-modal');
+    const noteId = modal.dataset.noteId;
+    if (!noteId) return;
+
+    if (!confirm('この練習ノートを削除しますか？')) return;
+
+    const idx = state.practiceNotes.findIndex(n => n.id === noteId);
+    if (idx === -1) return;
+
+    state.practiceNotes.splice(idx, 1);
+    DB.save('practice_notes', state.practiceNotes);
+
+    // Supabaseからも削除
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.deletePracticeNote(noteId).catch(e => console.warn('Practice note delete sync failed:', e));
+    }
+
+    modal.classList.add('hidden');
+    renderPracticeNotesList();
+    showToast('練習ノートを削除しました', 'info');
+}
+
 // =========================================
 // ウェイトメニュー管理
 // =========================================

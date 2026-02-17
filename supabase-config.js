@@ -634,6 +634,18 @@ const SupabaseDB = {
         }).catch(() => null);
     },
 
+    async deletePracticeNote(noteId) {
+        if (!isSupabaseReady()) return null;
+        return withSyncIndicator(async () => {
+            const { error } = await _supabaseClient
+                .from('practice_notes')
+                .delete()
+                .eq('id', noteId);
+            if (error) { console.error('Delete practice_note error:', error); throw error; }
+            return true;
+        }).catch(() => null);
+    },
+
     // --- 監査ログ ---
     async loadAuditLogs() {
         if (!isSupabaseReady()) return [];

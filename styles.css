@@ -2415,7 +2415,8 @@ textarea {
 
 .view-toggle-btn {
     flex: 1;
-    padding: 10px 16px;
+    padding: 12px 16px;
+    min-height: 44px;
     background: none;
     border: none;
     border-radius: var(--border-radius-xs);
@@ -2424,6 +2425,7 @@ textarea {
     color: var(--text-secondary);
     cursor: pointer;
     transition: all var(--transition-fast);
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
 }
 
 .view-toggle-btn.active {
@@ -2451,7 +2453,8 @@ textarea {
 }
 
 .category-tab {
-    padding: 8px 16px;
+    padding: 10px 18px;
+    min-height: 44px;
     background-color: var(--bg-secondary);
     border: none;
     border-radius: 20px;
@@ -2461,6 +2464,7 @@ textarea {
     cursor: pointer;
     transition: all var(--transition-fast);
     white-space: nowrap;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
 }
 
 .category-tab.active {
@@ -2684,10 +2688,12 @@ textarea {
 .ergo-record-item {
     background-color: var(--bg-white);
     border-radius: var(--border-radius);
-    padding: 14px;
+    padding: 16px;
+    min-height: 44px;
     margin-bottom: 10px;
     box-shadow: var(--shadow-sm);
     border-left: 4px solid var(--primary-color);
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
 }
 
 .ergo-record-item.distance {
@@ -2854,7 +2860,8 @@ textarea {
 }
 
 .menu-card {
-    padding: 16px;
+    padding: 18px 16px;
+    min-height: 44px;
     background-color: var(--bg-white);
     border-radius: var(--border-radius);
     box-shadow: var(--shadow-sm);
@@ -2862,6 +2869,7 @@ textarea {
     transition: all 0.2s ease;
     text-align: center;
     border: 2px solid transparent;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
 }
 
 .menu-card:hover {
