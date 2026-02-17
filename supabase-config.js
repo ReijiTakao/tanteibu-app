@@ -552,10 +552,34 @@ const SupabaseDB = {
             row.status = row.status || 'available';
         }
 
+        // DBに存在するカラムのみを送信（PostgRESTは未知カラムでエラーを返す）
+        const allowedColumns = {
+            boats: ['id', 'name', 'type', 'capacity', 'status', 'notes', 'created_at', 'updated_at',
+                'registration_number', 'storage_location', 'maintenance_status', 'memo',
+                'organization', 'currentRiggingMode', 'availability'],
+            oars: ['id', 'name', 'type', 'side', 'status', 'notes', 'created_at', 'updated_at',
+                'length', 'sealNumber', 'availability', 'memo'],
+            ergos: ['id', 'name', 'serial_number', 'status', 'notes', 'created_at', 'updated_at',
+                'model', 'purchase_date', 'last_maintenance_date', 'storage_location', 'memo',
+                'type', 'sealNumber', 'availability']
+        };
+
+        const allowed = allowedColumns[table];
+        const filteredRow = {};
+        if (allowed) {
+            for (const key of Object.keys(row)) {
+                if (allowed.includes(key)) {
+                    filteredRow[key] = row[key];
+                }
+            }
+        } else {
+            Object.assign(filteredRow, row);
+        }
+
         return withSyncIndicator(async () => {
             const { data, error } = await _supabaseClient
                 .from(table)
-                .upsert(row, { onConflict: 'id' })
+                .upsert(filteredRow, { onConflict: 'id' })
                 .select()
                 .single();
             if (error) { console.error(`Save ${table} error:`, error); throw error; }
