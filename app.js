@@ -5914,15 +5914,15 @@ async function initRigging() {
     let boats = state.boats || [];
 
     // Supabaseが有効なら取得試行（state.boatsはすでにsyncされているはずだが念のため）
-    if (window.supabaseClient) {
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
         // state.boatsが空なら取得
         if (boats.length === 0) {
             try {
-                const { data, error } = await window.supabaseClient.from('boats').select('*');
-                if (data && !error) {
-                    boats = data;
+                const supaBoats = await window.SupabaseConfig.db.loadMasterData('boats');
+                if (supaBoats && supaBoats.length) {
+                    boats = supaBoats;
                     state.boats = boats;
-                    saveLocal('boats', boats);
+                    DB.saveLocal('boats', boats);
                 }
             } catch (e) {
                 console.error('Failed to fetch boats', e);
@@ -6987,17 +6987,12 @@ async function loadRigging(boatId) {
     let oldRigging = oldRiggings.find(r => r.boat_id === boatId && r.user_id === currentUser.id);
 
     // Supabaseから取得試行
-    if (window.supabaseClient) {
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
         try {
-            const { data, error } = await window.supabaseClient
-                .from('riggings')
-                .select('*')
-                .eq('boat_id', boatId)
-                .eq('user_id', currentUser.id)
-                .single();
-
-            if (data && !error) {
-                oldRigging = data;
+            const riggings = await window.SupabaseConfig.db.loadRiggings();
+            const supabaseRigging = riggings.find(r => r.boat_id === boatId && r.user_id === currentUser.id);
+            if (supabaseRigging) {
+                oldRigging = supabaseRigging;
             }
         } catch (e) {
             // Not found is expected
@@ -7083,9 +7078,11 @@ async function saveRigging(boatId) {
         .filter(r => r.boat_id === boatId && r.user_id === currentUser.id)
         .sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at));
 
+    let removedIds = [];
     if (boatUserHistory.length > RIGGING_MAX_HISTORY) {
-        const toRemoveIds = boatUserHistory.slice(RIGGING_MAX_HISTORY).map(r => r.id);
-        allHistory = allHistory.filter(r => !toRemoveIds.includes(r.id));
+        const toRemove = boatUserHistory.slice(RIGGING_MAX_HISTORY);
+        removedIds = toRemove.map(r => r.id);
+        allHistory = allHistory.filter(r => !removedIds.includes(r.id));
     }
 
     DB.saveLocal('rigging_history', allHistory);
@@ -7117,30 +7114,33 @@ async function saveRigging(boatId) {
     DB.saveLocal('riggings', riggings);
 
     // Supabase保存
-    if (window.supabaseClient) {
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
         try {
-            const { data: existing } = await window.supabaseClient
-                .from('riggings')
-                .select('id')
-                .eq('boat_id', boatId)
-                .eq('user_id', currentUser.id)
-                .single();
-
-            const upsertData = {
+            // riggingsテーブル（最新値）を保存
+            await window.SupabaseConfig.db.saveRigging({
                 user_id: currentUser.id,
                 boat_id: boatId,
                 ...oldData
-            };
+            });
 
-            if (existing) {
-                upsertData.id = existing.id;
+            // rigging_historyテーブルに新エントリ保存
+            await window.SupabaseConfig.db.saveRiggingHistory({
+                id: newEntry.id,
+                boat_id: newEntry.boat_id,
+                user_id: newEntry.user_id,
+                pin_to_heel: newEntry.pin_to_heel,
+                depth: newEntry.depth,
+                span: newEntry.span,
+                pitch: newEntry.pitch,
+                height: newEntry.height,
+                memo: newEntry.memo,
+                saved_at: newEntry.saved_at
+            });
+
+            // 古い履歴をSupabaseからも削除
+            if (removedIds.length > 0) {
+                await window.SupabaseConfig.db.deleteRiggingHistory(removedIds);
             }
-
-            const { error } = await window.supabaseClient
-                .from('riggings')
-                .upsert(upsertData);
-
-            if (error) throw error;
 
             showToast('リギング設定を保存しました（クラウド同期）', 'success');
         } catch (e) {

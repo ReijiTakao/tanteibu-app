@@ -708,6 +708,110 @@ const SupabaseDB = {
 
         if (error) { console.error('Load riggings error:', error); return []; }
         return data || [];
+    },
+
+    async saveRigging(riggingData) {
+        if (!isSupabaseReady()) return null;
+        return withSyncIndicator(async () => {
+            // boat_id + user_id で既存レコードを検索
+            const { data: existing } = await _supabaseClient
+                .from('riggings')
+                .select('id')
+                .eq('boat_id', riggingData.boat_id)
+                .eq('user_id', riggingData.user_id)
+                .single();
+
+            const upsertData = { ...riggingData };
+            if (existing) {
+                upsertData.id = existing.id;
+            }
+
+            const { data, error } = await _supabaseClient
+                .from('riggings')
+                .upsert(upsertData)
+                .select()
+                .single();
+
+            if (error) { console.error('Save rigging error:', error); throw error; }
+            return data;
+        });
+    },
+
+    async loadRiggingHistory(boatId, userId) {
+        if (!isSupabaseReady()) return [];
+        try {
+            const { data, error } = await _supabaseClient
+                .from('rigging_history')
+                .select('*')
+                .eq('boat_id', boatId)
+                .eq('user_id', userId)
+                .order('saved_at', { ascending: false });
+
+            if (error) {
+                // テーブルが存在しない場合はエラーにしない
+                if (error.code === '42P01') return [];
+                console.error('Load rigging_history error:', error);
+                return [];
+            }
+            return data || [];
+        } catch (e) {
+            console.warn('Rigging history load failed:', e);
+            return [];
+        }
+    },
+
+    async saveRiggingHistory(entry) {
+        if (!isSupabaseReady()) return null;
+        return withSyncIndicator(async () => {
+            const { data, error } = await _supabaseClient
+                .from('rigging_history')
+                .upsert(entry)
+                .select()
+                .single();
+
+            if (error) { console.error('Save rigging_history error:', error); throw error; }
+            return data;
+        }).catch(e => {
+            console.warn('Rigging history save to Supabase failed:', e);
+            return null;
+        });
+    },
+
+    async deleteRiggingHistory(ids) {
+        if (!isSupabaseReady() || !ids.length) return;
+        return withSyncIndicator(async () => {
+            const { error } = await _supabaseClient
+                .from('rigging_history')
+                .delete()
+                .in('id', ids);
+            if (error) { console.error('Delete rigging_history error:', error); throw error; }
+        }).catch(e => {
+            console.warn('Rigging history delete from Supabase failed:', e);
+        });
+    },
+
+    async syncRiggingHistory(allHistory) {
+        if (!isSupabaseReady()) return;
+        // 全履歴をバルクupsert
+        return withSyncIndicator(async () => {
+            const { error } = await _supabaseClient
+                .from('rigging_history')
+                .upsert(allHistory.map(h => ({
+                    id: h.id,
+                    boat_id: h.boat_id,
+                    user_id: h.user_id,
+                    pin_to_heel: h.pin_to_heel || '',
+                    depth: h.depth || '',
+                    span: h.span || '',
+                    pitch: h.pitch || '',
+                    height: h.height || '',
+                    memo: h.memo || '',
+                    saved_at: h.saved_at
+                })));
+            if (error) { console.error('Sync rigging_history error:', error); throw error; }
+        }).catch(e => {
+            console.warn('Rigging history sync failed:', e);
+        });
     }
 };
 
