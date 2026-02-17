@@ -417,6 +417,111 @@ const SupabaseDB = {
             return false;
         }
         return true;
+    },
+
+    // --- 練習ノート ---
+    async loadPracticeNotes(userId) {
+        if (!isSupabaseReady()) return [];
+
+        let query = _supabaseClient
+            .from('practice_notes')
+            .select('*')
+            .order('date', { ascending: false });
+
+        if (userId) query = query.eq('userId', userId);
+
+        const { data, error } = await query;
+        if (error) { console.error('Load practice_notes error:', error); return []; }
+        return data || [];
+    },
+
+    async savePracticeNote(note) {
+        if (!isSupabaseReady()) return null;
+
+        const { data, error } = await _supabaseClient
+            .from('practice_notes')
+            .upsert(note, { onConflict: 'id' })
+            .select()
+            .single();
+
+        if (error) { console.error('Save practice_note error:', error); return null; }
+        return data;
+    },
+
+    // --- 監査ログ ---
+    async loadAuditLogs() {
+        if (!isSupabaseReady()) return [];
+
+        const { data, error } = await _supabaseClient
+            .from('audit_logs')
+            .select('*')
+            .order('createdAt', { ascending: false })
+            .limit(500);
+
+        if (error) { console.error('Load audit_logs error:', error); return []; }
+        return data || [];
+    },
+
+    async saveAuditLog(log) {
+        if (!isSupabaseReady()) return null;
+
+        const { data, error } = await _supabaseClient
+            .from('audit_logs')
+            .upsert(log, { onConflict: 'id' })
+            .select()
+            .single();
+
+        if (error) { console.error('Save audit_log error:', error); return null; }
+        return data;
+    },
+
+    // --- クループリセット ---
+    async loadCrewPresets() {
+        if (!isSupabaseReady()) return [];
+
+        const { data, error } = await _supabaseClient
+            .from('crew_presets')
+            .select('*');
+
+        if (error) { console.error('Load crew_presets error:', error); return []; }
+        return data || [];
+    },
+
+    async saveCrewPreset(preset) {
+        if (!isSupabaseReady()) return null;
+
+        const { data, error } = await _supabaseClient
+            .from('crew_presets')
+            .upsert(preset, { onConflict: 'id' })
+            .select()
+            .single();
+
+        if (error) { console.error('Save crew_preset error:', error); return null; }
+        return data;
+    },
+
+    async deleteCrewPreset(id) {
+        if (!isSupabaseReady()) return false;
+
+        const { error } = await _supabaseClient
+            .from('crew_presets')
+            .delete()
+            .eq('id', id);
+
+        if (error) { console.error('Delete crew_preset error:', error); return false; }
+        return true;
+    },
+
+    // --- リギング ---
+    async loadRiggings() {
+        if (!isSupabaseReady()) return [];
+
+        const { data, error } = await _supabaseClient
+            .from('riggings')
+            .select('*');
+
+        if (error) { console.error('Load riggings error:', error); return []; }
+        return data || [];
     }
 };
 

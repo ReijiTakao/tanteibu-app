@@ -237,11 +237,13 @@ const DB = {
             try {
                 const masterTables = ['boats', 'oars', 'ergos'];
                 if (masterTables.includes(key) && Array.isArray(data)) {
-                    // マスタデータ: 全アイテムをupsert
                     for (const item of data) {
                         await window.SupabaseConfig.db.saveMasterItem(key, item).catch(e => console.warn(`Supabase save ${key} failed:`, e));
                     }
                 }
+                // practice_notes: 個別保存は各関数側で行う
+                // audit_logs: addAuditLog内で個別保存
+                // crew_presets: 個別保存は各関数側で行う
             } catch (e) {
                 console.warn('Supabase sync failed:', e);
             }
@@ -392,6 +394,41 @@ const DB = {
                     else state.crewNotes.push(n);
                 });
                 this.saveLocal('crew_notes', state.crewNotes);
+            }
+
+            // 練習ノート
+            const practiceNotes = await window.SupabaseConfig.db.loadPracticeNotes();
+            if (practiceNotes.length) {
+                practiceNotes.forEach(pn => {
+                    const idx = state.practiceNotes.findIndex(local => local.id === pn.id);
+                    if (idx !== -1) state.practiceNotes[idx] = pn;
+                    else state.practiceNotes.push(pn);
+                });
+                this.saveLocal('practice_notes', state.practiceNotes);
+            }
+
+            // 監査ログ
+            const auditLogs = await window.SupabaseConfig.db.loadAuditLogs();
+            if (auditLogs.length) {
+                auditLogs.forEach(log => {
+                    const idx = state.auditLogs.findIndex(local => local.id === log.id);
+                    if (idx !== -1) state.auditLogs[idx] = log;
+                    else state.auditLogs.push(log);
+                });
+                this.saveLocal('audit_logs', state.auditLogs);
+            }
+
+            // クループリセット
+            const presets = await window.SupabaseConfig.db.loadCrewPresets();
+            if (presets.length) {
+                state.crewPresets = presets;
+                this.saveLocal('crew_presets', presets);
+            }
+
+            // リギング
+            const riggings = await window.SupabaseConfig.db.loadRiggings();
+            if (riggings.length) {
+                this.saveLocal('riggings', riggings);
             }
 
         } catch (e) {
@@ -780,6 +817,11 @@ const DB = {
         };
         state.auditLogs.push(log);
         this.save('audit_logs', state.auditLogs);
+
+        // Supabaseにも個別保存
+        if (this.useSupabase && window.SupabaseConfig?.db) {
+            window.SupabaseConfig.db.saveAuditLog(log).catch(e => console.warn('Audit log sync failed:', e));
+        }
     }
 };
 
@@ -2938,6 +2980,11 @@ function saveCrewPreset() {
     state.crewPresets.push(newPreset);
     DB.save(CREW_PRESETS_KEY, state.crewPresets);
 
+    // Supabaseにも保存
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.saveCrewPreset(newPreset).catch(e => console.warn('Crew preset sync failed:', e));
+    }
+
     showToast(`プリセット「${name}」を保存しました`, 'success');
     nameInput.value = '';
 
@@ -2950,6 +2997,12 @@ function deletePreset(id) {
 
     state.crewPresets = state.crewPresets.filter(p => p.id !== id);
     DB.save(CREW_PRESETS_KEY, state.crewPresets);
+
+    // Supabaseからも削除
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.deleteCrewPreset(id).catch(e => console.warn('Crew preset delete sync failed:', e));
+    }
+
     renderPresetList();
     showToast('削除しました', 'success');
 }
@@ -3435,6 +3488,11 @@ function autoCreatePracticeNote(schedule) {
 
     state.practiceNotes.push(note);
     DB.save('practice_notes', state.practiceNotes);
+
+    // Supabaseにも保存
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.savePracticeNote(note).catch(e => console.warn('Practice note sync failed:', e));
+    }
 }
 
 // 練習ノート一覧を表示
@@ -3699,6 +3757,9 @@ function linkErgoRecord(noteId, recordId) {
         note.ergoRecordIds.push(recordId);
         note.updatedAt = new Date().toISOString();
         DB.save('practice_notes', state.practiceNotes);
+        if (DB.useSupabase && window.SupabaseConfig?.db) {
+            window.SupabaseConfig.db.savePracticeNote(note).catch(e => console.warn('Practice note sync failed:', e));
+        }
         renderLinkedErgoRecords(note);
         showErgoSelectList(noteId);
     }
@@ -3712,6 +3773,9 @@ function unlinkErgoRecord(recordId) {
     note.ergoRecordIds = (note.ergoRecordIds || []).filter(id => id !== recordId);
     note.updatedAt = new Date().toISOString();
     DB.save('practice_notes', state.practiceNotes);
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.savePracticeNote(note).catch(e => console.warn('Practice note sync failed:', e));
+    }
     renderLinkedErgoRecords(note);
 }
 
@@ -3740,6 +3804,12 @@ function savePracticeNote() {
     note.updatedAt = new Date().toISOString();
 
     DB.save('practice_notes', state.practiceNotes);
+
+    // Supabaseにも保存
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.savePracticeNote(note).catch(e => console.warn('Practice note sync failed:', e));
+    }
+
     modal.classList.add('hidden');
     renderPracticeNotesList();
     showToast('保存しました', 'success');

@@ -273,3 +273,52 @@ CREATE POLICY "schedules_all" ON schedules FOR ALL USING (auth.uid() IS NOT NULL
 CREATE POLICY "ergo_records_all" ON ergo_records FOR ALL USING (auth.uid() IS NOT NULL);
 CREATE POLICY "crew_notes_all" ON crew_notes FOR ALL USING (auth.uid() IS NOT NULL);
 CREATE POLICY "riggings_all" ON riggings FOR ALL USING (auth.uid() IS NOT NULL);
+
+-- =========================================
+-- 練習ノート
+-- =========================================
+CREATE TABLE IF NOT EXISTS practice_notes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "scheduleId" UUID,
+    "userId" UUID,
+    date TEXT,
+    "timeSlot" TEXT,
+    "scheduleType" TEXT,
+    reflection TEXT,
+    "ergoRecordIds" JSONB DEFAULT '[]',
+    "crewNoteId" UUID,
+    "rowingDistance" INTEGER,
+    "weightMenus" JSONB DEFAULT '[]',
+    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE practice_notes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "practice_notes_all" ON practice_notes FOR ALL USING (auth.uid() IS NOT NULL);
+
+-- =========================================
+-- 監査ログ
+-- =========================================
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id TEXT PRIMARY KEY,
+    "userId" UUID,
+    "targetType" TEXT,
+    "targetId" TEXT,
+    operation TEXT,
+    changes JSONB,
+    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "audit_logs_all" ON audit_logs FOR ALL USING (auth.uid() IS NOT NULL);
+
+-- =========================================
+-- クループリセット
+-- =========================================
+CREATE TABLE IF NOT EXISTS crew_presets (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    "boatType" TEXT,
+    members JSONB DEFAULT '[]',
+    "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE crew_presets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "crew_presets_all" ON crew_presets FOR ALL USING (auth.uid() IS NOT NULL);
