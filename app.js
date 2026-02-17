@@ -7344,22 +7344,34 @@ function renderCrewList() {
         return;
     }
 
+    const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
+
     list.innerHTML = crews.map(crew => {
         const memberNames = crew.memberIds.map(id => {
             const user = state.users.find(u => u.id === id);
             return user ? user.name : '不明';
-        }).join('・');
+        });
 
         // 最終練習日
         const lastDate = new Date(crew.lastPractice);
         const displayDate = `${lastDate.getMonth() + 1}/${lastDate.getDate()}`;
+        const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+        const dayOfWeek = dayNames[lastDate.getDay()];
 
-        return `<div class="crew-item" onclick="openCrewDetail('${crew.hash}')">
-            <div class="crew-header">
-                <span class="crew-boat-type">${crew.boatType || '不明'}</span>
-                <span class="crew-last-date">最終: ${displayDate}</span>
+        // ノート件数
+        const noteCount = (state.crewNotes || []).filter(n => n.crewHash === crew.hash).length;
+        const btColor = boatTypeColors[crew.boatType] || '#6b7280';
+
+        return `<div class="crew-card-enhanced" onclick="openCrewDetail('${crew.hash}')">
+            <div class="crew-card-top">
+                <span class="crew-boat-badge" style="background:${btColor};">${crew.boatType || '?'}</span>
+                <span class="crew-card-date">📅 ${displayDate}（${dayOfWeek}）</span>
             </div>
-            <div class="crew-members">${memberNames}</div>
+            <div class="crew-card-members">${memberNames.map(n => `<span class="crew-member-chip">${n}</span>`).join('')}</div>
+            <div class="crew-card-footer">
+                <span class="crew-note-count">📝 ${noteCount}件</span>
+                <span class="crew-card-arrow">→</span>
+            </div>
         </div>`;
     }).join('');
 }
@@ -7375,14 +7387,21 @@ function openCrewDetail(hash) {
     const addBtn = document.getElementById('add-new-note-btn');
 
     // クルー情報表示
+    const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
+    const btColor = boatTypeColors[crew.boatType] || '#6b7280';
     const memberNames = crew.memberIds.map(id => {
         const u = state.users.find(u => u.id === id);
         return u ? u.name : '未登録';
-    }).join('・');
+    });
 
     infoCard.innerHTML = `
-        <div class="crew-members" style="font-size: 16px; margin-bottom: 8px;">${memberNames}</div>
-        <div class="crew-boat-type" style="display:inline-block; margin:0;">${crew.boatType || '未設定'}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <span class="crew-boat-badge" style="background:${btColor};font-size:14px;padding:4px 12px;">${crew.boatType || '未設定'}</span>
+            <span style="font-size:12px;color:var(--text-muted);">${crew.memberIds.length}人</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            ${memberNames.map(n => `<span class="crew-member-chip">${n}</span>`).join('')}
+        </div>
     `;
 
     // 履歴リスト生成
@@ -7391,11 +7410,16 @@ function openCrewDetail(hash) {
 
     historyList.innerHTML = historyItems.length ? historyItems.map(n => {
         const d = formatDisplayDate(n.date);
-        const hasVideo = n.videoUrls && n.videoUrls.length > 0;
-        return `<div class="history-item has-note" onclick="openCrewNoteEdit('${hash}', '${n.date}')">
-            <div class="history-date">${d.year}/${d.month}/${d.day}（${d.weekday}）</div>
-            <div class="history-preview">${n.content || '（内容なし）'}</div>
-            ${n.videoUrls && n.videoUrls.length > 0 ? `<div class="video-icon">📹 動画 ${n.videoUrls.length}本</div>` : ''}
+        const videoCount = n.videoUrls?.length || 0;
+        const contentPreview = n.content ? n.content.substring(0, 50) + (n.content.length > 50 ? '…' : '') : '';
+        return `<div class="history-card" onclick="openCrewNoteEdit('${hash}', '${n.date}')">
+            <div class="history-card-header">
+                <span class="history-card-date">${d.month}/${d.day}（${d.weekday}）</span>
+                <div class="history-card-badges">
+                    ${videoCount > 0 ? `<span class="history-badge video-badge">📹 ${videoCount}</span>` : ''}
+                </div>
+            </div>
+            ${contentPreview ? `<div class="history-card-content">${contentPreview}</div>` : '<div class="history-card-empty">タップして記録を確認</div>'}
         </div>`;
     }).join('') : '<div class="empty-state"><p>ノート履歴がありません</p></div>';
 

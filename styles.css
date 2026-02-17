@@ -4438,3 +4438,147 @@ textarea {
     border-radius: 4px;
     align-self: flex-start;
 }
+
+/* =========================================
+   クルーノート 改善UI
+   ========================================= */
+
+/* リストカード */
+.crew-card-enhanced {
+    background: var(--bg-white);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    cursor: pointer;
+    transition: transform 0.1s ease, box-shadow 0.2s ease;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.crew-card-enhanced:active {
+    transform: scale(0.98);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+}
+
+.crew-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.crew-boat-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.5px;
+}
+
+.crew-card-date {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.crew-card-members {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 10px;
+}
+
+.crew-member-chip {
+    display: inline-block;
+    padding: 3px 8px;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.crew-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--bg-secondary);
+    padding-top: 8px;
+}
+
+.crew-note-count {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.crew-card-arrow {
+    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+/* 履歴カード (詳細画面) */
+.history-card {
+    background: var(--bg-white);
+    border-radius: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+    border-left: 3px solid var(--primary-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.history-card:active {
+    transform: scale(0.98);
+}
+
+.history-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.history-card-date {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.history-card-badges {
+    display: flex;
+    gap: 6px;
+}
+
+.history-badge {
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.history-badge.video-badge {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.history-card-content {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.history-card-empty {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* 自分の振り返り行 */
+.member-reflection-me {
+    background: rgba(16, 185, 129, 0.04);
+    border-radius: 8px;
+    padding: 10px 12px !important;
+}

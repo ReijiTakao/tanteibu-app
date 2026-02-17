@@ -263,3 +263,4 @@ CREATE POLICY "staff_edit_boats" ON boats FOR ALL USING (EXISTS (SELECT 1 FROM u
 CREATE POLICY "schedules_all" ON schedules FOR ALL USING (auth.uid() IS NOT NULL);
 CREATE POLICY "ergo_records_all" ON ergo_records FOR ALL USING (auth.uid() IS NOT NULL);
 CREATE POLICY "crew_notes_all" ON crew_notes FOR ALL USING (auth.uid() IS NOT NULL);
+CREATE POLICY "riggings_all" ON riggings FOR ALL USING (auth.uid() IS NOT NULL);
