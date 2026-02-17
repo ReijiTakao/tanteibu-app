@@ -136,15 +136,9 @@ async function handleEmailSignup() {
         if (statusEl) statusEl.textContent = '登録失敗: ' + error.message;
         btn.disabled = false;
     } else {
-        if (statusEl) statusEl.textContent = '登録完了！確認メールをチェックしてください (設定によっては自動ログイン)';
+        if (statusEl) statusEl.textContent = '登録完了！ログインしてください。';
         showToast('登録完了！', 'success');
-        // 自動ログインできている場合と、メール確認待ちの場合がある
-        if (data.session) {
-            // セッションあり -> 自動的にログイン扱いになる
-        } else {
-            // セッションなし -> メール確認待ち
-            alert('確認メールを送信しました。メール内のリンクをクリックして登録を完了してください。');
-        }
+        btn.disabled = false;
     }
 }
 
