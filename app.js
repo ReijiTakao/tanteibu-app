@@ -2118,12 +2118,13 @@ function initMainScreen() {
 
 // 手動で全エルゴデータを再分類
 function reclassifyAllErgoData() {
-    if (!confirm('全エルゴデータの分類をやり直します。よろしいですか？')) return;
-    classifyErgoSessions(true);
-    DB.save('ergo_records', state.ergoRecords);
-    DB.save('ergoSessions', state.ergoSessions);
-    renderErgoRecords();
-    showToast('エルゴデータを再分類しました', 'success');
+    showConfirmModal('全エルゴデータの分類をやり直します。よろしいですか？', () => {
+        classifyErgoSessions(true);
+        DB.save('ergo_records', state.ergoRecords);
+        DB.save('ergoSessions', state.ergoSessions);
+        renderErgoRecords();
+        showToast('エルゴデータを再分類しました', 'success');
+    }, null, '再分類する');
 }
 
 // =========================================
@@ -2795,22 +2796,22 @@ function saveSchedule() {
 function deleteSchedule() {
     if (!currentInputData?.schedule) return;
 
-    if (!confirm('この予定を削除しますか？')) return;
+    showConfirmModal('この予定を削除しますか？', () => {
+        state.schedules = state.schedules.filter(s => s.id !== currentInputData.schedule.id);
+        state.ergoRecords = state.ergoRecords.filter(r => r.scheduleId !== currentInputData.schedule.id);
 
-    state.schedules = state.schedules.filter(s => s.id !== currentInputData.schedule.id);
-    state.ergoRecords = state.ergoRecords.filter(r => r.scheduleId !== currentInputData.schedule.id);
+        DB.save('schedules', state.schedules);
+        DB.save('ergo_records', state.ergoRecords);
 
-    DB.save('schedules', state.schedules);
-    DB.save('ergo_records', state.ergoRecords);
+        // Supabase同期
+        const deleteId = currentInputData.schedule.id;
+        DB.deleteSchedule(deleteId).catch(e => console.warn('Schedule delete sync failed:', e));
+        DB.deleteErgoRecordsByScheduleId(deleteId);
 
-    // Supabase同期
-    const deleteId = currentInputData.schedule.id;
-    DB.deleteSchedule(deleteId).catch(e => console.warn('Schedule delete sync failed:', e));
-    DB.deleteErgoRecordsByScheduleId(deleteId);
-
-    closeInputModal();
-    renderWeekCalendar();
-    showToast('削除しました', 'success');
+        closeInputModal();
+        renderWeekCalendar();
+        showToast('削除しました', 'success');
+    }, null, '削除する');
 }
 
 
@@ -3050,18 +3051,18 @@ function saveCrewPreset() {
 }
 
 function deletePreset(id) {
-    if (!confirm('このプリセットを削除しますか？')) return;
+    showConfirmModal('このプリセットを削除しますか？', () => {
+        state.crewPresets = state.crewPresets.filter(p => p.id !== id);
+        DB.save(CREW_PRESETS_KEY, state.crewPresets);
 
-    state.crewPresets = state.crewPresets.filter(p => p.id !== id);
-    DB.save(CREW_PRESETS_KEY, state.crewPresets);
+        // Supabaseからも削除
+        if (DB.useSupabase && window.SupabaseConfig?.db) {
+            window.SupabaseConfig.db.deleteCrewPreset(id).catch(e => console.warn('Crew preset delete sync failed:', e));
+        }
 
-    // Supabaseからも削除
-    if (DB.useSupabase && window.SupabaseConfig?.db) {
-        window.SupabaseConfig.db.deleteCrewPreset(id).catch(e => console.warn('Crew preset delete sync failed:', e));
-    }
-
-    renderPresetList();
-    showToast('削除しました', 'success');
+        renderPresetList();
+        showToast('削除しました', 'success');
+    }, null, '削除する');
 }
 
 window.loadPresetToForm = function (id) { // onclickから呼ぶためglobalに
@@ -5058,15 +5059,23 @@ function confirmDeleteMaster(id, e) {
     e.stopPropagation();
     const item = state[currentMasterType].find(d => d.id === id);
     if (!item) return;
-    if (!confirm(`「${item.name}」を削除しますか？`)) return;
 
-    state[currentMasterType] = state[currentMasterType].filter(d => d.id !== id);
-    DB.save(currentMasterType, state[currentMasterType]);
-    DB.addAuditLog(currentMasterType, id, '削除', {});
+    showConfirmModal(`「${item.name}」を削除しますか？`, () => {
+        state[currentMasterType] = state[currentMasterType].filter(d => d.id !== id);
+        DB.save(currentMasterType, state[currentMasterType]);
+        DB.addAuditLog(currentMasterType, id, '削除', {});
 
-    renderMasterList();
-    populateBoatOarSelects();
-    showToast('削除しました', 'success');
+        // Supabaseからも削除
+        if (DB.useSupabase && window.SupabaseConfig?.db) {
+            window.SupabaseConfig.db.deleteMasterItem(currentMasterType, id).catch(err => {
+                console.error('Master item Supabase delete failed:', err);
+            });
+        }
+
+        renderMasterList();
+        populateBoatOarSelects();
+        showToast('削除しました', 'success');
+    }, null, '削除する');
 }
 
 function renderMasterList() {
@@ -5200,10 +5209,11 @@ function openMasterEditModal(item = null) {
     const modal = document.getElementById('master-edit-modal');
     const title = document.getElementById('master-edit-title');
     const form = document.getElementById('master-edit-form');
+
     const deleteBtn = document.getElementById('delete-master-btn');
 
     title.textContent = item ? '編集' : '新規追加';
-    deleteBtn.classList.toggle('hidden', !item);
+    if (deleteBtn) deleteBtn.classList.toggle('hidden', !item);
 
     if (currentMasterType === 'boats') {
         const status = item?.status || (item?.availability === '使用不可' ? 'broken' : 'available');
@@ -5515,44 +5525,24 @@ function deleteMasterItem(e) {
     if (e) { e.stopPropagation(); e.preventDefault(); }
     if (!currentMasterItem) return;
 
-    const deleteBtn = document.getElementById('delete-master-btn');
+    const itemName = currentMasterItem.name || currentMasterItem.id;
+    showConfirmModal(`「${itemName}」を削除しますか？`, () => {
+        state[currentMasterType] = state[currentMasterType].filter(d => d.id !== currentMasterItem.id);
+        DB.save(currentMasterType, state[currentMasterType]);
+        DB.addAuditLog(currentMasterType, currentMasterItem.id, '削除', {});
 
-    // 2段階確認: 1回目で「本当に削除？」に変化、2回目で実行
-    if (!deleteBtn.dataset.confirmReady) {
-        deleteBtn.dataset.confirmReady = 'true';
-        deleteBtn.textContent = '⚠️ 本当に削除';
-        deleteBtn.style.animation = 'pulse 0.5s';
-        // 3秒後にリセット
-        setTimeout(() => {
-            if (deleteBtn.dataset.confirmReady) {
-                delete deleteBtn.dataset.confirmReady;
-                deleteBtn.textContent = '削除';
-                deleteBtn.style.animation = '';
-            }
-        }, 3000);
-        return;
-    }
+        // Supabaseからも削除
+        if (DB.useSupabase && window.SupabaseConfig?.db) {
+            window.SupabaseConfig.db.deleteMasterItem(currentMasterType, currentMasterItem.id).catch(err => {
+                console.error('Master item Supabase delete failed:', err);
+            });
+        }
 
-    // 2回目のクリック → 実際に削除
-    delete deleteBtn.dataset.confirmReady;
-    deleteBtn.textContent = '削除';
-    deleteBtn.style.animation = '';
-
-    state[currentMasterType] = state[currentMasterType].filter(d => d.id !== currentMasterItem.id);
-    DB.save(currentMasterType, state[currentMasterType]);
-    DB.addAuditLog(currentMasterType, currentMasterItem.id, '削除', {});
-
-    // Supabaseからも削除
-    if (DB.useSupabase && window.SupabaseConfig?.db) {
-        window.SupabaseConfig.db.deleteMasterItem(currentMasterType, currentMasterItem.id).catch(e => {
-            console.error('Master item Supabase delete failed:', e);
-        });
-    }
-
-    closeMasterEditModal();
-    renderMasterList();
-    populateBoatOarSelects();
-    showToast('削除しました', 'success');
+        closeMasterEditModal();
+        renderMasterList();
+        populateBoatOarSelects();
+        showToast('削除しました', 'success');
+    }, null, '削除する');
 }
 
 // =========================================
@@ -5688,11 +5678,13 @@ const initializeApp = async () => {
         document.getElementById('connect-concept2-btn').addEventListener('click', connectConcept2);
         document.getElementById('logout-btn').addEventListener('click', handleLogout);
         document.getElementById('reset-data-btn')?.addEventListener('click', () => {
-            if (!confirm('⚠️ 全てのローカルデータを削除します。この操作は取り消せません。よろしいですか？')) return;
-            if (!confirm('本当に全データを削除しますか？（最終確認）')) return;
-            DB.resetAllData();
-            showToast('データをリセットしました', 'success');
-            setTimeout(() => location.reload(), 500);
+            showConfirmModal('⚠️ 全てのローカルデータを削除します。この操作は取り消せません。よろしいですか？', () => {
+                showConfirmModal('本当に全データを削除しますか？（最終確認）', () => {
+                    DB.resetAllData();
+                    showToast('データをリセットしました', 'success');
+                    setTimeout(() => location.reload(), 500);
+                }, null, '全削除する');
+            }, null, '次へ');
         });
         document.getElementById('logout-pending-btn')?.addEventListener('click', handleLogout);
 
@@ -6551,24 +6543,27 @@ async function deleteMember(userId) {
     const member = state.users.find(u => u.id === userId);
     if (!member) return;
 
-    if (!confirm(`${member.name} を名簿から削除しますか？\n（アカウントは「非在籍」に変更されます）`)) return;
+    // カスタム確認モーダルを使用（confirm()はモバイルで問題あり）
+    showConfirmModal(`${member.name} を名簿から削除しますか？\n（アカウントは「非在籍」に変更されます）`, async () => {
+        // ローカルで非在籍に変更
+        member.status = '非在籍';
+        DB.save('users', state.users);
 
-    // ローカルで非在籍に変更
-    member.status = '非在籍';
-    DB.save('users', state.users);
-
-    // Supabase プロフィールも更新
-    if (DB.useSupabase && window.SupabaseConfig?.isReady()) {
-        try {
-            await window.SupabaseConfig.db.updateProfile(userId, { status: '非在籍' });
-        } catch (e) {
-            console.warn('Profile update failed:', e);
+        // Supabase プロフィールも更新
+        if (DB.useSupabase && window.SupabaseConfig?.isReady()) {
+            try {
+                await window.SupabaseConfig.db.updateProfile(userId, { status: '非在籍' });
+            } catch (e) {
+                console.warn('Profile update failed:', e);
+            }
         }
-    }
 
-    showToast(`${member.name} を名簿から削除しました`, 'success');
-    renderMemberRoster();
+        showToast(`${member.name} を名簿から削除しました`, 'success');
+        renderMemberRoster();
+    }, null, '削除する');
 }
+
+
 function disconnectConcept2() {
     showConfirmModal('Concept2との連携を解除しますか？', () => {
         try {
@@ -6597,7 +6592,7 @@ function disconnectConcept2() {
  * カスタム確認モーダル（window.confirmの代替）
  * モバイルブラウザ/PWAでタッチイベントのゴーストクリックを防止
  */
-function showConfirmModal(message, onConfirm, onCancel) {
+function showConfirmModal(message, onConfirm, onCancel, confirmText = '実行する') {
     // 既存のモーダルがあれば削除
     const existing = document.getElementById('custom-confirm-modal');
     if (existing) existing.remove();
@@ -6621,7 +6616,7 @@ function showConfirmModal(message, onConfirm, onCancel) {
     cancelBtn.style.cssText = 'flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;background:#333;color:#aaa;cursor:pointer;pointer-events:none;';
 
     const confirmBtn = document.createElement('button');
-    confirmBtn.textContent = '解除する';
+    confirmBtn.textContent = confirmText;
     confirmBtn.style.cssText = 'flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;background:#e74c3c;color:#fff;cursor:pointer;pointer-events:none;';
 
     btnRow.appendChild(cancelBtn);
