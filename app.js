@@ -870,6 +870,41 @@ function showToast(message, type = 'default') {
     setTimeout(() => toast.classList.remove('show'), 2500);
 }
 
+// 同期ステータスインジケーター
+let _syncStatusTimer = null;
+let _syncFadeTimer = null;
+function showSyncStatus(status, message) {
+    const el = document.getElementById('sync-status-indicator');
+    if (!el) return;
+
+    // タイマーをリセット
+    if (_syncStatusTimer) { clearTimeout(_syncStatusTimer); _syncStatusTimer = null; }
+    if (_syncFadeTimer) { clearTimeout(_syncFadeTimer); _syncFadeTimer = null; }
+
+    // クラスとテキストを設定
+    el.className = 'sync-indicator ' + status;
+    el.textContent = status === 'syncing' ? '同期中' : status === 'success' ? '同期完了' : '同期失敗';
+
+    if (status === 'success') {
+        // 成功時は2.5秒後にフェードアウトして非表示
+        _syncStatusTimer = setTimeout(() => {
+            el.classList.add('fade-out');
+            _syncFadeTimer = setTimeout(() => {
+                el.className = 'sync-indicator hidden';
+            }, 350);
+        }, 2500);
+    } else if (status === 'error') {
+        // エラー時は5秒後にフェードアウト
+        _syncStatusTimer = setTimeout(() => {
+            el.classList.add('fade-out');
+            _syncFadeTimer = setTimeout(() => {
+                el.className = 'sync-indicator hidden';
+            }, 350);
+        }, 5000);
+    }
+    // syncing は明示的に success/error が来るまで表示し続ける
+}
+
 function canEditMaster(user) {
     return [ROLES.ADMIN, ROLES.COX].includes(user?.role);
 }

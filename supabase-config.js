@@ -170,6 +170,22 @@ async function getOrCreateProfile(session) {
 // データベース操作（Supabase CRUD）
 // ========================================
 
+/**
+ * Supabase操作に同期ステータスインジケーターを付与するラッパー
+ * save/delete系の操作で呼び出し、同期中→成功/失敗をUIに表示する
+ */
+async function withSyncIndicator(asyncFn) {
+    if (typeof showSyncStatus === 'function') showSyncStatus('syncing');
+    try {
+        const result = await asyncFn();
+        if (typeof showSyncStatus === 'function') showSyncStatus('success');
+        return result;
+    } catch (e) {
+        if (typeof showSyncStatus === 'function') showSyncStatus('error');
+        throw e;
+    }
+}
+
 const SupabaseDB = {
     // --- スケジュール ---
     async loadSchedules(startDate, endDate) {
@@ -190,33 +206,27 @@ const SupabaseDB = {
 
     async saveSchedule(schedule) {
         if (!isSupabaseReady()) return null;
-
-        const { data, error } = await _supabaseClient
-            .from('schedules')
-            .upsert(schedule, { onConflict: 'id' })
-            .select()
-            .single();
-
-        if (error) {
-            console.error('Save schedule error:', error);
-            return null;
-        }
-        return data;
+        return withSyncIndicator(async () => {
+            const { data, error } = await _supabaseClient
+                .from('schedules')
+                .upsert(schedule, { onConflict: 'id' })
+                .select()
+                .single();
+            if (error) { console.error('Save schedule error:', error); throw error; }
+            return data;
+        }).catch(() => null);
     },
 
     async deleteSchedule(id) {
         if (!isSupabaseReady()) return false;
-
-        const { error } = await _supabaseClient
-            .from('schedules')
-            .delete()
-            .eq('id', id);
-
-        if (error) {
-            console.error('Delete schedule error:', error);
-            return false;
-        }
-        return true;
+        return withSyncIndicator(async () => {
+            const { error } = await _supabaseClient
+                .from('schedules')
+                .delete()
+                .eq('id', id);
+            if (error) { console.error('Delete schedule error:', error); throw error; }
+            return true;
+        }).catch(() => false);
     },
 
     // --- エルゴ記録 ---
@@ -243,48 +253,39 @@ const SupabaseDB = {
 
     async saveErgoRecord(record) {
         if (!isSupabaseReady()) return null;
-
-        const { data, error } = await _supabaseClient
-            .from('ergo_records')
-            .upsert(record, { onConflict: 'id' })
-            .select()
-            .single();
-
-        if (error) {
-            console.error('Save ergo record error:', error);
-            return null;
-        }
-        return data;
+        return withSyncIndicator(async () => {
+            const { data, error } = await _supabaseClient
+                .from('ergo_records')
+                .upsert(record, { onConflict: 'id' })
+                .select()
+                .single();
+            if (error) { console.error('Save ergo record error:', error); throw error; }
+            return data;
+        }).catch(() => null);
     },
 
     async deleteErgoRecord(id) {
         if (!isSupabaseReady()) return false;
-
-        const { error } = await _supabaseClient
-            .from('ergo_records')
-            .delete()
-            .eq('id', id);
-
-        if (error) {
-            console.error('Delete ergo record error:', error);
-            return false;
-        }
-        return true;
+        return withSyncIndicator(async () => {
+            const { error } = await _supabaseClient
+                .from('ergo_records')
+                .delete()
+                .eq('id', id);
+            if (error) { console.error('Delete ergo record error:', error); throw error; }
+            return true;
+        }).catch(() => false);
     },
 
     async deleteErgoRecordsByScheduleId(scheduleId) {
         if (!isSupabaseReady()) return false;
-
-        const { error } = await _supabaseClient
-            .from('ergo_records')
-            .delete()
-            .eq('schedule_id', scheduleId);
-
-        if (error) {
-            console.error('Delete ergo records by schedule error:', error);
-            return false;
-        }
-        return true;
+        return withSyncIndicator(async () => {
+            const { error } = await _supabaseClient
+                .from('ergo_records')
+                .delete()
+                .eq('schedule_id', scheduleId);
+            if (error) { console.error('Delete ergo records by schedule error:', error); throw error; }
+            return true;
+        }).catch(() => false);
     },
 
     // --- クルーノート ---
@@ -310,33 +311,27 @@ const SupabaseDB = {
 
     async saveCrewNote(note) {
         if (!isSupabaseReady()) return null;
-
-        const { data, error } = await _supabaseClient
-            .from('crew_notes')
-            .upsert(note, { onConflict: 'id' })
-            .select()
-            .single();
-
-        if (error) {
-            console.error('Save crew note error:', error);
-            return null;
-        }
-        return data;
+        return withSyncIndicator(async () => {
+            const { data, error } = await _supabaseClient
+                .from('crew_notes')
+                .upsert(note, { onConflict: 'id' })
+                .select()
+                .single();
+            if (error) { console.error('Save crew note error:', error); throw error; }
+            return data;
+        }).catch(() => null);
     },
 
     async deleteCrewNote(id) {
         if (!isSupabaseReady()) return false;
-
-        const { error } = await _supabaseClient
-            .from('crew_notes')
-            .delete()
-            .eq('id', id);
-
-        if (error) {
-            console.error('Delete crew note error:', error);
-            return false;
-        }
-        return true;
+        return withSyncIndicator(async () => {
+            const { error } = await _supabaseClient
+                .from('crew_notes')
+                .delete()
+                .eq('id', id);
+            if (error) { console.error('Delete crew note error:', error); throw error; }
+            return true;
+        }).catch(() => false);
     },
 
     // --- プロフィール（ユーザー一覧） ---
@@ -358,19 +353,16 @@ const SupabaseDB = {
 
     async updateProfile(profileId, updates) {
         if (!isSupabaseReady()) return null;
-
-        const { data, error } = await _supabaseClient
-            .from('profiles')
-            .update(updates)
-            .eq('id', profileId)
-            .select()
-            .single();
-
-        if (error) {
-            console.error('Update profile error:', error);
-            return null;
-        }
-        return data;
+        return withSyncIndicator(async () => {
+            const { data, error } = await _supabaseClient
+                .from('profiles')
+                .update(updates)
+                .eq('id', profileId)
+                .select()
+                .single();
+            if (error) { console.error('Update profile error:', error); throw error; }
+            return data;
+        }).catch(() => null);
     },
 
     // --- マスタデータ ---
@@ -390,33 +382,27 @@ const SupabaseDB = {
 
     async saveMasterItem(table, item) {
         if (!isSupabaseReady()) return null;
-
-        const { data, error } = await _supabaseClient
-            .from(table)
-            .upsert(item, { onConflict: 'id' })
-            .select()
-            .single();
-
-        if (error) {
-            console.error(`Save ${table} error:`, error);
-            return null;
-        }
-        return data;
+        return withSyncIndicator(async () => {
+            const { data, error } = await _supabaseClient
+                .from(table)
+                .upsert(item, { onConflict: 'id' })
+                .select()
+                .single();
+            if (error) { console.error(`Save ${table} error:`, error); throw error; }
+            return data;
+        }).catch(() => null);
     },
 
     async deleteMasterItem(table, id) {
         if (!isSupabaseReady()) return false;
-
-        const { error } = await _supabaseClient
-            .from(table)
-            .delete()
-            .eq('id', id);
-
-        if (error) {
-            console.error(`Delete ${table} error:`, error);
-            return false;
-        }
-        return true;
+        return withSyncIndicator(async () => {
+            const { error } = await _supabaseClient
+                .from(table)
+                .delete()
+                .eq('id', id);
+            if (error) { console.error(`Delete ${table} error:`, error); throw error; }
+            return true;
+        }).catch(() => false);
     },
 
     // --- 練習ノート ---
@@ -437,15 +423,15 @@ const SupabaseDB = {
 
     async savePracticeNote(note) {
         if (!isSupabaseReady()) return null;
-
-        const { data, error } = await _supabaseClient
-            .from('practice_notes')
-            .upsert(note, { onConflict: 'id' })
-            .select()
-            .single();
-
-        if (error) { console.error('Save practice_note error:', error); return null; }
-        return data;
+        return withSyncIndicator(async () => {
+            const { data, error } = await _supabaseClient
+                .from('practice_notes')
+                .upsert(note, { onConflict: 'id' })
+                .select()
+                .single();
+            if (error) { console.error('Save practice_note error:', error); throw error; }
+            return data;
+        }).catch(() => null);
     },
 
     // --- 監査ログ ---
@@ -464,15 +450,15 @@ const SupabaseDB = {
 
     async saveAuditLog(log) {
         if (!isSupabaseReady()) return null;
-
-        const { data, error } = await _supabaseClient
-            .from('audit_logs')
-            .upsert(log, { onConflict: 'id' })
-            .select()
-            .single();
-
-        if (error) { console.error('Save audit_log error:', error); return null; }
-        return data;
+        return withSyncIndicator(async () => {
+            const { data, error } = await _supabaseClient
+                .from('audit_logs')
+                .upsert(log, { onConflict: 'id' })
+                .select()
+                .single();
+            if (error) { console.error('Save audit_log error:', error); throw error; }
+            return data;
+        }).catch(() => null);
     },
 
     // --- クループリセット ---
@@ -489,27 +475,27 @@ const SupabaseDB = {
 
     async saveCrewPreset(preset) {
         if (!isSupabaseReady()) return null;
-
-        const { data, error } = await _supabaseClient
-            .from('crew_presets')
-            .upsert(preset, { onConflict: 'id' })
-            .select()
-            .single();
-
-        if (error) { console.error('Save crew_preset error:', error); return null; }
-        return data;
+        return withSyncIndicator(async () => {
+            const { data, error } = await _supabaseClient
+                .from('crew_presets')
+                .upsert(preset, { onConflict: 'id' })
+                .select()
+                .single();
+            if (error) { console.error('Save crew_preset error:', error); throw error; }
+            return data;
+        }).catch(() => null);
     },
 
     async deleteCrewPreset(id) {
         if (!isSupabaseReady()) return false;
-
-        const { error } = await _supabaseClient
-            .from('crew_presets')
-            .delete()
-            .eq('id', id);
-
-        if (error) { console.error('Delete crew_preset error:', error); return false; }
-        return true;
+        return withSyncIndicator(async () => {
+            const { error } = await _supabaseClient
+                .from('crew_presets')
+                .delete()
+                .eq('id', id);
+            if (error) { console.error('Delete crew_preset error:', error); throw error; }
+            return true;
+        }).catch(() => false);
     },
 
     // --- リギング ---
