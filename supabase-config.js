@@ -206,6 +206,56 @@ async function withSyncIndicator(asyncFn) {
 
 const SupabaseDB = {
     // --- スケジュール ---
+    // camelCase(アプリ) → DB(snake_case + quoted)に変換
+    _toScheduleRow(s) {
+        return {
+            id: s.id,
+            user_id: s.userId,
+            date: s.date,
+            time_slot: s.timeSlot,
+            schedule_type: s.scheduleType || null,
+            absence_reason: s.absenceReason || null,
+            "absenceDetail": s.absenceDetail || null,
+            ergo_type: s.ergoType || null,
+            ergo_id: s.ergoId || null,
+            boat_id: s.boatId || null,
+            oar_id: s.oarId || null,
+            "boatType": s.boatType || null,
+            "crewIds": s.crewIds || [],
+            "crewDetailsMap": s.crewDetailsMap || {},
+            "mealTypes": s.mealTypes || [],
+            "videoDuration": s.videoDuration || null,
+            start_time: s.startTime || null,
+            memo: s.memo || null,
+            updated_at: s.updatedAt || new Date().toISOString()
+        };
+    },
+    // DB(snake_case + quoted) → camelCase(アプリ)に変換
+    _fromScheduleRow(r) {
+        return {
+            id: r.id,
+            userId: r.user_id,
+            date: r.date,
+            timeSlot: r.time_slot,
+            scheduleType: r.schedule_type,
+            absenceReason: r.absence_reason,
+            absenceDetail: r.absenceDetail,
+            ergoType: r.ergo_type,
+            ergoId: r.ergo_id,
+            boatId: r.boat_id,
+            oarId: r.oar_id,
+            boatType: r.boatType,
+            crewIds: r.crewIds || [],
+            crewDetailsMap: r.crewDetailsMap || {},
+            mealTypes: r.mealTypes || [],
+            videoDuration: r.videoDuration,
+            startTime: r.start_time,
+            memo: r.memo,
+            updatedAt: r.updated_at,
+            createdAt: r.created_at
+        };
+    },
+
     async loadSchedules(startDate, endDate) {
         if (!isSupabaseReady()) return [];
 
@@ -219,15 +269,16 @@ const SupabaseDB = {
             console.error('Load schedules error:', error);
             return [];
         }
-        return data || [];
+        return (data || []).map(r => SupabaseDB._fromScheduleRow(r));
     },
 
     async saveSchedule(schedule) {
         if (!isSupabaseReady()) return null;
+        const row = this._toScheduleRow(schedule);
         return withSyncIndicator(async () => {
             const { data, error } = await _supabaseClient
                 .from('schedules')
-                .upsert(schedule, { onConflict: 'id' })
+                .upsert(row, { onConflict: 'id' })
                 .select()
                 .single();
             if (error) { console.error('Save schedule error:', error); throw error; }
@@ -248,6 +299,49 @@ const SupabaseDB = {
     },
 
     // --- エルゴ記録 ---
+    _toErgoRow(r) {
+        return {
+            id: r.id,
+            user_id: r.userId,
+            schedule_id: r.scheduleId || null,
+            date: r.date,
+            time_slot: r.timeSlot || null,
+            distance: r.distance || null,
+            time_seconds: r.timeSeconds || null,
+            time_display: r.timeDisplay || null,
+            split: r.split || null,
+            stroke_rate: r.strokeRate || null,
+            heart_rate: r.heartRate || null,
+            weight: r.weight || null,
+            menu_key: r.menuKey || null,
+            category: r.category || null,
+            source: r.source || '手入力',
+            raw_data: r.rawData || null
+        };
+    },
+    _fromErgoRow(r) {
+        return {
+            id: r.id,
+            userId: r.user_id,
+            scheduleId: r.schedule_id,
+            date: r.date,
+            timeSlot: r.time_slot,
+            distance: r.distance,
+            timeSeconds: r.time_seconds,
+            timeDisplay: r.time_display,
+            split: r.split,
+            strokeRate: r.stroke_rate,
+            heartRate: r.heart_rate,
+            weight: r.weight,
+            menuKey: r.menu_key,
+            category: r.category,
+            source: r.source,
+            rawData: r.raw_data,
+            createdAt: r.created_at,
+            updatedAt: r.updated_at
+        };
+    },
+
     async loadErgoRecords(userId) {
         if (!isSupabaseReady()) return [];
 
@@ -266,15 +360,16 @@ const SupabaseDB = {
             console.error('Load ergo records error:', error);
             return [];
         }
-        return data || [];
+        return (data || []).map(r => SupabaseDB._fromErgoRow(r));
     },
 
     async saveErgoRecord(record) {
         if (!isSupabaseReady()) return null;
+        const row = this._toErgoRow(record);
         return withSyncIndicator(async () => {
             const { data, error } = await _supabaseClient
                 .from('ergo_records')
-                .upsert(record, { onConflict: 'id' })
+                .upsert(row, { onConflict: 'id' })
                 .select()
                 .single();
             if (error) { console.error('Save ergo record error:', error); throw error; }
@@ -307,6 +402,42 @@ const SupabaseDB = {
     },
 
     // --- クルーノート ---
+    _toCrewNoteRow(n) {
+        return {
+            id: n.id,
+            date: n.date,
+            time_slot: n.timeSlot || null,
+            boat_id: n.boatId || null,
+            crew_data: {
+                crewHash: n.crewHash,
+                memberIds: n.memberIds,
+                boatType: n.boatType,
+                videoUrls: n.videoUrls,
+                lastAuthorId: n.lastAuthorId
+            },
+            note: n.content || n.note || null,
+            created_by: n.lastAuthorId || n.createdBy || null,
+            updated_at: n.updatedAt || new Date().toISOString()
+        };
+    },
+    _fromCrewNoteRow(r) {
+        const cd = r.crew_data || {};
+        return {
+            id: r.id,
+            date: r.date,
+            timeSlot: r.time_slot,
+            boatId: r.boat_id,
+            crewHash: cd.crewHash,
+            memberIds: cd.memberIds || [],
+            boatType: cd.boatType,
+            content: r.note,
+            videoUrls: cd.videoUrls || [],
+            lastAuthorId: cd.lastAuthorId || r.created_by,
+            createdAt: r.created_at,
+            updatedAt: r.updated_at
+        };
+    },
+
     async loadCrewNotes(startDate, endDate) {
         if (!isSupabaseReady()) return [];
 
@@ -324,15 +455,16 @@ const SupabaseDB = {
             console.error('Load crew notes error:', error);
             return [];
         }
-        return data || [];
+        return (data || []).map(r => SupabaseDB._fromCrewNoteRow(r));
     },
 
     async saveCrewNote(note) {
         if (!isSupabaseReady()) return null;
+        const row = this._toCrewNoteRow(note);
         return withSyncIndicator(async () => {
             const { data, error } = await _supabaseClient
                 .from('crew_notes')
-                .upsert(note, { onConflict: 'id' })
+                .upsert(row, { onConflict: 'id' })
                 .select()
                 .single();
             if (error) { console.error('Save crew note error:', error); throw error; }

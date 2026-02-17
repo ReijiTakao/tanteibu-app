@@ -857,7 +857,15 @@ function getWeekStart(date) {
 }
 
 function generateId() {
-    return `id-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // UUID v4形式を生成（Supabase UUID型互換）
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    // フォールバック: UUID v4形式を手動生成
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
 }
 
 function showToast(message, type = 'default') {
