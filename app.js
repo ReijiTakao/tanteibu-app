@@ -1204,22 +1204,41 @@ const CONCEPT2_API = {
         return 'http://localhost:54321/functions/v1';
     },
 
-    // 分類ルール（距離とタイムベース）
+    // 分類ルール（距離とタイムベース）- 厳密な範囲で判定
     classificationRules: [
-        // 距離ベースのメニュー
-        { key: '2000m TT', type: 'distance', min: 1900, max: 2100, excludeJustRow: true },
-        { key: '5000m', type: 'distance', min: 4800, max: 5200, excludeJustRow: true },
-        { key: '6000m', type: 'distance', min: 5800, max: 6200, excludeJustRow: true },
-        { key: '3750m', type: 'distance', min: 3650, max: 3850, excludeJustRow: true },
-        { key: '10000m', type: 'distance', min: 9800, max: 10200, excludeJustRow: true },
-        { key: '500m', type: 'distance', min: 450, max: 550, excludeJustRow: true },
-        { key: '1000m', type: 'distance', min: 950, max: 1050, excludeJustRow: true },
-        // タイムベースのメニュー（秒で指定）
-        { key: '20分', type: 'time', min: 1150, max: 1250, excludeJustRow: true },
-        { key: '30分', type: 'time', min: 1750, max: 1850, excludeJustRow: true },
-        { key: '60分', type: 'time', min: 3500, max: 3700, excludeJustRow: true },
-        // インターバル
-        { key: 'インターバル', type: 'workout', patterns: ['FixedDistanceInterval', 'FixedTimeInterval', 'VariableInterval'] },
+        // 距離ベースのメニュー（±10m）
+        { key: '100m', type: 'distance', min: 95, max: 105 },
+        { key: '250m', type: 'distance', min: 245, max: 255 },
+        { key: '500m', type: 'distance', min: 495, max: 505 },
+        { key: '750m', type: 'distance', min: 745, max: 755 },
+        { key: '1000m', type: 'distance', min: 995, max: 1005 },
+        { key: '1250m', type: 'distance', min: 1245, max: 1255 },
+        { key: '1300m', type: 'distance', min: 1295, max: 1305 },
+        { key: '1500m', type: 'distance', min: 1495, max: 1505 },
+        { key: '2000m TT', type: 'distance', min: 1995, max: 2005 },
+        { key: '3750m', type: 'distance', min: 3745, max: 3755 },
+        { key: '5000m', type: 'distance', min: 4995, max: 5005 },
+        { key: '6000m', type: 'distance', min: 5995, max: 6005 },
+        { key: '10000m', type: 'distance', min: 9995, max: 10005 },
+        // タイムベースのメニュー（秒で指定、±5秒）
+        { key: '20秒', type: 'time', min: 18, max: 22 },
+        { key: '30秒', type: 'time', min: 28, max: 32 },
+        { key: '1分', type: 'time', min: 58, max: 62 },
+        { key: '2分', type: 'time', min: 118, max: 122 },
+        { key: '3分', type: 'time', min: 178, max: 182 },
+        { key: '4分', type: 'time', min: 238, max: 242 },
+        { key: '5分', type: 'time', min: 298, max: 302 },
+        { key: '6分', type: 'time', min: 358, max: 362 },
+        { key: '7分', type: 'time', min: 418, max: 422 },
+        { key: '8分', type: 'time', min: 478, max: 482 },
+        { key: '9分', type: 'time', min: 538, max: 542 },
+        { key: '10分', type: 'time', min: 598, max: 602 },
+        { key: '12分', type: 'time', min: 718, max: 722 },
+        { key: '15分', type: 'time', min: 898, max: 902 },
+        { key: '20分', type: 'time', min: 1198, max: 1202 },
+        { key: '30分', type: 'time', min: 1798, max: 1802 },
+        { key: '40分', type: 'time', min: 2398, max: 2402 },
+        { key: '60分', type: 'time', min: 3598, max: 3602 },
     ]
 };
 
@@ -1720,8 +1739,12 @@ function classifyErgoSessions(reclassify = false) {
                 raw.workoutType = intervalInfo.type;
             }
 
-            // JustRowは除外
-            if (raw.workoutType === 'JustRow') return;
+            // JustRow: 5分(300秒)以上 or 500m以上のみ保存、それ未満は除外
+            if (raw.workoutType === 'JustRow') {
+                const timeSec = raw.time || 0;
+                const dist = raw.distance || 0;
+                if (timeSec < 300 && dist < 500) return; // 基準未満は除外
+            }
 
             // 既に分類済みかチェック（再分類でない場合）
             if (!reclassify) {
@@ -1734,11 +1757,42 @@ function classifyErgoSessions(reclassify = false) {
             let menuKey = 'その他';
             let category = 'other';
 
-            // インターバルを先に判定（距離/時間ルールで誤分類されるのを防止）
+            // インターバルを先に判定
             const intervalTypes = ['FixedDistanceInterval', 'FixedTimeInterval', 'VariableInterval'];
             if (intervalTypes.includes(raw.workoutType)) {
-                menuKey = raw.intervalDisplay || 'インターバル';
+                // インターバルも距離/時間ルールで分類
+                if (raw.intervals && raw.intervals.length > 0) {
+                    const firstInterval = raw.intervals[0];
+                    const intDist = firstInterval.distance || 0;
+                    const intTime = firstInterval.time ? Math.round(firstInterval.time / 10) : 0; // 1/10秒→秒
+                    let intMenuKey = null;
+                    // 距離ルールでマッチ
+                    for (const rule of rules) {
+                        if (rule.type === 'distance' && intDist >= rule.min && intDist <= rule.max) {
+                            intMenuKey = rule.key;
+                            break;
+                        } else if (rule.type === 'time' && intTime >= rule.min && intTime <= rule.max) {
+                            intMenuKey = rule.key;
+                            break;
+                        }
+                    }
+                    // レストタイムを取得
+                    const restTime = firstInterval.rest_time ? Math.round(firstInterval.rest_time / 10) : 0;
+                    const restStr = restTime > 0 ? (restTime >= 60 ? `r${Math.floor(restTime / 60)}分${restTime % 60 > 0 ? (restTime % 60 + '秒') : ''}` : `r${restTime}秒`) : '';
+                    if (intMenuKey) {
+                        menuKey = `${intMenuKey}×${raw.intervals.length}${restStr ? ' ' + restStr : ''}`;
+                    } else {
+                        menuKey = raw.intervalDisplay || 'インターバル';
+                        if (restStr) menuKey += ' ' + restStr;
+                    }
+                } else {
+                    menuKey = raw.intervalDisplay || 'インターバル';
+                }
                 category = 'interval';
+            } else if (raw.workoutType === 'JustRow') {
+                // JustRow分類（基準クリア済みのみここに到達）
+                menuKey = 'JustRow';
+                category = 'other';
             } else {
                 // workoutTypeに基づいて距離/時間を判別
                 const isDistanceWkt = raw.workoutType === 'FixedDistanceSplits';
@@ -1746,12 +1800,12 @@ function classifyErgoSessions(reclassify = false) {
 
                 for (const rule of rules) {
                     if (rule.type === 'distance' && raw.distance >= rule.min && raw.distance <= rule.max) {
-                        if (isTimeWkt) continue; // 時間ワークアウトなのに距離ルールマッチ → スキップ
+                        if (isTimeWkt) continue;
                         menuKey = rule.key;
                         category = 'distance';
                         break;
                     } else if (rule.type === 'time' && raw.time >= rule.min && raw.time <= rule.max) {
-                        if (isDistanceWkt) continue; // 距離ワークアウトなのに時間ルールマッチ → スキップ
+                        if (isDistanceWkt) continue;
                         menuKey = rule.key;
                         category = 'time';
                         break;
@@ -1879,45 +1933,63 @@ function classifyConcept2Result(result) {
     const workoutType = result.workout_type || '';
     const rules = CONCEPT2_API.classificationRules;
 
-    // インターバルを先に判定（距離/時間ルールで誤分類されるのを防止）
+    // インターバルを先に判定
     const intervalTypes = ['FixedDistanceInterval', 'FixedTimeInterval', 'VariableInterval'];
     if (intervalTypes.includes(workoutType)) {
         const intervals = result.workout?.intervals || [];
         let intervalDisplay = 'インターバル';
         if (intervals.length > 0) {
             const first = intervals[0];
-            if (first.distance && first.distance > 0) {
-                intervalDisplay = `${first.distance}m×${intervals.length}`;
-            } else if (first.time && first.time > 0) {
-                const sec = Math.round(first.time / 10);
-                if (sec >= 60) {
-                    intervalDisplay = `${Math.round(sec / 60)}分×${intervals.length}`;
-                } else {
-                    intervalDisplay = `${sec}sec×${intervals.length}`;
+            const intDist = first.distance || 0;
+            const intTimeSec = first.time ? Math.round(first.time / 10) : 0;
+            let intMenuKey = null;
+            // 距離/時間ルールでマッチ
+            for (const rule of rules) {
+                if (rule.type === 'distance' && intDist >= rule.min && intDist <= rule.max) {
+                    intMenuKey = rule.key;
+                    break;
+                } else if (rule.type === 'time' && intTimeSec >= rule.min && intTimeSec <= rule.max) {
+                    intMenuKey = rule.key;
+                    break;
+                }
+            }
+            // レストタイム
+            const restTime = first.rest_time ? Math.round(first.rest_time / 10) : 0;
+            const restStr = restTime > 0 ? (restTime >= 60 ? `r${Math.floor(restTime / 60)}分${restTime % 60 > 0 ? (restTime % 60 + '秒') : ''}` : `r${restTime}秒`) : '';
+            if (intMenuKey) {
+                intervalDisplay = `${intMenuKey}×${intervals.length}${restStr ? ' ' + restStr : ''}`;
+            } else {
+                if (intDist > 0) {
+                    intervalDisplay = `${intDist}m×${intervals.length}${restStr ? ' ' + restStr : ''}`;
+                } else if (intTimeSec > 0) {
+                    if (intTimeSec >= 60) {
+                        intervalDisplay = `${Math.round(intTimeSec / 60)}分×${intervals.length}${restStr ? ' ' + restStr : ''}`;
+                    } else {
+                        intervalDisplay = `${intTimeSec}秒×${intervals.length}${restStr ? ' ' + restStr : ''}`;
+                    }
                 }
             }
         }
         return { menuKey: intervalDisplay, category: 'interval' };
     }
 
-    // JustRow判定
+    // JustRow判定: 5分以上 or 500m以上のみ保存
     if (workoutType === 'JustRow') {
+        if (timeSec < 300 && distance < 500) {
+            return { menuKey: 'JustRow_skip', category: 'skip' }; // 基準未満
+        }
         return { menuKey: 'JustRow', category: 'other' };
     }
 
     // workoutTypeに基づいて距離/時間を判別
-    // FixedDistanceSplits → 距離ルールのみ適用
-    // FixedTimeSplits → 時間ルールのみ適用
     const isDistanceWorkout = workoutType === 'FixedDistanceSplits';
     const isTimeWorkout = workoutType === 'FixedTimeSplits';
 
     for (const rule of rules) {
         if (rule.type === 'distance' && distance >= rule.min && distance <= rule.max) {
-            // 時間ワークアウトなのに距離ルールにマッチした場合はスキップ
             if (isTimeWorkout) continue;
             return { menuKey: rule.key, category: 'distance' };
         } else if (rule.type === 'time' && timeSec >= rule.min && timeSec <= rule.max) {
-            // 距離ワークアウトなのに時間ルールにマッチした場合はスキップ
             if (isDistanceWorkout) continue;
             return { menuKey: rule.key, category: 'time' };
         }
@@ -1999,8 +2071,8 @@ async function syncConcept2() {
             // menuKey/categoryを分類
             const { menuKey, category } = classifyConcept2Result(result);
 
-            // JustRowはスキップ
-            if (menuKey === 'JustRow') continue;
+            // 基準未満のJustRow（5分未満かつ500m未満）はスキップ
+            if (category === 'skip') continue;
 
             const timeSec = result.time ? result.time / 10 : 0;
             const distance = result.distance || 0;
@@ -5776,6 +5848,12 @@ const initializeApp = async () => {
                 if (event === 'SIGNED_IN' && session) {
                     const authSuccess = await handleAuthSession(session);
                     if (authSuccess && state.currentUser?.approvalStatus === '承認済み') {
+                        // Supabaseから最新データを同期してからUI初期化
+                        try {
+                            await DB.syncFromSupabase();
+                        } catch (e) {
+                            console.warn('Post-login sync failed:', e);
+                        }
                         initMainScreen();
                         updateConcept2UI();
                         showScreen('main-screen');
