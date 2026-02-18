@@ -1696,6 +1696,7 @@ async function refreshConcept2Token() {
 
 // エルゴセッションを分類（拡張メニュー対応）
 function classifyErgoSessions(reclassify = false) {
+    const newlyAddedRecordIds = []; // 新規追加されたレコードIDを追跡
     try {
         // CONCEPT2_API.classificationRulesを使用
         const rules = CONCEPT2_API.classificationRules;
@@ -1780,9 +1781,11 @@ function classifyErgoSessions(reclassify = false) {
             // ergoRecordsにも追加（データタブで表示）
             // 当日の体重を自動付与
             const dayWeight = getWeightForDate(state.currentUser.id, raw.date);
+            const newRecordId = generateId();
             state.ergoRecords.push({
-                id: generateId(),
+                id: newRecordId,
                 rawId: raw.id, // rawDataへの参照を保持
+                concept2Id: String(raw.concept2Id || ''),
                 userId: state.currentUser.id,
                 date: raw.date,
                 distance: raw.distance,
@@ -1796,20 +1799,25 @@ function classifyErgoSessions(reclassify = false) {
                 category: category,
                 source: 'Concept2'
             });
+            newlyAddedRecordIds.push(newRecordId);
         });
 
         DB.save('ergoSessions', state.ergoSessions);
         DB.save('ergo_records', state.ergoRecords);
 
-        // Supabaseにもergo_recordsを同期（バックグラウンド）
-        if (DB.useSupabase && window.SupabaseConfig?.db) {
-            const c2Records = state.ergoRecords.filter(r => r.source === 'Concept2');
-            Promise.all(c2Records.map(record =>
-                window.SupabaseConfig.db.saveErgoRecord(record).catch(e => {
+        // Supabaseにもergo_recordsを同期（バックグラウンド・新規追加分のみ）
+        if (DB.useSupabase && window.SupabaseConfig?.db && newlyAddedRecordIds.length > 0) {
+            const newRecords = state.ergoRecords.filter(r => newlyAddedRecordIds.includes(r.id));
+            Promise.all(newRecords.map(record => {
+                const supaRecord = {
+                    ...record,
+                    rawData: { concept2Id: record.concept2Id || '' }
+                };
+                return window.SupabaseConfig.db.saveErgoRecord(supaRecord).catch(e => {
                     console.warn('Ergo record sync failed:', record.id, e);
-                })
-            )).then(() => {
-                console.log(`${c2Records.length}件のエルゴ記録をSupabaseに同期完了`);
+                });
+            })).then(() => {
+                console.log(`${newRecords.length}件の新規エルゴ記録をSupabaseに同期完了`);
             });
         }
     } catch (error) {
@@ -2052,7 +2060,7 @@ async function syncConcept2() {
                 intervals: workout.intervals || [],
                 splits: workout.splits || [],
                 rawData: result,
-                source: 'concept2',
+                source: 'Concept2',
                 createdAt: new Date().toISOString()
             };
             existingRecords.push(newRecord);
@@ -2088,18 +2096,22 @@ async function syncConcept2() {
         state.ergoSessions = existingSessions;
 
         // Supabaseにもエルゴ記録を保存
-        if (DB.useSupabase && window.SupabaseConfig?.isReady()) {
+        if (insertedCount > 0 && DB.useSupabase && window.SupabaseConfig?.isReady()) {
             try {
                 // Supabaseに既に保存されているレコードのconcept2Idリストを取得
                 const supabaseRecords = await window.SupabaseConfig.db.loadErgoRecords(state.currentUser.id);
                 const savedConcept2Ids = new Set();
                 supabaseRecords.forEach(r => {
                     if (r.rawData?.concept2Id) savedConcept2Ids.add(r.rawData.concept2Id);
+                    // sourceフィールドからも検出（旧形式対応）
+                    if (r.concept2Id) savedConcept2Ids.add(r.concept2Id);
                 });
 
                 // Supabaseにまだ保存されていないConcept2レコードだけ抽出
+                // source は 'concept2' または 'Concept2' の両方を対象
                 const unsavedRecords = existingRecords.filter(r =>
-                    r.source === 'concept2' && r.concept2Id && !savedConcept2Ids.has(r.concept2Id)
+                    (r.source === 'concept2' || r.source === 'Concept2') &&
+                    r.concept2Id && !savedConcept2Ids.has(r.concept2Id)
                 );
 
                 let supabaseSaved = 0;
@@ -2118,7 +2130,7 @@ async function syncConcept2() {
                             menuKey: record.menuKey,
                             category: record.category,
                             source: 'Concept2',
-                            rawData: { ...(record.rawData || {}), concept2Id: record.concept2Id }
+                            rawData: { concept2Id: record.concept2Id }
                         });
                         supabaseSaved++;
                     } catch (e) {
@@ -2136,6 +2148,11 @@ async function syncConcept2() {
         // 最終同期日時を更新
         state.currentUser.concept2LastSync = new Date().toISOString();
         DB.save('current_user', state.currentUser);
+
+        // Supabaseのプロフィールにも最終同期日を反映
+        syncProfileToSupabase({
+            concept2_last_sync: state.currentUser.concept2LastSync
+        });
 
         showToast(`同期完了: ${insertedCount}件の新しいデータを取得（全${results.length}件中）`, 'success');
 
@@ -2207,6 +2224,28 @@ function reclassifyAllErgoData() {
         classifyErgoSessions(true);
         DB.save('ergo_records', state.ergoRecords);
         DB.save('ergoSessions', state.ergoSessions);
+
+        // Supabaseにも再分類結果を同期（menuKey/categoryが変更された可能性）
+        if (DB.useSupabase && window.SupabaseConfig?.db) {
+            const c2Records = state.ergoRecords.filter(r =>
+                r.source === 'Concept2' || r.source === 'concept2'
+            );
+            let synced = 0;
+            Promise.all(c2Records.map(record => {
+                const supaRecord = {
+                    ...record,
+                    id: record.id?.startsWith('c2_') ? generateId() : record.id,
+                    source: 'Concept2',
+                    rawData: { concept2Id: record.concept2Id || '' }
+                };
+                return DB.saveErgoRecord(supaRecord).then(() => synced++).catch(e => {
+                    console.warn('Reclassify sync failed:', record.id, e);
+                });
+            })).then(() => {
+                if (synced > 0) console.log(`再分類: ${synced}件をSupabaseに同期完了`);
+            });
+        }
+
         renderErgoRecords();
         showToast('エルゴデータを再分類しました', 'success');
     }, null, '再分類する');
@@ -5164,6 +5203,13 @@ function toggleBoatRiggingMode(boatId, e) {
 
     DB.save('boats', state.boats);
     DB.addAuditLog('boats', boat.id, 'リギング切替', { from: currentMode, to: newMode });
+
+    // Supabaseにも同期（変更した艇のみ）
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.saveMasterItem('boats', boat).catch(err => {
+            console.warn('Boat rigging mode sync failed:', err);
+        });
+    }
 
     renderMasterList();
     showToast(`${boat.name}: ${CONVERTIBLE_LABELS[newMode]}モードに切替`, 'success');
