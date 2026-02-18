@@ -167,7 +167,7 @@ async function handleAuthSession(session) {
             status: profile.status || '在籍',
             approvalStatus: profile.approval_status || '承認済み',
             concept2Connected: profile.concept2_connected || false,
-            concept2Token: profile.concept2_token || null,
+            concept2Token: profile.concept2_access_token || null,
             concept2LastSync: profile.concept2_last_sync,
             side: profile.side || null,
             weight: profile.weight || null
@@ -1680,12 +1680,11 @@ async function refreshConcept2Token() {
             DB.save('users', state.users);
         }
 
-        // Supabaseにも保存（Edge Function経由などで、あるいはDB.saveが勝手にやるのを期待）
-        // ただしDB.save('users'...)で同期されるならOK。
-        // もしcreateClientが使えない環境ならEdge Functionに保存させる必要があるが、
-        // 現状はDB.saveで同期されると仮定。
-        // もし厳密にやるなら、refresh成功時にEdge Function側でusersテーブル更新してもらうのがベストだが、
-        // concept2-authはresponse返すだけなので、クライアント側で保存が必要。
+        // Supabaseに新しいトークンを保存
+        syncProfileToSupabase({
+            concept2_access_token: data.access_token,
+            concept2_last_sync: new Date().toISOString()
+        });
 
         return true;
 
@@ -2088,38 +2087,49 @@ async function syncConcept2() {
         state.ergoRecords = existingRecords;
         state.ergoSessions = existingSessions;
 
-        // Supabaseにもエルゴ記録を保存（非同期）
+        // Supabaseにもエルゴ記録を保存
         if (DB.useSupabase && window.SupabaseConfig?.isReady()) {
-            const newRecords = existingRecords.filter(r =>
-                r.source === 'concept2' && r.createdAt
-            ).slice(-insertedCount); // 新規追加分のみ
+            try {
+                // Supabaseに既に保存されているレコードのconcept2Idリストを取得
+                const supabaseRecords = await window.SupabaseConfig.db.loadErgoRecords(state.currentUser.id);
+                const savedConcept2Ids = new Set();
+                supabaseRecords.forEach(r => {
+                    if (r.rawData?.concept2Id) savedConcept2Ids.add(r.rawData.concept2Id);
+                });
 
-            for (const record of newRecords) {
-                try {
-                    // Supabaseのergo_recordsテーブルのidはUUID型なので、
-                    // c2_xxxxx形式のIDの場合はUUIDを新規生成
-                    const supabaseId = (record.id && record.id.startsWith('c2_'))
-                        ? generateId()
-                        : record.id;
+                // Supabaseにまだ保存されていないConcept2レコードだけ抽出
+                const unsavedRecords = existingRecords.filter(r =>
+                    r.source === 'concept2' && r.concept2Id && !savedConcept2Ids.has(r.concept2Id)
+                );
 
-                    await DB.saveErgoRecord({
-                        id: supabaseId,
-                        userId: record.userId,
-                        date: record.date,
-                        distance: record.distance,
-                        timeSeconds: record.time || record.timeSeconds,
-                        timeDisplay: record.timeDisplay,
-                        split: record.split,
-                        strokeRate: record.strokeRate,
-                        heartRate: record.heartRate,
-                        menuKey: record.menuKey,
-                        category: record.category,
-                        source: 'Concept2',
-                        rawData: { ...(record.rawData || {}), concept2Id: record.concept2Id }
-                    });
-                } catch (e) {
-                    console.warn('Supabase ergo save failed:', e);
+                let supabaseSaved = 0;
+                for (const record of unsavedRecords) {
+                    try {
+                        await DB.saveErgoRecord({
+                            id: generateId(), // UUID形式で新規生成
+                            userId: record.userId,
+                            date: record.date,
+                            distance: record.distance,
+                            timeSeconds: record.time || record.timeSeconds,
+                            timeDisplay: record.timeDisplay,
+                            split: record.split,
+                            strokeRate: record.strokeRate,
+                            heartRate: record.heartRate,
+                            menuKey: record.menuKey,
+                            category: record.category,
+                            source: 'Concept2',
+                            rawData: { ...(record.rawData || {}), concept2Id: record.concept2Id }
+                        });
+                        supabaseSaved++;
+                    } catch (e) {
+                        console.warn('Supabase ergo save failed:', e);
+                    }
                 }
+                if (supabaseSaved > 0) {
+                    console.log(`Supabaseにエルゴ${supabaseSaved}件保存完了`);
+                }
+            } catch (e) {
+                console.warn('Supabase ergo sync error:', e);
             }
         }
 
@@ -5702,7 +5712,7 @@ const initializeApp = async () => {
                                 status: p.status || '在籍',
                                 approvalStatus: p.approval_status || '承認済み',
                                 concept2Connected: p.concept2_connected || false,
-                                concept2Token: p.concept2_token || null,
+                                concept2Token: p.concept2_access_token || null,
                                 concept2LastSync: p.concept2_last_sync || null,
                                 side: p.side || null,
                                 weight: p.weight || null
