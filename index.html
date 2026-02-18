@@ -538,7 +538,6 @@
                                 <option value="コーチ">コーチ</option>
                                 <option value="Cox">Cox</option>
                                 <option value="漕手">漕手</option>
-                                <option value="幹部">幹部</option>
                                 <option value="マネージャー" disabled>マネージャー (Coming Soon)</option>
                                 <option value="データ班" disabled>データ班 (Coming Soon)</option>
                             </select>
@@ -680,7 +679,7 @@
 
         <!-- 下タブナビゲーション（6つ） -->
         <nav id="bottom-nav" class="bottom-nav">
-            <button class="nav-item active" data-tab="input" data-roles="rower,cox,admin,kanbu">
+            <button class="nav-item active" data-tab="input" data-roles="rower,cox,admin">
                 <span class="nav-icon">📝</span>
                 <span class="nav-label">練習登録</span>
             </button>
@@ -688,15 +687,15 @@
                 <span class="nav-icon">📅</span>
                 <span class="nav-label">全体</span>
             </button>
-            <button class="nav-item" data-tab="ergo-data" data-roles="rower,admin,coach,kanbu">
+            <button class="nav-item" data-tab="ergo-data" data-roles="rower,admin,coach">
                 <span class="nav-icon">📊</span>
                 <span class="nav-label">エルゴデータ</span>
             </button>
-            <button class="nav-item" data-tab="rigging" data-roles="rower,cox,admin,coach,kanbu">
+            <button class="nav-item" data-tab="rigging" data-roles="rower,cox,admin,coach">
                 <span class="nav-icon">🔧</span>
                 <span class="nav-label">リギング</span>
             </button>
-            <button class="nav-item" data-tab="crew-note" data-roles="rower,cox,admin,coach,kanbu">
+            <button class="nav-item" data-tab="crew-note" data-roles="rower,cox,admin,coach">
                 <span class="nav-icon">📖</span>
                 <span class="nav-label">ノート</span>
             </button>
@@ -736,6 +735,10 @@
                             <span class="btn-icon">🚴</span>
                             <span>伴チャ</span>
                         </button>
+                        <button class="toggle-btn schedule-type-btn" data-value="OFF" data-roles="all">
+                            <span class="btn-icon">🏖️</span>
+                            <span>OFF</span>
+                        </button>
                         <button class="toggle-btn schedule-type-btn" data-value="参加不可" data-roles="all">
                             <span class="btn-icon">❌</span>
                             <span>参加不可</span>
@@ -743,9 +746,9 @@
                     </div>
                 </div>
 
-                <!-- 開始予定時刻 -->
+                <!-- 開始予定時刻（降り時間） -->
                 <div class="form-group" id="start-time-group">
-                    <label>開始予定時刻</label>
+                    <label>開始予定時刻（降り時間）</label>
                     <input type="time" id="input-start-time" step="300"
                         style="padding: 8px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; width: 100%; box-sizing: border-box;">
                 </div>

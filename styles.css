@@ -1172,6 +1172,50 @@ body {
     border: 1px solid rgba(100, 116, 139, 0.15);
 }
 
+/* 午前/午後セクション */
+.slot-section {
+    margin-bottom: 12px;
+}
+
+.slot-section-header {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    padding: 8px 0 6px;
+    border-bottom: 1.5px solid rgba(59, 130, 246, 0.2);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.slot-count-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--accent-color);
+}
+
+.off-chip {
+    background: rgba(245, 158, 11, 0.08);
+    color: var(--text-primary);
+    border: 1px solid rgba(245, 158, 11, 0.15);
+}
+
+.off-badge {
+    background: rgba(245, 158, 11, 0.15);
+    color: #b45309;
+}
+
+.unregistered-chip {
+    background: rgba(245, 158, 11, 0.08);
+    color: var(--text-secondary);
+    border: 1px dashed rgba(245, 158, 11, 0.3);
+    font-style: italic;
+}
+
 /* クルーカード */
 .ov-crew-card {
     background: rgba(59, 130, 246, 0.04);

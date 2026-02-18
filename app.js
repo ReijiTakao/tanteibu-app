@@ -15,14 +15,14 @@ const ROLES = {
     COACH: 'コーチ',
     COX: 'Cox',
     ROWER: '漕手',
-    KANBU: '幹部',
     MANAGER: 'マネージャー',
     DATA_ANALYST: 'データ班'
 };
 
 // 旧ロールからのマイグレーションマップ
 const ROLE_MIGRATION = {
-    '部員': '漕手'
+    '部員': '漕手',
+    '幹部': '漕手'
 };
 
 function migrateRole(role) {
@@ -36,7 +36,8 @@ const SCHEDULE_TYPES = {
     ABSENT: '参加不可',
     MEAL: '炊事',
     VIDEO: 'ビデオ',
-    BANCHA: '伴チャ'
+    BANCHA: '伴チャ',
+    OFF: 'OFF'
 };
 
 const ABSENCE_REASONS = ['体調不良', '怪我', '就活', '学校'];
@@ -536,6 +537,8 @@ const DB = {
                     // 現状は簡易的に「艇 (任意)」のラベル表示切替程度にしておく
                     // または、艇選択プルダウンをフィルタリングする
                     filterBoatSelect(btn.dataset.value);
+                    // オール選択もスイープ/スカルでフィルタし直す
+                    if (typeof populateBoatOarSelects === 'function') populateBoatOarSelects();
                 }
 
                 // 記録統計の性別切り替え
@@ -971,12 +974,12 @@ function canEditMaster(user) {
 }
 
 function canViewOverview(user) {
-    return [ROLES.ADMIN, ROLES.COACH, ROLES.KANBU].includes(user?.role);
+    return [ROLES.ADMIN, ROLES.COACH].includes(user?.role);
 }
 
-// 幹部はスケジュール管理（全体タブでの編集）権限を持つ
+// スケジュール管理（全体タブでの編集）権限
 function canEditSchedule(user) {
-    return [ROLES.ADMIN, ROLES.KANBU].includes(user?.role);
+    return [ROLES.ADMIN].includes(user?.role);
 }
 
 // =========================================
@@ -1004,13 +1007,11 @@ function showScreen(screenId) {
 // ロール別タブ表示/非表示
 function applyRoleBasedTabs() {
     const role = state.currentUser?.role || '';
-    // 幹部は漕手の全タブ + overviewタブを持つ
     const roleKey = {
         [ROLES.ADMIN]: 'admin',
         [ROLES.COACH]: 'coach',
         [ROLES.COX]: 'cox',
         [ROLES.ROWER]: 'rower',
-        [ROLES.KANBU]: 'kanbu',
         [ROLES.MANAGER]: 'manager',
         [ROLES.DATA_ANALYST]: 'data'
     }[role] || 'rower';
@@ -1019,10 +1020,6 @@ function applyRoleBasedTabs() {
     document.querySelectorAll('#bottom-nav .nav-item').forEach(item => {
         const roles = item.dataset.roles || 'all';
         let visible = roles === 'all' || roles.split(',').includes(roleKey);
-        // 幹部はrowerのタブも表示
-        if (!visible && roleKey === 'kanbu' && roles.split(',').includes('rower')) {
-            visible = true;
-        }
         item.style.display = visible ? '' : 'none';
         if (visible && !firstVisibleTab) firstVisibleTab = item.dataset.tab;
     });
@@ -2553,8 +2550,7 @@ function openInputModal(dateStr, timeSlot, scheduleId = null) {
         : userRole === ROLES.COX ? 'cox'
             : userRole === ROLES.ADMIN ? 'admin'
                 : userRole === ROLES.COACH ? 'coach'
-                    : userRole === ROLES.KANBU ? 'rower'
-                        : 'rower';
+                    : 'rower';
 
     document.querySelectorAll('.schedule-type-btn').forEach(btn => {
         const allowedRoles = (btn.dataset.roles || 'all').split(',');
@@ -2654,8 +2650,10 @@ function closeInputModal() {
 }
 
 function handleScheduleTypeChange(type) {
-    document.getElementById('start-time-group').classList.toggle('hidden', type === SCHEDULE_TYPES.ABSENT);
-    document.getElementById('absence-reason-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.ABSENT);
+    const isOff = type === SCHEDULE_TYPES.OFF;
+    const isAbsent = type === SCHEDULE_TYPES.ABSENT;
+    document.getElementById('start-time-group').classList.toggle('hidden', isAbsent || isOff);
+    document.getElementById('absence-reason-group').classList.toggle('hidden', !isAbsent);
     document.getElementById('ergo-type-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.ERGO);
     document.getElementById('boat-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.BOAT);
     document.getElementById('oar-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.BOAT);
@@ -3336,23 +3334,21 @@ function initOverviewDate() {
     });
 }
 
-function renderOverview() {
-    const dateStr = document.getElementById('overview-date').value;
-    const container = document.getElementById('schedule-timeline');
-    const boatSection = document.getElementById('available-boats-section');
-
-    // その日の全スケジュール（全ユーザー）
-    const schedules = state.schedules.filter(s => s.date === dateStr);
+// 午前/午後セクション描画ヘルパー
+function renderSlotSection(sectionLabel, schedules) {
+    if (schedules.length === 0) {
+        return `<div class="slot-section">
+            <div class="slot-section-header">${sectionLabel} <span class="slot-count-badge">0人</span></div>
+            <div class="empty-state" style="padding:8px;"><p style="font-size:13px;color:#888;">予定なし</p></div>
+        </div>`;
+    }
 
     // startTimeでグルーピング
     const timeGroups = {};
     const noTimeSchedules = [];
-    const absentSchedules = [];
 
     schedules.forEach(s => {
-        if (s.scheduleType === SCHEDULE_TYPES.ABSENT) {
-            absentSchedules.push(s);
-        } else if (s.startTime) {
+        if (s.startTime) {
             if (!timeGroups[s.startTime]) timeGroups[s.startTime] = [];
             timeGroups[s.startTime].push(s);
         } else {
@@ -3361,31 +3357,107 @@ function renderOverview() {
     });
 
     const sortedTimes = Object.keys(timeGroups).sort();
+    let blocksHtml = '';
 
-    let html = '';
-
-    // 日付ヘッダー + 全体サマリー
-    const display = formatDisplayDate(dateStr);
-    const totalActive = schedules.length - absentSchedules.length;
-    html += `<div class="timeline-date-header">
-        ${display.month}/${display.day}（${display.weekday}）のスケジュール
-        <span class="overview-total-badge">${totalActive}人参加 / ${absentSchedules.length}人不参加</span>
-    </div>`;
-
-    if (sortedTimes.length === 0 && noTimeSchedules.length === 0 && absentSchedules.length === 0) {
-        html += '<div class="empty-state"><p>予定なし</p></div>';
-    }
-
-    // 時間帯ごとにサマリーカード表示
     sortedTimes.forEach(time => {
-        html += renderTimeBlock(time, timeGroups[time]);
+        blocksHtml += renderTimeBlock(time, timeGroups[time]);
     });
 
     if (noTimeSchedules.length > 0) {
-        html += renderTimeBlock('未定', noTimeSchedules);
+        blocksHtml += renderTimeBlock('未定', noTimeSchedules);
     }
 
-    // 参加不可（折りたたみ）
+    return `<div class="slot-section">
+        <div class="slot-section-header">${sectionLabel} <span class="slot-count-badge">${schedules.length}人</span></div>
+        ${blocksHtml}
+    </div>`;
+}
+
+function renderOverview() {
+    const dateStr = document.getElementById('overview-date').value;
+    const container = document.getElementById('schedule-timeline');
+    const boatSection = document.getElementById('available-boats-section');
+
+    // その日の全スケジュール（全ユーザー）
+    const schedules = state.schedules.filter(s => s.date === dateStr);
+
+    // 在籍中のアクティブユーザー一覧
+    const activeUsers = state.users.filter(u => u.approvalStatus === '承認済み' && u.status !== '退部' && !u.isDemo);
+    const registeredUserIds = new Set(schedules.map(s => s.userId));
+
+    // 午前/午後でグルーピング
+    const morningSchedules = [];
+    const afternoonSchedules = [];
+    const absentSchedules = [];
+    const offSchedules = [];
+
+    schedules.forEach(s => {
+        if (s.scheduleType === SCHEDULE_TYPES.ABSENT) {
+            absentSchedules.push(s);
+        } else if (s.scheduleType === SCHEDULE_TYPES.OFF) {
+            offSchedules.push(s);
+        } else {
+            // timeSlotベースで午前/午後分離（startTimeから推定も可）
+            const slot = s.timeSlot || '';
+            if (slot === '午後' || slot === 'afternoon') {
+                afternoonSchedules.push(s);
+            } else if (slot === '午前' || slot === 'morning') {
+                morningSchedules.push(s);
+            } else if (s.startTime) {
+                // startTime から推定: 12:00 以降は午後
+                const hour = parseInt(s.startTime.split(':')[0]) || 0;
+                if (hour >= 12) {
+                    afternoonSchedules.push(s);
+                } else {
+                    morningSchedules.push(s);
+                }
+            } else {
+                morningSchedules.push(s); // デフォルトは午前
+            }
+        }
+    });
+
+    // 非登録者（予定未入力の部員）
+    const unregisteredUsers = activeUsers.filter(u => !registeredUserIds.has(u.id));
+
+    let html = '';
+
+    // 日付ヘッダー
+    const display = formatDisplayDate(dateStr);
+    const totalActive = morningSchedules.length + afternoonSchedules.length;
+    html += `<div class="timeline-date-header">
+        ${display.month}/${display.day}（${display.weekday}）のスケジュール
+    </div>`;
+
+    if (schedules.length === 0 && unregisteredUsers.length === 0) {
+        html += '<div class="empty-state"><p>予定なし</p></div>';
+    }
+
+    // === 午前セクション ===
+    html += renderSlotSection('🌅 午前', morningSchedules);
+
+    // === 午後セクション ===
+    html += renderSlotSection('🌇 午後', afternoonSchedules);
+
+    // === OFF（折りたたみ） ===
+    if (offSchedules.length > 0) {
+        const offChips = offSchedules.map(s => {
+            const u = state.users.find(u => u.id === s.userId);
+            return `<span class="ov-chip off-chip">🏖️ ${u?.name || '?'}</span>`;
+        }).join('');
+        html += `<div class="timeline-block absent-block">
+            <div class="ov-card-header" onclick="this.parentElement.classList.toggle('expanded')">
+                <span class="timeline-time-label">🏖️ OFF</span>
+                <div class="ov-summary-badges">
+                    <span class="ov-badge off-badge">${offSchedules.length}人</span>
+                    <span class="ov-expand-icon">▶</span>
+                </div>
+            </div>
+            <div class="ov-card-body"><div class="ov-chip-row">${offChips}</div></div>
+        </div>`;
+    }
+
+    // === 参加不可（折りたたみ） ===
     if (absentSchedules.length > 0) {
         const absentByReason = {};
         absentSchedules.forEach(s => {
@@ -3415,6 +3487,23 @@ function renderOverview() {
                 </div>
             </div>
             <div class="ov-card-body">${absentChips}</div>
+        </div>`;
+    }
+
+    // === 非登録者（折りたたみ） ===
+    if (unregisteredUsers.length > 0) {
+        const unregChips = unregisteredUsers.map(u =>
+            `<span class="ov-chip unregistered-chip">⚠️ ${u.name}</span>`
+        ).join('');
+        html += `<div class="timeline-block absent-block">
+            <div class="ov-card-header" onclick="this.parentElement.classList.toggle('expanded')">
+                <span class="timeline-time-label">📝 未登録</span>
+                <div class="ov-summary-badges">
+                    <span class="ov-badge" style="background:#f59e0b;">${unregisteredUsers.length}人</span>
+                    <span class="ov-expand-icon">▶</span>
+                </div>
+            </div>
+            <div class="ov-card-body"><div class="ov-chip-row">${unregChips}</div></div>
         </div>`;
     }
 
@@ -5731,12 +5820,37 @@ function populateBoatOarSelects() {
         boatSelect.value = currentVal;
     }
 
-    // Oars
+    // Oars - スイープ/スカルフィルタ + 数字ソート
     const oarSelect = document.getElementById('input-oar');
     if (oarSelect) {
         const currentVal = oarSelect.value;
         oarSelect.innerHTML = '<option value="">選択してください</option>';
-        (state.oars || []).forEach(o => {
+
+        // 選択中の艇種からスイープ/スカルを判定
+        const activeBoatTypeBtn = document.querySelector('.boat-type-btn.active');
+        const boatType = activeBoatTypeBtn ? activeBoatTypeBtn.dataset.value : '';
+        const isSweep = ['2-', '4+', '8+'].includes(boatType);
+        const isScull = ['1x', '2x', '4x'].includes(boatType);
+
+        let filteredOars = (state.oars || []);
+        if (boatType && (isSweep || isScull)) {
+            filteredOars = filteredOars.filter(o => {
+                const oarType = (o.type || '').toLowerCase();
+                if (isSweep) return oarType.includes('sweep') || oarType.includes('スイープ');
+                if (isScull) return oarType.includes('scull') || oarType.includes('スカル');
+                return true;
+            });
+        }
+
+        // 名前内の数字でソート
+        filteredOars.sort((a, b) => {
+            const numA = parseInt((a.name || '').match(/\d+/)?.[0] || '99999');
+            const numB = parseInt((b.name || '').match(/\d+/)?.[0] || '99999');
+            if (numA !== numB) return numA - numB;
+            return (a.name || '').localeCompare(b.name || '');
+        });
+
+        filteredOars.forEach(o => {
             const status = o.status || (o.availability === '使用不可' ? 'broken' : 'available');
             const isUnavailable = status !== 'available';
             const statusLabel = isUnavailable ? ` (${translateStatus(status)})` : '';
