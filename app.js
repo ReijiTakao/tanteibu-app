@@ -374,6 +374,7 @@ const DB = {
             const endStr = new Date(today.getFullYear(), today.getMonth() + 2, 0).toISOString().split('T')[0];
 
             const schedules = await window.SupabaseConfig.db.loadSchedules(startStr, endStr);
+            showToast(`Supabaseからスケジュール${schedules.length}件取得`, 'info');
             if (schedules.length) {
                 schedules.forEach(s => {
                     const idx = state.schedules.findIndex(local => local.id === s.id);
@@ -383,8 +384,8 @@ const DB = {
                 this.saveLocal('schedules', state.schedules);
             }
 
-            // エルゴ記録: 全ユーザー分を取得（ランキング共有のため）
             const allRecords = await window.SupabaseConfig.db.loadErgoRecords();
+            showToast(`Supabaseからエルゴ${allRecords.length}件取得`, 'info');
             if (allRecords.length) {
                 allRecords.forEach(r => {
                     const idx = state.ergoRecords.findIndex(local => local.id === r.id);
@@ -474,7 +475,16 @@ const DB = {
     // 個別保存メソッド（Supabaseへのプロキシ）
     async saveSchedule(schedule) {
         if (this.useSupabase && window.SupabaseConfig.db) {
-            return await window.SupabaseConfig.db.saveSchedule(schedule);
+            try {
+                const result = await window.SupabaseConfig.db.saveSchedule(schedule);
+                showToast('スケジュールSupabase同期成功', 'success');
+                return result;
+            } catch (e) {
+                showToast('スケジュールSupabase同期失敗: ' + (e?.message || JSON.stringify(e)), 'error');
+                throw e;
+            }
+        } else {
+            showToast('Supabase同期スキップ: useSupabase=' + this.useSupabase, 'warning');
         }
     },
     async deleteSchedule(id) {
