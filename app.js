@@ -464,7 +464,8 @@ const DB = {
             } catch (e) { console.warn('Admin passcode sync failed:', e); }
 
         } catch (e) {
-            console.warn('Sync failed:', e);
+            console.error('syncFromSupabase failed:', e);
+            showToast('同期エラー: ' + (e?.message || JSON.stringify(e)), 'error');
         } finally {
             window.SupabaseConfig.suppressSyncIndicator(false);
         }
@@ -2826,7 +2827,10 @@ function saveSchedule() {
     DB.addAuditLog('予定', newSchedule.id, schedule ? '更新' : '作成', { after: newSchedule });
 
     // Supabase同期（非同期）
-    DB.saveSchedule(newSchedule).catch(e => console.warn('Schedule sync failed:', e));
+    DB.saveSchedule(newSchedule).catch(e => {
+        console.error('Schedule sync failed:', e);
+        showToast('スケジュール同期エラー: ' + (e?.message || JSON.stringify(e)), 'error');
+    });
 
     // 自動でクルーノートを作成（乗艇練習の場合）
     if (newSchedule.scheduleType === SCHEDULE_TYPES.BOAT) {
