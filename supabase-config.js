@@ -283,7 +283,7 @@ const SupabaseDB = {
                 .single();
             if (error) { console.error('Save schedule error:', error); throw error; }
             return data;
-        }).catch(() => null);
+        }).catch(e => { console.error('Supabase op failed:', e); throw e; });
     },
 
     async deleteSchedule(id) {
@@ -374,7 +374,7 @@ const SupabaseDB = {
                 .single();
             if (error) { console.error('Save ergo record error:', error); throw error; }
             return data;
-        }).catch(() => null);
+        }).catch(e => { console.error('Supabase op failed:', e); throw e; });
     },
 
     async deleteErgoRecord(id) {
@@ -469,7 +469,7 @@ const SupabaseDB = {
                 .single();
             if (error) { console.error('Save crew note error:', error); throw error; }
             return data;
-        }).catch(() => null);
+        }).catch(e => { console.error('Supabase op failed:', e); throw e; });
     },
 
     async deleteCrewNote(id) {
@@ -512,7 +512,7 @@ const SupabaseDB = {
                 .single();
             if (error) { console.error('Update profile error:', error); throw error; }
             return data;
-        }).catch(() => null);
+        }).catch(e => { console.error('Supabase op failed:', e); throw e; });
     },
 
     // --- マスタデータ ---
@@ -631,7 +631,7 @@ const SupabaseDB = {
                 .single();
             if (error) { console.error('Save practice_note error:', error); throw error; }
             return data;
-        }).catch(() => null);
+        }).catch(e => { console.error('Supabase op failed:', e); throw e; });
     },
 
     async deletePracticeNote(noteId) {
@@ -643,7 +643,7 @@ const SupabaseDB = {
                 .eq('id', noteId);
             if (error) { console.error('Delete practice_note error:', error); throw error; }
             return true;
-        }).catch(() => null);
+        }).catch(e => { console.error('Supabase op failed:', e); throw e; });
     },
 
     // --- 監査ログ ---
@@ -670,7 +670,7 @@ const SupabaseDB = {
                 .single();
             if (error) { console.error('Save audit_log error:', error); throw error; }
             return data;
-        }).catch(() => null);
+        }).catch(e => { console.error('Supabase op failed:', e); throw e; });
     },
 
     // --- クループリセット ---
@@ -695,7 +695,7 @@ const SupabaseDB = {
                 .single();
             if (error) { console.error('Save crew_preset error:', error); throw error; }
             return data;
-        }).catch(() => null);
+        }).catch(e => { console.error('Supabase op failed:', e); throw e; });
     },
 
     async deleteCrewPreset(id) {
@@ -862,7 +862,7 @@ const SupabaseDB = {
                 .single();
             if (error) { console.error('Save weight_history error:', error); throw error; }
             return data;
-        }).catch(() => null);
+        }).catch(e => { console.error('Supabase op failed:', e); throw e; });
     },
 
     // --- アプリ設定 ---
@@ -887,7 +887,7 @@ const SupabaseDB = {
                 .single();
             if (error) { console.error('Save app_setting error:', error); throw error; }
             return data;
-        }).catch(() => null);
+        }).catch(e => { console.error('Supabase op failed:', e); throw e; });
     }
 };
 
