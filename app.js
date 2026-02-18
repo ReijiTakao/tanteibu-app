@@ -167,7 +167,10 @@ async function handleAuthSession(session) {
             status: profile.status || '在籍',
             approvalStatus: profile.approval_status || '承認済み',
             concept2Connected: profile.concept2_connected || false,
-            concept2LastSync: profile.concept2_last_sync
+            concept2Token: profile.concept2_token || null,
+            concept2LastSync: profile.concept2_last_sync,
+            side: profile.side || null,
+            weight: profile.weight || null
         };
         DB.save('current_user', state.currentUser);
         return true;
@@ -374,7 +377,6 @@ const DB = {
             const endStr = new Date(today.getFullYear(), today.getMonth() + 2, 0).toISOString().split('T')[0];
 
             const schedules = await window.SupabaseConfig.db.loadSchedules(startStr, endStr);
-            showToast(`Supabaseからスケジュール${schedules.length}件取得`, 'info');
             if (schedules.length) {
                 schedules.forEach(s => {
                     const idx = state.schedules.findIndex(local => local.id === s.id);
@@ -385,12 +387,27 @@ const DB = {
             }
 
             const allRecords = await window.SupabaseConfig.db.loadErgoRecords();
-            showToast(`Supabaseからエルゴ${allRecords.length}件取得`, 'info');
             if (allRecords.length) {
                 allRecords.forEach(r => {
-                    const idx = state.ergoRecords.findIndex(local => local.id === r.id);
-                    if (idx !== -1) state.ergoRecords[idx] = r;
-                    else state.ergoRecords.push(r);
+                    // rawDataからconcept2Idを復元
+                    if (r.rawData?.concept2Id && !r.concept2Id) {
+                        r.concept2Id = r.rawData.concept2Id;
+                    }
+                    // concept2Idでの重複チェック（ローカルのc2_xxx形式IDとの照合）
+                    const existing = r.concept2Id
+                        ? state.ergoRecords.findIndex(local => local.concept2Id === r.concept2Id)
+                        : state.ergoRecords.findIndex(local => local.id === r.id);
+                    if (existing !== -1) {
+                        // 既存データを更新（ローカルIDを保持）
+                        const localId = state.ergoRecords[existing].id;
+                        state.ergoRecords[existing] = { ...r, id: localId };
+                    } else {
+                        // 新規データ: concept2Idがあればc2_形式IDを復元
+                        if (r.concept2Id) {
+                            r.id = 'c2_' + r.concept2Id;
+                        }
+                        state.ergoRecords.push(r);
+                    }
                 });
                 this.saveLocal('ergo_records', state.ergoRecords);
             }
@@ -475,16 +492,7 @@ const DB = {
     // 個別保存メソッド（Supabaseへのプロキシ）
     async saveSchedule(schedule) {
         if (this.useSupabase && window.SupabaseConfig.db) {
-            try {
-                const result = await window.SupabaseConfig.db.saveSchedule(schedule);
-                showToast('スケジュールSupabase同期成功', 'success');
-                return result;
-            } catch (e) {
-                showToast('スケジュールSupabase同期失敗: ' + (e?.message || JSON.stringify(e)), 'error');
-                throw e;
-            }
-        } else {
-            showToast('Supabase同期スキップ: useSupabase=' + this.useSupabase, 'warning');
+            return await window.SupabaseConfig.db.saveSchedule(schedule);
         }
     },
     async deleteSchedule(id) {
@@ -2088,8 +2096,14 @@ async function syncConcept2() {
 
             for (const record of newRecords) {
                 try {
+                    // Supabaseのergo_recordsテーブルのidはUUID型なので、
+                    // c2_xxxxx形式のIDの場合はUUIDを新規生成
+                    const supabaseId = (record.id && record.id.startsWith('c2_'))
+                        ? generateId()
+                        : record.id;
+
                     await DB.saveErgoRecord({
-                        id: record.id,
+                        id: supabaseId,
                         userId: record.userId,
                         date: record.date,
                         distance: record.distance,
@@ -2101,7 +2115,7 @@ async function syncConcept2() {
                         menuKey: record.menuKey,
                         category: record.category,
                         source: 'Concept2',
-                        rawData: record.rawData || {}
+                        rawData: { ...(record.rawData || {}), concept2Id: record.concept2Id }
                     });
                 } catch (e) {
                     console.warn('Supabase ergo save failed:', e);
@@ -5687,7 +5701,11 @@ const initializeApp = async () => {
                                 role: migrateRole(p.role || '漕手'),
                                 status: p.status || '在籍',
                                 approvalStatus: p.approval_status || '承認済み',
-                                concept2Connected: p.concept2_connected || false
+                                concept2Connected: p.concept2_connected || false,
+                                concept2Token: p.concept2_token || null,
+                                concept2LastSync: p.concept2_last_sync || null,
+                                side: p.side || null,
+                                weight: p.weight || null
                             }));
                             DB.saveLocal('users', state.users);
                         }
