@@ -2980,8 +2980,8 @@ function saveSchedule() {
         autoCreateCrewNotesFromSchedule(newSchedule);
     }
 
-    // 練習ノート自動作成（参加不可以外）
-    if (newSchedule.scheduleType !== SCHEDULE_TYPES.ABSENT) {
+    // 練習ノート自動作成（参加不可・OFF以外）
+    if (newSchedule.scheduleType !== SCHEDULE_TYPES.ABSENT && newSchedule.scheduleType !== SCHEDULE_TYPES.OFF) {
         autoCreatePracticeNote(newSchedule);
     }
 
