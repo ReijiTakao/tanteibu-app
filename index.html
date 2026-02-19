@@ -187,6 +187,43 @@
                 </div>
             </div>
 
+            <!-- 全体スケジュール告知モーダル -->
+            <div id="team-schedule-modal" class="modal hidden">
+                <div class="modal-overlay"
+                    onclick="document.getElementById('team-schedule-modal').classList.add('hidden')"></div>
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>📢 全体スケジュール登録</h3>
+                        <button class="modal-close"
+                            onclick="document.getElementById('team-schedule-modal').classList.add('hidden')">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="team-schedule-date">
+                        <input type="hidden" id="team-schedule-edit-id">
+                        <div class="form-group">
+                            <label>時間帯</label>
+                            <select id="team-schedule-slot"
+                                style="padding: 8px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; width: 100%;">
+                                <option value="">全体（時間帯未指定）</option>
+                                <option value="午前">🌅 午前</option>
+                                <option value="午後">🌇 午後</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>内容</label>
+                            <textarea id="team-schedule-content" rows="4"
+                                placeholder="例: 全体エルゴ 2000m TT&#10;集合時間 6:00&#10;※雨天の場合はウェイトに変更"
+                                style="width:100%;box-sizing:border-box;"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="delete-team-schedule-btn" class="danger-btn hidden"
+                            onclick="deleteTeamSchedule()">削除</button>
+                        <button class="primary-btn" onclick="saveTeamSchedule()">保存</button>
+                    </div>
+                </div>
+            </div>
+
 
 
             <!-- 3. リギング管理タブ（新規追加） -->

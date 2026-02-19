@@ -197,6 +197,7 @@ let state = {
     ergos: [],
     crews: [],
     practiceNotes: [],
+    teamSchedules: [],
     auditLogs: []
 };
 
@@ -289,6 +290,7 @@ const DB = {
         state.auditLogs = this.load('audit_logs') || [];
         state.ergoRaw = this.load('ergoRaw') || [];
         state.ergoSessions = this.load('ergoSessions') || [];
+        state.teamSchedules = this.load('team_schedules') || [];
         state.currentUser = this.load('current_user');
 
         // 承認済みユーザーがいない場合もデモデータを再作成（デモモード用）
@@ -3334,6 +3336,112 @@ function initOverviewDate() {
     });
 }
 
+// =========================================
+// 全体スケジュール告知機能
+// =========================================
+
+// 告知カード描画
+function renderTeamScheduleCards(dateStr) {
+    const entries = (state.teamSchedules || []).filter(t => t.date === dateStr);
+    const isAdmin = canEditSchedule(state.currentUser);
+    let html = '';
+
+    if (entries.length > 0) {
+        html += '<div class="team-schedule-section">';
+        entries.forEach(entry => {
+            const slotLabel = entry.timeSlot === '午前' ? '🌅 午前' : entry.timeSlot === '午後' ? '🌇 午後' : '📋 全体';
+            html += `<div class="team-schedule-card">
+                <div class="team-schedule-header">
+                    <span class="team-schedule-slot">${slotLabel}</span>
+                    ${isAdmin ? `<button class="team-schedule-edit-btn" onclick="openTeamScheduleModal('${dateStr}', '${entry.id}')">✏️</button>` : ''}
+                </div>
+                <div class="team-schedule-content">${(entry.content || '').replace(/\n/g, '<br>')}</div>
+            </div>`;
+        });
+        html += '</div>';
+    }
+
+    // 管理者用追加ボタン
+    if (isAdmin) {
+        html += `<button class="team-schedule-add-btn" onclick="openTeamScheduleModal('${dateStr}')">📢 全体スケジュールを追加</button>`;
+    }
+
+    return html;
+}
+
+// 告知モーダルを開く
+function openTeamScheduleModal(dateStr, editId) {
+    const existing = editId ? (state.teamSchedules || []).find(t => t.id === editId) : null;
+
+    const modal = document.getElementById('team-schedule-modal');
+    if (!modal) return;
+
+    document.getElementById('team-schedule-date').value = dateStr;
+    document.getElementById('team-schedule-slot').value = existing?.timeSlot || '';
+    document.getElementById('team-schedule-content').value = existing?.content || '';
+    document.getElementById('team-schedule-edit-id').value = editId || '';
+
+    const deleteBtn = document.getElementById('delete-team-schedule-btn');
+    if (deleteBtn) deleteBtn.classList.toggle('hidden', !editId);
+
+    modal.classList.remove('hidden');
+}
+window.openTeamScheduleModal = openTeamScheduleModal;
+
+// 告知を保存
+function saveTeamSchedule() {
+    const dateStr = document.getElementById('team-schedule-date').value;
+    const timeSlot = document.getElementById('team-schedule-slot').value;
+    const content = document.getElementById('team-schedule-content').value.trim();
+    const editId = document.getElementById('team-schedule-edit-id').value;
+
+    if (!content) {
+        showToast('内容を入力してください', 'error');
+        return;
+    }
+
+    if (!state.teamSchedules) state.teamSchedules = [];
+
+    if (editId) {
+        const idx = state.teamSchedules.findIndex(t => t.id === editId);
+        if (idx !== -1) {
+            state.teamSchedules[idx].timeSlot = timeSlot;
+            state.teamSchedules[idx].content = content;
+            state.teamSchedules[idx].updatedAt = new Date().toISOString();
+        }
+    } else {
+        state.teamSchedules.push({
+            id: generateId(),
+            date: dateStr,
+            timeSlot: timeSlot,
+            content: content,
+            createdBy: state.currentUser?.id || '',
+            createdAt: new Date().toISOString()
+        });
+    }
+
+    DB.save('team_schedules', state.teamSchedules);
+    document.getElementById('team-schedule-modal').classList.add('hidden');
+    renderOverview();
+    showToast('全体スケジュールを保存しました', 'success');
+}
+window.saveTeamSchedule = saveTeamSchedule;
+
+// 告知を削除
+function deleteTeamSchedule() {
+    const editId = document.getElementById('team-schedule-edit-id').value;
+    if (!editId) return;
+
+    showConfirmModal('この全体スケジュールを削除しますか？', () => {
+        state.teamSchedules = (state.teamSchedules || []).filter(t => t.id !== editId);
+        DB.save('team_schedules', state.teamSchedules);
+        document.getElementById('team-schedule-modal').classList.add('hidden');
+        renderOverview();
+        showToast('削除しました', 'success');
+    }, null, '削除する');
+}
+window.deleteTeamSchedule = deleteTeamSchedule;
+
 // 午前/午後セクション描画ヘルパー
 function renderSlotSection(sectionLabel, schedules) {
     if (schedules.length === 0) {
@@ -3429,9 +3537,12 @@ function renderOverview() {
         ${display.month}/${display.day}（${display.weekday}）のスケジュール
     </div>`;
 
-    if (schedules.length === 0 && unregisteredUsers.length === 0) {
+    if (schedules.length === 0 && unregisteredUsers.length === 0 && !(state.teamSchedules || []).some(t => t.date === dateStr)) {
         html += '<div class="empty-state"><p>予定なし</p></div>';
     }
+
+    // === 全体告知カード ===
+    html += renderTeamScheduleCards(dateStr);
 
     // === 午前セクション ===
     html += renderSlotSection('🌅 午前', morningSchedules);
