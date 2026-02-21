@@ -4563,10 +4563,109 @@ textarea {
 }
 
 /* =========================================
+   入力タブ - カレンダーストリップ
+   ========================================= */
+.input-week-strip {
+    display: flex;
+    gap: 4px;
+    justify-content: space-between;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    border-radius: var(--border-radius);
+    padding: 10px 8px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow-md);
+}
+
+.iws-day {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 2px 8px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 0;
+}
+
+.iws-day:active {
+    transform: scale(0.95);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.iws-day.today {
+    background: rgba(59, 130, 246, 0.25);
+    border: 1.5px solid rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.15);
+}
+
+.iws-day.past {
+    opacity: 0.65;
+}
+
+.iws-day.future {
+    opacity: 0.5;
+}
+
+.iws-day-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #94a3b8;
+    line-height: 1;
+}
+
+.iws-day-label.saturday {
+    color: #60a5fa;
+}
+
+.iws-day-label.sunday {
+    color: #f87171;
+}
+
+.iws-day-num {
+    font-size: 14px;
+    font-weight: 700;
+    color: #cbd5e1;
+    line-height: 1.2;
+}
+
+.iws-day.today .iws-day-num {
+    color: #fff;
+}
+
+.iws-day-icons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    min-height: 18px;
+}
+
+.iws-icon {
+    font-size: 12px;
+    line-height: 1;
+}
+
+.iws-icon.empty {
+    color: #475569;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+/* =========================================
    週間練習サマリーウィジェット
    ========================================= */
 .weekly-practice-summary {
     margin-bottom: 12px;
+}
+
+.wps-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
 }
 
 .wps-badges {

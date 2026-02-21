@@ -2340,6 +2340,73 @@ function renderWeekCalendar() {
 
     container.innerHTML = '';
     const today = formatDate(new Date());
+    const dayLabels = ['月', '火', '水', '木', '金', '土', '日'];
+
+    // --- カレンダーストリップ（クイック入力） ---
+    const typeIconMap = {
+        [SCHEDULE_TYPES.ERGO]: '🏋️',
+        [SCHEDULE_TYPES.BOAT]: '🚣',
+        [SCHEDULE_TYPES.WEIGHT]: '💪',
+        [SCHEDULE_TYPES.RUN]: '🏃',
+        [SCHEDULE_TYPES.BANCHA]: '🚴',
+        [SCHEDULE_TYPES.MEAL]: '🍳',
+        [SCHEDULE_TYPES.VIDEO]: '🎥',
+        [SCHEDULE_TYPES.OFF]: '🏖️',
+        [SCHEDULE_TYPES.ABSENT]: '❌'
+    };
+
+    let stripHtml = '';
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(state.currentWeekStart);
+        d.setDate(d.getDate() + i);
+        const dateStr = formatDate(d);
+        const dayNum = d.getDate();
+        const isToday = dateStr === today;
+        const isPast = dateStr < today;
+        const isFuture = dateStr > today;
+        const dow = d.getDay();
+        const dayIdx = dow === 0 ? 6 : dow - 1;
+        const dayLabelCls = dow === 0 ? 'sunday' : (dow === 6 ? 'saturday' : '');
+
+        // ユーザーのその日のスケジュール
+        const daySchedules = state.schedules.filter(s =>
+            s.userId === state.currentUser?.id && s.date === dateStr
+        );
+        let iconsHtml = '';
+        if (daySchedules.length > 0) {
+            iconsHtml = daySchedules.map(s => {
+                const icon = typeIconMap[s.scheduleType] || '📋';
+                return `<span class="iws-icon">${icon}</span>`;
+            }).join('');
+        } else if (isPast) {
+            iconsHtml = '<span class="iws-icon empty">—</span>';
+        } else {
+            iconsHtml = '<span class="iws-icon empty">+</span>';
+        }
+
+        stripHtml += `
+            <div class="iws-day ${isToday ? 'today' : ''} ${isPast ? 'past' : ''} ${isFuture ? 'future' : ''}" data-date="${dateStr}">
+                <span class="iws-day-label ${dayLabelCls}">${dayLabels[dayIdx]}</span>
+                <span class="iws-day-num">${dayNum}</span>
+                <div class="iws-day-icons">${iconsHtml}</div>
+            </div>`;
+    }
+
+    const stripEl = document.createElement('div');
+    stripEl.className = 'input-week-strip';
+    stripEl.innerHTML = stripHtml;
+    container.appendChild(stripEl);
+
+    // ストリップクリックイベント
+    stripEl.querySelectorAll('.iws-day').forEach(dayEl => {
+        dayEl.addEventListener('click', () => {
+            const dateStr = dayEl.dataset.date;
+            const amSchedule = state.schedules.find(s =>
+                s.userId === state.currentUser?.id && s.date === dateStr && s.timeSlot === '午前'
+            );
+            openInputModal(dateStr, amSchedule ? '午後' : '午前', amSchedule ? (state.schedules.find(s => s.userId === state.currentUser?.id && s.date === dateStr && s.timeSlot === '午後')?.id || null) : (amSchedule?.id || null));
+        });
+    });
 
     for (let i = 0; i < 7; i++) {
         const date = new Date(state.currentWeekStart);
@@ -3924,7 +3991,10 @@ function renderWeeklyPracticeSummary() {
         return;
     }
 
-    container.innerHTML = `<div class="wps-badges">${badgesHtml}</div>`;
+    container.innerHTML = `
+        <div class="wps-title">📊 今週の練習</div>
+        <div class="wps-badges">${badgesHtml}</div>
+    `;
 }
 
 
