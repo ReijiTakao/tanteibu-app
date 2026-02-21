@@ -7324,19 +7324,22 @@ function disconnectConcept2() {
 
 /**
  * カスタム確認モーダル（window.confirmの代替）
- * モバイルブラウザ/PWAでタッチイベントのゴーストクリックを防止
+ * タイムスタンプベースの二重ガードでモバイルゴーストクリックを確実に防止
  */
 function showConfirmModal(message, onConfirm, onCancel, confirmText = '実行する') {
     // 既存のモーダルがあれば削除
     const existing = document.getElementById('custom-confirm-modal');
     if (existing) existing.remove();
 
+    const GUARD_MS = 600;
+    const createdAt = Date.now();
+
     const modal = document.createElement('div');
     modal.id = 'custom-confirm-modal';
-    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:10000;pointer-events:none;opacity:0;transition:opacity 0.15s ease;';
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:10000;opacity:0;transition:opacity 0.2s ease;';
 
     const box = document.createElement('div');
-    box.style.cssText = 'background:#1e1e2e;border-radius:16px;padding:24px;margin:16px;max-width:320px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.4);pointer-events:none;transform:scale(0.95);transition:transform 0.15s ease;';
+    box.style.cssText = 'background:#1e1e2e;border-radius:16px;padding:24px;margin:16px;max-width:320px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.4);transform:scale(0.92);transition:transform 0.2s ease;';
 
     const msgEl = document.createElement('p');
     msgEl.textContent = message;
@@ -7347,11 +7350,11 @@ function showConfirmModal(message, onConfirm, onCancel, confirmText = '実行す
 
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'キャンセル';
-    cancelBtn.style.cssText = 'flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;background:#333;color:#aaa;cursor:pointer;pointer-events:none;';
+    cancelBtn.style.cssText = 'flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;background:#333;color:#aaa;cursor:pointer;';
 
     const confirmBtn = document.createElement('button');
     confirmBtn.textContent = confirmText;
-    confirmBtn.style.cssText = 'flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;background:#e74c3c;color:#fff;cursor:pointer;pointer-events:none;';
+    confirmBtn.style.cssText = 'flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;background:#e74c3c;color:#fff;cursor:pointer;';
 
     btnRow.appendChild(cancelBtn);
     btnRow.appendChild(confirmBtn);
@@ -7360,57 +7363,46 @@ function showConfirmModal(message, onConfirm, onCancel, confirmText = '実行す
     modal.appendChild(box);
     document.body.appendChild(modal);
 
-    // 短い遅延でフェードイン → pointer-events有効化
-    requestAnimationFrame(() => {
-        modal.style.opacity = '1';
-        box.style.transform = 'scale(1)';
+    function isGuarded() { return (Date.now() - createdAt) < GUARD_MS; }
+
+    function closeModal(cb) {
+        modal.style.opacity = '0';
+        box.style.transform = 'scale(0.92)';
+        setTimeout(() => { modal.remove(); if (cb) cb(); }, 150);
+    }
+
+    cancelBtn.addEventListener('click', function (e) {
+        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+        if (isGuarded()) return;
+        closeModal(onCancel);
+    });
+    confirmBtn.addEventListener('click', function (e) {
+        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+        if (isGuarded()) return;
+        closeModal(onConfirm);
+    });
+    modal.addEventListener('click', function (e) {
+        if (e.target !== modal) return;
+        e.preventDefault(); e.stopPropagation();
+        if (isGuarded()) return;
+        closeModal(onCancel);
     });
 
-    // ゴーストクリック防止：500ms後にpointer-eventsを有効化
-    setTimeout(() => {
-        modal.style.pointerEvents = 'auto';
-        box.style.pointerEvents = 'auto';
-        cancelBtn.style.pointerEvents = 'auto';
-        confirmBtn.style.pointerEvents = 'auto';
-
-        cancelBtn.addEventListener('click', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            modal.remove();
-            if (onCancel) onCancel();
-        });
-
-        confirmBtn.addEventListener('click', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            modal.remove();
-            if (onConfirm) onConfirm();
-        });
-
-        // オーバーレイクリックでキャンセル（ボックス外のみ）
-        modal.addEventListener('click', function (e) {
-            if (e.target === modal) {
-                e.preventDefault();
-                e.stopPropagation();
-                modal.remove();
-                if (onCancel) onCancel();
-            }
-        });
-    }, 500);
-
-    // タッチイベントも防止（500ms以内の誤タップ防止）
+    // タッチイベント遮断（ガード期間中、capture phaseで）
     modal.addEventListener('touchstart', function (e) {
-        if (modal.style.pointerEvents === 'none') {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-    }, { passive: false });
+        if (isGuarded()) { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); }
+    }, { passive: false, capture: true });
     modal.addEventListener('touchend', function (e) {
-        if (modal.style.pointerEvents === 'none') {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-    }, { passive: false });
+        if (isGuarded()) { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); }
+    }, { passive: false, capture: true });
+
+    // フェードイン
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            modal.style.opacity = '1';
+            box.style.transform = 'scale(1)';
+        });
+    });
 }
 
 // =========================================
