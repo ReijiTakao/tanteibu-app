@@ -33,6 +33,7 @@ const SCHEDULE_TYPES = {
     ERGO: 'エルゴ',
     BOAT: '乗艇',
     WEIGHT: 'ウェイト',
+    RUN: 'ラン',
     ABSENT: '参加不可',
     MEAL: '炊事',
     VIDEO: 'ビデオ',
@@ -2446,6 +2447,10 @@ function createTimeSlotHTML(dateStr, timeSlot) {
                 badgeClass = 'bancha';
                 badgeText = `🚴 ${schedule.scheduleType}`;
                 break;
+            case SCHEDULE_TYPES.RUN:
+                badgeClass = 'run';
+                badgeText = `🏃 ${schedule.scheduleType}`;
+                break;
         }
         if (schedule.startTime) {
             details = (details ? details + ' ' : '') + schedule.startTime + '〜';
@@ -3641,6 +3646,7 @@ function renderTimeBlock(timeLabel, entries) {
         [SCHEDULE_TYPES.BOAT]: { icon: '🚣', label: '乗艇', cls: 'boat' },
         [SCHEDULE_TYPES.ERGO]: { icon: '🏋️', label: 'エルゴ', cls: 'ergo' },
         [SCHEDULE_TYPES.WEIGHT]: { icon: '💪', label: 'ウエイト', cls: 'weight' },
+        [SCHEDULE_TYPES.RUN]: { icon: '🏃', label: 'ラン', cls: 'run' },
         [SCHEDULE_TYPES.MEAL]: { icon: '🍳', label: '炊事', cls: 'meal' },
         [SCHEDULE_TYPES.VIDEO]: { icon: '🎥', label: 'ビデオ', cls: 'video' },
         [SCHEDULE_TYPES.BANCHA]: { icon: '🚴', label: '伴チャ', cls: 'bancha' }
@@ -3710,7 +3716,7 @@ function renderTimeBlock(timeLabel, entries) {
     }
 
     // --- エルゴ/ウエイト/その他: チップ一覧 ---
-    const chipTypes = [SCHEDULE_TYPES.ERGO, SCHEDULE_TYPES.WEIGHT, SCHEDULE_TYPES.MEAL, SCHEDULE_TYPES.VIDEO, SCHEDULE_TYPES.BANCHA];
+    const chipTypes = [SCHEDULE_TYPES.ERGO, SCHEDULE_TYPES.WEIGHT, SCHEDULE_TYPES.RUN, SCHEDULE_TYPES.MEAL, SCHEDULE_TYPES.VIDEO, SCHEDULE_TYPES.BANCHA];
     chipTypes.forEach(type => {
         if (!typeGroups[type]) return;
         const list = typeGroups[type];
@@ -3880,24 +3886,12 @@ function renderWeeklyPracticeSummary() {
     monday.setDate(today.getDate() - mondayOffset);
     monday.setHours(0, 0, 0, 0);
 
-    // 今週の月〜日の日付文字列を生成
     const weekDays = [];
     for (let i = 0; i < 7; i++) {
         const d = new Date(monday);
         d.setDate(monday.getDate() + i);
         weekDays.push(d.toISOString().slice(0, 10));
     }
-    const dayLabels = ['月', '火', '水', '木', '金', '土', '日'];
-
-    // 自分の今週のスケジュールをまとめる（日付→タイプ配列）
-    const mySchedulesByDate = {};
-    weekDays.forEach(dateStr => { mySchedulesByDate[dateStr] = []; });
-
-    state.schedules
-        .filter(s => s.userId === state.currentUser.id && weekDays.includes(s.date))
-        .forEach(s => {
-            mySchedulesByDate[s.date].push(s.scheduleType);
-        });
 
     // タイプ別集計
     const typeCounts = {};
@@ -3905,74 +3899,32 @@ function renderWeeklyPracticeSummary() {
         [SCHEDULE_TYPES.BOAT]: { icon: '🚣', label: '乗艇', cls: 'boat' },
         [SCHEDULE_TYPES.ERGO]: { icon: '🏋️', label: 'エルゴ', cls: 'ergo' },
         [SCHEDULE_TYPES.WEIGHT]: { icon: '💪', label: 'ウェイト', cls: 'weight' },
-        [SCHEDULE_TYPES.MEAL]: { icon: '🍳', label: '炊事', cls: 'meal' },
-        [SCHEDULE_TYPES.VIDEO]: { icon: '🎥', label: 'ビデオ', cls: 'video' },
+        [SCHEDULE_TYPES.RUN]: { icon: '🏃', label: 'ラン', cls: 'run' },
         [SCHEDULE_TYPES.BANCHA]: { icon: '🚴', label: '伴チャ', cls: 'bancha' },
         [SCHEDULE_TYPES.OFF]: { icon: '🏖️', label: 'OFF', cls: 'off' },
         [SCHEDULE_TYPES.ABSENT]: { icon: '❌', label: '不可', cls: 'absent' }
     };
 
-    Object.values(mySchedulesByDate).flat().forEach(type => {
-        typeCounts[type] = (typeCounts[type] || 0) + 1;
-    });
+    state.schedules
+        .filter(s => s.userId === state.currentUser.id && weekDays.includes(s.date))
+        .forEach(s => {
+            typeCounts[s.scheduleType] = (typeCounts[s.scheduleType] || 0) + 1;
+        });
 
-    const totalSessions = Object.values(mySchedulesByDate).flat().filter(t => t !== SCHEDULE_TYPES.ABSENT && t !== SCHEDULE_TYPES.OFF).length;
-    const todayStr = today.toISOString().slice(0, 10);
-
-    // --- 日別カレンダーストリップ ---
-    let calendarHtml = '';
-    weekDays.forEach((dateStr, i) => {
-        const types = mySchedulesByDate[dateStr];
-        const isToday = dateStr === todayStr;
-        const isPast = dateStr < todayStr;
-        const isFuture = dateStr > todayStr;
-        const dayNum = parseInt(dateStr.slice(8, 10));
-
-        let iconHtml = '';
-        if (types.length > 0) {
-            iconHtml = types.map(t => {
-                const cfg = typeConfig[t];
-                return cfg ? `<span class="wps-type-dot ${cfg.cls}" title="${cfg.label}">${cfg.icon}</span>` : '';
-            }).join('');
-        } else if (isPast) {
-            iconHtml = '<span class="wps-type-dot empty">—</span>';
-        } else {
-            iconHtml = '<span class="wps-type-dot empty">·</span>';
-        }
-
-        const dayClass = i >= 5 ? (i === 6 ? 'sunday' : 'saturday') : '';
-        calendarHtml += `
-            <div class="wps-day ${isToday ? 'today' : ''} ${isPast ? 'past' : ''} ${isFuture ? 'future' : ''}">
-                <span class="wps-day-label ${dayClass}">${dayLabels[i]}</span>
-                <span class="wps-day-num">${dayNum}</span>
-                <div class="wps-day-icons">${iconHtml}</div>
-            </div>`;
-    });
-
-    // --- タイプ別バッジ ---
+    // バッジ生成（参加不可は除外）
     let badgesHtml = '';
-    const activeTypes = [SCHEDULE_TYPES.BOAT, SCHEDULE_TYPES.ERGO, SCHEDULE_TYPES.WEIGHT, SCHEDULE_TYPES.BANCHA, SCHEDULE_TYPES.OFF];
-    activeTypes.forEach(type => {
-        const count = typeCounts[type] || 0;
-        if (count === 0) return;
-        const cfg = typeConfig[type];
-        badgesHtml += `<span class="wps-badge ${cfg.cls}">${cfg.icon} ${cfg.label} ${count}</span>`;
-    });
-    // 上記以外のタイプ(炊事,ビデオ等）
     Object.entries(typeCounts).forEach(([type, count]) => {
-        if (activeTypes.includes(type) || type === SCHEDULE_TYPES.ABSENT) return;
+        if (type === SCHEDULE_TYPES.ABSENT) return;
         const cfg = typeConfig[type] || { icon: '📋', label: type, cls: '' };
         badgesHtml += `<span class="wps-badge ${cfg.cls}">${cfg.icon} ${cfg.label} ${count}</span>`;
     });
 
-    container.innerHTML = `
-        <div class="wps-header">
-            <span class="wps-title">📊 今週の練習</span>
-            <span class="wps-total">${totalSessions}セッション</span>
-        </div>
-        <div class="wps-calendar">${calendarHtml}</div>
-        ${badgesHtml ? `<div class="wps-badges">${badgesHtml}</div>` : ''}
-    `;
+    if (!badgesHtml) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = `<div class="wps-badges">${badgesHtml}</div>`;
 }
 
 
@@ -4116,6 +4068,7 @@ function renderPracticeNotesList() {
             if (typeLabel === SCHEDULE_TYPES.ERGO) badgeClass = 'ergo';
             else if (typeLabel === SCHEDULE_TYPES.BOAT) badgeClass = 'boat';
             else if (typeLabel === SCHEDULE_TYPES.WEIGHT) badgeClass = 'weight';
+            else if (typeLabel === SCHEDULE_TYPES.RUN) badgeClass = 'run';
 
             html += `
                 <div class="pn-card" data-note-id="${note.id}">

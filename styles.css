@@ -885,6 +885,11 @@ body {
     color: #047857;
 }
 
+.slot-type-badge.run {
+    background-color: rgba(34, 197, 94, 0.12);
+    color: #16a34a;
+}
+
 .slot-type-badge.empty {
     background-color: var(--bg-secondary);
     color: var(--text-muted);
@@ -4561,155 +4566,53 @@ textarea {
    週間練習サマリーウィジェット
    ========================================= */
 .weekly-practice-summary {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-    border-radius: var(--border-radius);
-    margin-bottom: 16px;
-    padding: 14px 16px;
-    box-shadow: var(--shadow-md);
-    color: #e2e8f0;
-}
-
-.wps-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     margin-bottom: 12px;
-}
-
-.wps-title {
-    font-size: 14px;
-    font-weight: 700;
-    color: #e0e7ff;
-}
-
-.wps-total {
-    font-size: 12px;
-    font-weight: 600;
-    color: #93c5fd;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 2px 10px;
-    border-radius: 12px;
-}
-
-.wps-calendar {
-    display: flex;
-    gap: 4px;
-    justify-content: space-between;
-    margin-bottom: 10px;
-}
-
-.wps-day {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    padding: 6px 2px 8px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.04);
-    transition: all 0.2s ease;
-    min-width: 0;
-}
-
-.wps-day.today {
-    background: rgba(59, 130, 246, 0.25);
-    border: 1.5px solid rgba(59, 130, 246, 0.5);
-    box-shadow: 0 0 12px rgba(59, 130, 246, 0.15);
-}
-
-.wps-day.past {
-    opacity: 0.7;
-}
-
-.wps-day.future {
-    opacity: 0.5;
-}
-
-.wps-day-label {
-    font-size: 10px;
-    font-weight: 600;
-    color: #94a3b8;
-    line-height: 1;
-}
-
-.wps-day-label.saturday {
-    color: #60a5fa;
-}
-
-.wps-day-label.sunday {
-    color: #f87171;
-}
-
-.wps-day-num {
-    font-size: 13px;
-    font-weight: 700;
-    color: #cbd5e1;
-    line-height: 1.2;
-}
-
-.wps-day.today .wps-day-num {
-    color: #fff;
-}
-
-.wps-day-icons {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1px;
-    min-height: 18px;
-}
-
-.wps-type-dot {
-    font-size: 11px;
-    line-height: 1;
-}
-
-.wps-type-dot.empty {
-    color: #475569;
-    font-size: 14px;
 }
 
 .wps-badges {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    padding-top: 4px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .wps-badge {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
-    padding: 3px 8px;
+    padding: 4px 10px;
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.08);
-    color: #cbd5e1;
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--text-secondary);
     white-space: nowrap;
 }
 
 .wps-badge.boat {
-    background: rgba(59, 130, 246, 0.2);
-    color: #93c5fd;
+    background: rgba(59, 130, 246, 0.12);
+    color: #2563eb;
 }
 
 .wps-badge.ergo {
-    background: rgba(139, 92, 246, 0.2);
-    color: #c4b5fd;
+    background: rgba(139, 92, 246, 0.12);
+    color: #7c3aed;
 }
 
 .wps-badge.weight {
-    background: rgba(249, 115, 22, 0.2);
-    color: #fdba74;
+    background: rgba(249, 115, 22, 0.12);
+    color: #ea580c;
+}
+
+.wps-badge.run {
+    background: rgba(34, 197, 94, 0.12);
+    color: #16a34a;
 }
 
 .wps-badge.off {
-    background: rgba(100, 116, 139, 0.2);
-    color: #94a3b8;
+    background: rgba(100, 116, 139, 0.1);
+    color: #64748b;
 }
 
 .wps-badge.bancha {
-    background: rgba(16, 185, 129, 0.2);
-    color: #6ee7b7;
+    background: rgba(16, 185, 129, 0.12);
+    color: #059669;
 }
 
 /* =========================================
