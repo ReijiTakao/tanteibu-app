@@ -6433,6 +6433,18 @@ const initializeApp = async () => {
             });
         });
 
+        // 艇種ボタン（単一選択）
+        document.querySelectorAll('.boat-type-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.boat-type-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                filterBoatSelect(btn.dataset.value);
+                if (typeof populateBoatOarSelects === 'function') populateBoatOarSelects();
+                // シート入力UI更新
+                if (typeof renderSeatInputs === 'function') renderSeatInputs(btn.dataset.value);
+            });
+        });
+
         // 炊事ボタン（複数選択可―トグル）
         document.querySelectorAll('.meal-type-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -7321,10 +7333,10 @@ function showConfirmModal(message, onConfirm, onCancel, confirmText = '実行す
 
     const modal = document.createElement('div');
     modal.id = 'custom-confirm-modal';
-    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:10000;pointer-events:none;';
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:10000;pointer-events:none;opacity:0;transition:opacity 0.15s ease;';
 
     const box = document.createElement('div');
-    box.style.cssText = 'background:#1e1e2e;border-radius:16px;padding:24px;margin:16px;max-width:320px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.4);pointer-events:none;';
+    box.style.cssText = 'background:#1e1e2e;border-radius:16px;padding:24px;margin:16px;max-width:320px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.4);pointer-events:none;transform:scale(0.95);transition:transform 0.15s ease;';
 
     const msgEl = document.createElement('p');
     msgEl.textContent = message;
@@ -7348,7 +7360,13 @@ function showConfirmModal(message, onConfirm, onCancel, confirmText = '実行す
     modal.appendChild(box);
     document.body.appendChild(modal);
 
-    // ゴーストクリック防止：400ms後にpointer-eventsを有効化
+    // 短い遅延でフェードイン → pointer-events有効化
+    requestAnimationFrame(() => {
+        modal.style.opacity = '1';
+        box.style.transform = 'scale(1)';
+    });
+
+    // ゴーストクリック防止：500ms後にpointer-eventsを有効化
     setTimeout(() => {
         modal.style.pointerEvents = 'auto';
         box.style.pointerEvents = 'auto';
@@ -7369,7 +7387,7 @@ function showConfirmModal(message, onConfirm, onCancel, confirmText = '実行す
             if (onConfirm) onConfirm();
         });
 
-        // オーバーレイクリックでキャンセル
+        // オーバーレイクリックでキャンセル（ボックス外のみ）
         modal.addEventListener('click', function (e) {
             if (e.target === modal) {
                 e.preventDefault();
@@ -7378,9 +7396,9 @@ function showConfirmModal(message, onConfirm, onCancel, confirmText = '実行す
                 if (onCancel) onCancel();
             }
         });
-    }, 400);
+    }, 500);
 
-    // タッチイベントも防止（400ms以内の誤タップ防止）
+    // タッチイベントも防止（500ms以内の誤タップ防止）
     modal.addEventListener('touchstart', function (e) {
         if (modal.style.pointerEvents === 'none') {
             e.preventDefault();
