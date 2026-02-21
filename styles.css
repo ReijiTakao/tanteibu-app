@@ -3538,6 +3538,14 @@ textarea {
     line-height: 1.4;
 }
 
+.pn-menu-info {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin: 0 0 6px;
+    line-height: 1.4;
+    font-size: 13px;
+}
+
 .pn-empty-hint {
     color: var(--text-tertiary);
     margin: 0 0 6px;
@@ -3547,6 +3555,7 @@ textarea {
 .pn-tags {
     display: flex;
     gap: 6px;
+    flex-wrap: wrap;
 }
 
 .pn-tag {
@@ -3555,6 +3564,13 @@ textarea {
     background: var(--bg-secondary);
     border-radius: 10px;
     color: var(--text-secondary);
+}
+
+.pn-tag-empty {
+    font-style: italic;
+    color: var(--text-tertiary);
+    background: transparent;
+    border: 1px dashed var(--text-muted);
 }
 
 /* 練習ノートモーダル */

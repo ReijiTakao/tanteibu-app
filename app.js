@@ -4140,6 +4140,28 @@ function renderPracticeNotesList() {
             else if (typeLabel === SCHEDULE_TYPES.WEIGHT) badgeClass = 'weight';
             else if (typeLabel === SCHEDULE_TYPES.RUN) badgeClass = 'run';
 
+            // 練習メニュー情報を組み立て
+            let menuInfoParts = [];
+            if (typeLabel === SCHEDULE_TYPES.BOAT && note.rowingDistance) {
+                menuInfoParts.push(`${(note.rowingDistance / 1000).toFixed(1)}km`);
+            }
+            if (typeLabel === SCHEDULE_TYPES.RUN && note.runDistance) {
+                menuInfoParts.push(`${note.runDistance}km`);
+            }
+            if (typeLabel === SCHEDULE_TYPES.WEIGHT && note.weightBodyPart) {
+                menuInfoParts.push(note.weightBodyPart);
+            }
+            if (hasWeight) {
+                menuInfoParts.push(`${note.weightMenus.length}種目`);
+            }
+            if (hasErgo) {
+                menuInfoParts.push('エルゴデータ');
+            }
+            if (schedule?.memo) {
+                menuInfoParts.push(schedule.memo);
+            }
+            const menuInfoText = menuInfoParts.length > 0 ? menuInfoParts.join(' / ') : '';
+
             html += `
                 <div class="pn-card" data-note-id="${note.id}">
                     <div class="pn-card-header">
@@ -4147,11 +4169,10 @@ function renderPracticeNotesList() {
                         <span class="pn-time">${timeLabel}</span>
                     </div>
                     <div class="pn-card-body">
-                        ${hasReflection ? `<p class="pn-preview">${note.reflection.substring(0, 60)}${note.reflection.length > 60 ? '…' : ''}</p>` : '<p class="pn-empty-hint">振り返りを書く</p>'}
+                        ${menuInfoText ? `<p class="pn-menu-info">${menuInfoText}</p>` : ''}
                         <div class="pn-tags">
-                            ${hasErgo ? '<span class="pn-tag">📊 エルゴ</span>' : ''}
+                            ${hasReflection ? '<span class="pn-tag">📝 振り返りあり</span>' : '<span class="pn-tag pn-tag-empty">振り返りを書く</span>'}
                             ${note.crewNoteId ? '<span class="pn-tag">🚣 クルー</span>' : ''}
-                            ${hasWeight ? `<span class="pn-tag">💪 ${note.weightMenus.length}種目</span>` : ''}
                         </div>
                     </div>
                 </div>
@@ -4229,9 +4250,35 @@ function openPracticeNoteModal(noteId) {
         document.getElementById('practice-note-distance').value = '';
     }
 
+    // ラン距離入力（ラン時のみ表示）
+    const runDistanceGroup = document.getElementById('running-distance-group');
+    if (schedule && schedule.scheduleType === SCHEDULE_TYPES.RUN) {
+        runDistanceGroup.classList.remove('hidden');
+        document.getElementById('practice-note-run-distance').value = note.runDistance || '';
+    } else {
+        runDistanceGroup.classList.add('hidden');
+        document.getElementById('practice-note-run-distance').value = '';
+    }
+
+    // ウェイト部位選択（ウェイト時のみ表示）
+    const weightPartGroup = document.getElementById('weight-body-part-group');
+    const schedType = schedule?.scheduleType || note.scheduleType || '';
+    if (schedType === SCHEDULE_TYPES.WEIGHT) {
+        weightPartGroup.classList.remove('hidden');
+        // トグルボタンの選択状態を復元
+        document.querySelectorAll('.weight-part-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.value === (note.weightBodyPart || ''));
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.weight-part-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+    } else {
+        weightPartGroup.classList.add('hidden');
+    }
+
     // ウェイトメニュー（ウェイト時のみ表示）
     const weightGroup = document.getElementById('weight-menu-group');
-    const schedType = schedule?.scheduleType || note.scheduleType || '';
     if (schedType === SCHEDULE_TYPES.WEIGHT) {
         weightGroup.classList.remove('hidden');
         renderWeightMenuItems(note.weightMenus || []);
@@ -4381,6 +4428,20 @@ function savePracticeNote() {
         note.rowingDistance = parseInt(distanceInput.value);
     } else {
         note.rowingDistance = null;
+    }
+
+    // ラン距離を保存
+    const runDistanceInput = document.getElementById('practice-note-run-distance');
+    if (runDistanceInput && runDistanceInput.value) {
+        note.runDistance = parseFloat(runDistanceInput.value);
+    } else {
+        note.runDistance = null;
+    }
+
+    // ウェイト部位を保存
+    const activePartBtn = document.querySelector('.weight-part-btn.active');
+    if (activePartBtn) {
+        note.weightBodyPart = activePartBtn.dataset.value;
     }
 
     // ウェイトメニューを保存
