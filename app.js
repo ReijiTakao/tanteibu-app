@@ -4290,6 +4290,26 @@ function openPracticeNoteModal(noteId) {
     modal.classList.remove('hidden');
 }
 
+// エルゴデータタブに遷移して指定レコードを表示
+function navigateToErgoRecord(recId) {
+    // 練習ノートモーダルを閉じる
+    const noteModal = document.getElementById('practice-note-modal');
+    if (noteModal) noteModal.classList.add('hidden');
+
+    // エルゴデータタブに切り替え
+    switchTab('ergo-data');
+
+    // 遷移後に該当レコードのスプリットモーダルを開く
+    setTimeout(() => {
+        const rec = state.ergoRecords.find(r => r.id === recId);
+        if (rec && typeof showSplits === 'function') {
+            showSplits(rec);
+        } else {
+            showToast('エルゴデータタブに移動しました', 'info');
+        }
+    }, 300);
+}
+
 function renderLinkedErgoRecords(note) {
     const container = document.getElementById('linked-ergo-records');
     if (!note.ergoRecordIds || note.ergoRecordIds.length === 0) {
@@ -4313,6 +4333,7 @@ function renderLinkedErgoRecords(note) {
                     <div class="linked-ergo-item" onclick="this.parentElement.classList.toggle('expanded')">
                         <span>📊 ${distLabel} — ${timeLabel} ${splitLabel ? `(${splitLabel})` : ''}</span>
                         <div class="linked-ergo-actions">
+                            <button class="btn-icon-sm ergo-nav-btn" title="エルゴデータで表示" onclick="event.stopPropagation(); navigateToErgoRecord('${recId}')">📈</button>
                             <span class="ergo-expand-icon">▶</span>
                             <button class="btn-icon-sm" onclick="event.stopPropagation(); unlinkErgoRecord('${recId}')">✕</button>
                         </div>
@@ -4344,6 +4365,7 @@ function renderLinkedErgoRecords(note) {
                                 <span class="ergo-detail-value">${sourceLabel}</span>
                             </div>
                         </div>
+                        <button class="secondary-btn small-btn" style="margin-top: 8px; width: 100%;" onclick="navigateToErgoRecord('${recId}')">📈 エルゴデータで詳しく見る</button>
                     </div>
                 </div>
             `;
@@ -6102,13 +6124,32 @@ function saveMasterItem() {
 
 // Function to populate/update boat and oar selects in input modal
 function populateBoatOarSelects() {
-    // Boats
+    // Boats（艇種フィルタ適用）
     const boatSelect = document.getElementById('input-boat');
     if (boatSelect) {
-        // Keep current selection
         const currentVal = boatSelect.value;
+        const activeBoatTypeBtn = document.querySelector('.boat-type-btn.active');
+        const selectedBoatType = activeBoatTypeBtn ? activeBoatTypeBtn.dataset.value : '';
+
+        let filteredBoats = (state.boats || []);
+        if (selectedBoatType) {
+            filteredBoats = filteredBoats.filter(b => {
+                if (b.type) return b.type === selectedBoatType;
+                if (b.name.includes(selectedBoatType)) return true;
+                if (selectedBoatType === '4+' && b.name.includes('付きフォア')) return true;
+                if (selectedBoatType === '4x' && b.name.includes('クォドルプル')) return true;
+                if (selectedBoatType === '2x' && b.name.includes('ダブル')) return true;
+                if (selectedBoatType === '2-' && b.name.includes('ペア')) return true;
+                if (selectedBoatType === '1x' && b.name.includes('シングル')) return true;
+                if (selectedBoatType === '8+' && b.name.includes('エイト')) return true;
+                return false;
+            });
+            // 該当なしなら全件表示
+            if (filteredBoats.length === 0) filteredBoats = (state.boats || []);
+        }
+
         boatSelect.innerHTML = '<option value="">選択してください</option>';
-        (state.boats || []).forEach(b => {
+        filteredBoats.forEach(b => {
             const status = b.status || (b.availability === '使用不可' ? 'broken' : 'available');
             const isUnavailable = status !== 'available';
             const statusLabel = isUnavailable ? ` (${translateStatus(status)})` : '';
@@ -6116,7 +6157,7 @@ function populateBoatOarSelects() {
             option.value = b.id;
             option.textContent = `${b.name}${statusLabel} `;
             if (isUnavailable) {
-                option.disabled = true; // Use disabled attribute to prevent selection but keep visible
+                option.disabled = true;
                 option.style.color = '#999';
             }
             boatSelect.appendChild(option);
