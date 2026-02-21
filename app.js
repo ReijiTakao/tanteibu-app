@@ -1081,6 +1081,7 @@ function switchTab(tabId) {
             renderPracticeNotesList();
             renderMileageRanking();
             updateMileageWeekSummary();
+            renderWeeklyPracticeSummary();
         }
         if (tabId === 'settings') renderSettings();
     } catch (error) {
@@ -3867,6 +3868,113 @@ function updateMileageWeekSummary() {
     summary.textContent = `今週 ${km}km`;
 }
 
+// 週間練習サマリーウィジェット
+function renderWeeklyPracticeSummary() {
+    const container = document.getElementById('weekly-practice-summary');
+    if (!container || !state.currentUser) return;
+
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - mondayOffset);
+    monday.setHours(0, 0, 0, 0);
+
+    // 今週の月〜日の日付文字列を生成
+    const weekDays = [];
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        weekDays.push(d.toISOString().slice(0, 10));
+    }
+    const dayLabels = ['月', '火', '水', '木', '金', '土', '日'];
+
+    // 自分の今週のスケジュールをまとめる（日付→タイプ配列）
+    const mySchedulesByDate = {};
+    weekDays.forEach(dateStr => { mySchedulesByDate[dateStr] = []; });
+
+    state.schedules
+        .filter(s => s.userId === state.currentUser.id && weekDays.includes(s.date))
+        .forEach(s => {
+            mySchedulesByDate[s.date].push(s.scheduleType);
+        });
+
+    // タイプ別集計
+    const typeCounts = {};
+    const typeConfig = {
+        [SCHEDULE_TYPES.BOAT]: { icon: '🚣', label: '乗艇', cls: 'boat' },
+        [SCHEDULE_TYPES.ERGO]: { icon: '🏋️', label: 'エルゴ', cls: 'ergo' },
+        [SCHEDULE_TYPES.WEIGHT]: { icon: '💪', label: 'ウェイト', cls: 'weight' },
+        [SCHEDULE_TYPES.MEAL]: { icon: '🍳', label: '炊事', cls: 'meal' },
+        [SCHEDULE_TYPES.VIDEO]: { icon: '🎥', label: 'ビデオ', cls: 'video' },
+        [SCHEDULE_TYPES.BANCHA]: { icon: '🚴', label: '伴チャ', cls: 'bancha' },
+        [SCHEDULE_TYPES.OFF]: { icon: '🏖️', label: 'OFF', cls: 'off' },
+        [SCHEDULE_TYPES.ABSENT]: { icon: '❌', label: '不可', cls: 'absent' }
+    };
+
+    Object.values(mySchedulesByDate).flat().forEach(type => {
+        typeCounts[type] = (typeCounts[type] || 0) + 1;
+    });
+
+    const totalSessions = Object.values(mySchedulesByDate).flat().filter(t => t !== SCHEDULE_TYPES.ABSENT && t !== SCHEDULE_TYPES.OFF).length;
+    const todayStr = today.toISOString().slice(0, 10);
+
+    // --- 日別カレンダーストリップ ---
+    let calendarHtml = '';
+    weekDays.forEach((dateStr, i) => {
+        const types = mySchedulesByDate[dateStr];
+        const isToday = dateStr === todayStr;
+        const isPast = dateStr < todayStr;
+        const isFuture = dateStr > todayStr;
+        const dayNum = parseInt(dateStr.slice(8, 10));
+
+        let iconHtml = '';
+        if (types.length > 0) {
+            iconHtml = types.map(t => {
+                const cfg = typeConfig[t];
+                return cfg ? `<span class="wps-type-dot ${cfg.cls}" title="${cfg.label}">${cfg.icon}</span>` : '';
+            }).join('');
+        } else if (isPast) {
+            iconHtml = '<span class="wps-type-dot empty">—</span>';
+        } else {
+            iconHtml = '<span class="wps-type-dot empty">·</span>';
+        }
+
+        const dayClass = i >= 5 ? (i === 6 ? 'sunday' : 'saturday') : '';
+        calendarHtml += `
+            <div class="wps-day ${isToday ? 'today' : ''} ${isPast ? 'past' : ''} ${isFuture ? 'future' : ''}">
+                <span class="wps-day-label ${dayClass}">${dayLabels[i]}</span>
+                <span class="wps-day-num">${dayNum}</span>
+                <div class="wps-day-icons">${iconHtml}</div>
+            </div>`;
+    });
+
+    // --- タイプ別バッジ ---
+    let badgesHtml = '';
+    const activeTypes = [SCHEDULE_TYPES.BOAT, SCHEDULE_TYPES.ERGO, SCHEDULE_TYPES.WEIGHT, SCHEDULE_TYPES.BANCHA, SCHEDULE_TYPES.OFF];
+    activeTypes.forEach(type => {
+        const count = typeCounts[type] || 0;
+        if (count === 0) return;
+        const cfg = typeConfig[type];
+        badgesHtml += `<span class="wps-badge ${cfg.cls}">${cfg.icon} ${cfg.label} ${count}</span>`;
+    });
+    // 上記以外のタイプ(炊事,ビデオ等）
+    Object.entries(typeCounts).forEach(([type, count]) => {
+        if (activeTypes.includes(type) || type === SCHEDULE_TYPES.ABSENT) return;
+        const cfg = typeConfig[type] || { icon: '📋', label: type, cls: '' };
+        badgesHtml += `<span class="wps-badge ${cfg.cls}">${cfg.icon} ${cfg.label} ${count}</span>`;
+    });
+
+    container.innerHTML = `
+        <div class="wps-header">
+            <span class="wps-title">📊 今週の練習</span>
+            <span class="wps-total">${totalSessions}セッション</span>
+        </div>
+        <div class="wps-calendar">${calendarHtml}</div>
+        ${badgesHtml ? `<div class="wps-badges">${badgesHtml}</div>` : ''}
+    `;
+}
+
 
 function renderAvailableBoats(dateStr, container) {
     if (!container) return;
@@ -4391,6 +4499,7 @@ function switchNoteSubtab(subtab) {
 
     if (subtab === 'practice') {
         renderPracticeNotesList();
+        renderWeeklyPracticeSummary();
     } else if (subtab === 'crew') {
         renderCrewList();
     }
