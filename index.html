@@ -1238,6 +1238,84 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=3"></script>
     <script src="app.js?v=4"></script>
+
+    <!-- PWA 更新通知バナー -->
+    <div id="sw-update-banner"
+        style="display:none; position:fixed; bottom:80px; left:50%; transform:translateX(-50%); z-index:9999; background:linear-gradient(135deg,#1a365d,#2c5282); color:#fff; padding:12px 20px; border-radius:14px; box-shadow:0 4px 20px rgba(0,0,0,0.3); font-size:14px; font-weight:600; max-width:340px; width:calc(100% - 32px); text-align:center; animation:slideUpBanner 0.3s ease;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <span>🔄 新しいバージョンがあります</span>
+            <button id="sw-update-btn"
+                style="background:#fff; color:#1a365d; border:none; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap;">更新する</button>
+        </div>
+    </div>
+
+    <style>
+        @keyframes slideUpBanner {
+            from {
+                transform: translateX(-50%) translateY(100px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+    </style>
+
+    <!-- Service Worker 登録 -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('[PWA] Service Worker registered:', registration.scope);
+
+                        // 新しいService Workerが待機中か検知
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            if (!newWorker) return;
+
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // 新バージョン検知 → 更新バナーを表示
+                                    showUpdateBanner(registration);
+                                }
+                            });
+                        });
+                    })
+                    .catch(err => console.warn('[PWA] SW registration failed:', err));
+
+                // SWからの更新完了メッセージを受信
+                navigator.serviceWorker.addEventListener('message', (event) => {
+                    if (event.data && event.data.type === 'SW_UPDATED') {
+                        console.log('[PWA] Updated to version:', event.data.version);
+                    }
+                });
+
+                // controllerchangeでページリロード
+                let refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (refreshing) return;
+                    refreshing = true;
+                    window.location.reload();
+                });
+            });
+        }
+
+        function showUpdateBanner(registration) {
+            const banner = document.getElementById('sw-update-banner');
+            if (!banner) return;
+            banner.style.display = 'block';
+
+            document.getElementById('sw-update-btn').addEventListener('click', () => {
+                banner.style.display = 'none';
+                if (registration.waiting) {
+                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
+            });
+        }
+    </script>
 </body>
 
 </html>
