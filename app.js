@@ -4632,6 +4632,112 @@ function getErgoViewUserId() {
     return state.currentUser?.id;
 }
 
+// =========================================
+// 全員データビュー
+// =========================================
+
+/**
+ * 全員データビュー初期化: ユーザー一覧をプルダウンに投入しイベント設定
+ */
+function initAllMembersErgoView() {
+    const userSelect = document.getElementById('all-members-user-select');
+    const menuSelect = document.getElementById('all-members-menu-select');
+    if (!userSelect || !menuSelect) return;
+
+    // ユーザー一覧を構築（承認済みのみ）
+    const currentVal = userSelect.value;
+    userSelect.innerHTML = '<option value="">選手を選択…</option>';
+    state.users
+        .filter(u => u.approvalStatus === '承認済み' && !u.isDemo)
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+        .forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.id;
+            opt.textContent = u.name || u.id;
+            userSelect.appendChild(opt);
+        });
+    if (currentVal) userSelect.value = currentVal;
+
+    // イベントリスナー（onchangeで重複防止）
+    userSelect.onchange = () => renderAllMembersErgo();
+    menuSelect.onchange = () => renderAllMembersErgo();
+
+    // 初期表示
+    renderAllMembersErgo();
+}
+
+/**
+ * 選択された選手のエルゴ記録を表示
+ */
+function renderAllMembersErgo() {
+    const listEl = document.getElementById('all-members-ergo-list');
+    const userSelect = document.getElementById('all-members-user-select');
+    const menuSelect = document.getElementById('all-members-menu-select');
+    if (!listEl || !userSelect) return;
+
+    const selectedUserId = userSelect.value;
+    const selectedMenu = menuSelect?.value || '';
+
+    if (!selectedUserId) {
+        listEl.innerHTML = '<div class="empty-state"><p>👆 上のプルダウンから選手を選択してください</p></div>';
+        return;
+    }
+
+    // 選択ユーザーの記録をフィルタ
+    let records = state.ergoRecords.filter(r => r.userId === selectedUserId);
+
+    // メニューフィルタ
+    if (selectedMenu) {
+        records = records.filter(r => r.menuKey === selectedMenu);
+    }
+
+    // 日付で降順ソート
+    records.sort((a, b) => new Date(b.date || b.rawDate || 0) - new Date(a.date || a.rawDate || 0));
+
+    if (records.length === 0) {
+        const userName = state.users.find(u => u.id === selectedUserId)?.name || '選手';
+        listEl.innerHTML = `<div class="empty-state"><p>${userName}のエルゴデータがありません</p></div>`;
+        return;
+    }
+
+    // 記録カードを描画
+    listEl.innerHTML = records.map(record => {
+        const date = record.date || record.rawDate || '';
+        const displayDate = date ? new Date(date).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' }) : '';
+        const menu = record.menuKey || record.description || '';
+        const time = record.formattedTime || record.displayTime || formatErgoTime(record.time);
+        const pace = record.pace || '';
+        const distance = record.distance ? `${record.distance}m` : '';
+
+        return `
+            <div class="ergo-record-card" style="padding:12px;margin-bottom:8px;background:var(--bg-white);border-radius:12px;border:1px solid var(--border-color);">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <div style="font-weight:700;font-size:15px;color:var(--text-primary);">${menu}</div>
+                        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${displayDate}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-weight:700;font-size:16px;color:var(--accent-color);">${time}</div>
+                        ${pace ? `<div style="font-size:12px;color:var(--text-muted);">/500m: ${pace}</div>` : ''}
+                        ${distance ? `<div style="font-size:12px;color:var(--text-muted);">${distance}</div>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * エルゴタイムのフォーマット補助
+ */
+function formatErgoTime(seconds) {
+    if (!seconds || isNaN(seconds)) return '--:--';
+    const totalSec = parseFloat(seconds);
+    const min = Math.floor(totalSec / 60);
+    const sec = (totalSec % 60).toFixed(1);
+    return `${min}:${sec.padStart(4, '0')}`;
+}
+
 // コーチ用エルゴビュー初期化
 function initCoachErgoView() {
     const selector = document.getElementById('coach-player-selector');
@@ -5344,16 +5450,19 @@ function initDataViewToggle() {
             btn.classList.add('active');
 
             // ビューを切り替え
-            // ビューを切り替え
             document.getElementById('personal-data-view').classList.toggle('hidden', view !== 'personal');
             document.getElementById('team-data-view').classList.toggle('hidden', view !== 'team');
             document.getElementById('all-time-data-view').classList.toggle('hidden', view !== 'all-time');
+            const allMembersView = document.getElementById('all-members-data-view');
+            if (allMembersView) allMembersView.classList.toggle('hidden', view !== 'all-members');
 
             if (view === 'team') {
                 renderWeeklyRanking();
                 renderTeamRecords();
             } else if (view === 'all-time') {
                 renderAllTimeRanking();
+            } else if (view === 'all-members') {
+                initAllMembersErgoView();
             } else {
                 // マイデータに戻る時はナビをリセット
                 navigateErgo('all');

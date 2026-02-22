@@ -647,6 +647,9 @@ body {
     border-top: 1px solid rgba(0, 0, 0, 0.04);
     padding-bottom: env(safe-area-inset-bottom);
     z-index: 100;
+    isolation: isolate;
+    /* タッチイベントが常に到達することを保証 */
+    pointer-events: auto;
 }
 
 .nav-item {
@@ -663,6 +666,11 @@ body {
     transition: all var(--transition-fast);
     min-width: 0;
     position: relative;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
+    pointer-events: auto;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .nav-item.active {

@@ -355,8 +355,9 @@
                 <!-- データ表示切り替え -->
                 <div class="view-toggle">
                     <button class="view-toggle-btn active" data-view="personal">マイデータ</button>
-                    <button class="view-toggle-btn" data-view="team">週間ランキング</button>
-                    <button class="view-toggle-btn" data-view="all-time">歴代ランキング</button>
+                    <button class="view-toggle-btn" data-view="team">週間</button>
+                    <button class="view-toggle-btn" data-view="all-time">歴代</button>
+                    <button class="view-toggle-btn" data-view="all-members">全員データ</button>
                 </div>
 
                 <!-- マイデータビュー -->
@@ -474,7 +475,24 @@
                     <div id="all-time-ranking-list" class="ranking-list"></div>
                 </div>
 
-
+                <!-- 全員データビュー -->
+                <div id="all-members-data-view" class="data-view hidden">
+                    <h3 class="section-title">👥 全員のエルゴデータ</h3>
+                    <div class="ranking-filters">
+                        <select id="all-members-user-select" style="flex:1;">
+                            <option value="">選手を選択…</option>
+                        </select>
+                        <select id="all-members-menu-select" style="flex:1;">
+                            <option value="">メニュー</option>
+                            <option value="2000m TT">2000m TT</option>
+                            <option value="1000m TT">1000m TT</option>
+                            <option value="20分">20分</option>
+                            <option value="60分">60分</option>
+                            <option value="10000m">10000m</option>
+                        </select>
+                    </div>
+                    <div id="all-members-ergo-list" class="ergo-records-list" style="margin-top:12px;"></div>
+                </div>
 
             </div><!-- Close tab-ergo-data -->
 
