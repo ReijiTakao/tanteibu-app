@@ -1040,7 +1040,7 @@ function getDefaultStartTime(dateStr, timeSlot) {
     const date = new Date(dateStr + 'T00:00:00');
     const dayOfWeek = date.getDay(); // 0=日, 1=月, 2=火 ...
 
-    if (timeSlot === '午後') return '14:40';
+    if (timeSlot === '午後') return '15:10';
     // 午前のデフォルト: 火曜日は08:30、それ以外は05:40
     if (dayOfWeek === 2) return '08:30'; // 火曜
     return '05:40';
