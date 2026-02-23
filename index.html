@@ -882,7 +882,11 @@
 
                 <!-- 乗艇の場合 -->
                 <div class="form-group hidden" id="boat-group">
-                    <label>艇種</label>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <label style="margin-bottom:0;">艇種</label>
+                        <button type="button" onclick="loadLastBoatSchedule()" class="text-btn small-btn"
+                            style="font-size:12px;">🔄 前回の乗艇を読み込む</button>
+                    </div>
                     <div class="toggle-group" id="boat-type-group" style="margin-bottom: 8px;">
                         <button class="toggle-btn boat-type-btn" data-value="1x">1x</button>
                         <button class="toggle-btn boat-type-btn" data-value="2x">2x</button>

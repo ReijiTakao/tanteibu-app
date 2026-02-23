@@ -3185,6 +3185,87 @@ function createCrewMemberSchedule(memberId, sourceSchedule) {
     autoCreatePracticeNote(memberSchedule);
 }
 
+/**
+ * 前回の乗艇スケジュールを読み込んで、船種・船・オール・クルーをフォームにセット
+ */
+function loadLastBoatSchedule() {
+    const userId = state.currentUser?.id;
+    if (!userId) return;
+
+    // 自分の乗艇スケジュールを日付降順で検索
+    const boatSchedules = (state.schedules || [])
+        .filter(s => s.userId === userId && s.scheduleType === SCHEDULE_TYPES.BOAT)
+        .sort((a, b) => {
+            const da = a.date + (a.timeSlot || '');
+            const db = b.date + (b.timeSlot || '');
+            return db.localeCompare(da);
+        });
+
+    if (boatSchedules.length === 0) {
+        showToast('過去の乗艇記録がありません', 'info');
+        return;
+    }
+
+    const last = boatSchedules[0];
+    const boatName = last.boatId ? (state.boats.find(b => b.id === last.boatId)?.name || '') : '';
+    const dateDisplay = last.date || '';
+
+    showConfirmModal(
+        `前回の乗艇を読み込みますか？\n\n📅 ${dateDisplay} ${last.timeSlot || ''}\n🚣 ${last.boatType || ''}${boatName ? ' ' + boatName : ''}\n👥 クルー ${(last.crewIds || []).length}名`,
+        () => {
+            applyLastBoatSchedule(last);
+        },
+        null,
+        '読み込む'
+    );
+}
+
+function applyLastBoatSchedule(schedule) {
+    // 1. 艇種ボタンをセット
+    if (schedule.boatType) {
+        document.querySelectorAll('.boat-type-btn').forEach(btn => btn.classList.remove('active'));
+        const typeBtn = document.querySelector(`.boat-type-btn[data-value="${schedule.boatType}"]`);
+        if (typeBtn) {
+            typeBtn.classList.add('active');
+            handleScheduleTypeChange(SCHEDULE_TYPES.BOAT);
+        }
+    }
+
+    // 2. 少し待ってからUI要素を復元（handleScheduleTypeChangeが非同期でUI生成するため）
+    setTimeout(() => {
+        // 船をセット
+        populateBoatOarSelects();
+
+        setTimeout(() => {
+            if (schedule.boatId) {
+                document.getElementById('input-boat').value = schedule.boatId;
+            }
+
+            // オールをセット
+            const oarIds = schedule.oarIds || (schedule.oarId ? [schedule.oarId] : []);
+            if (oarIds.length > 0) {
+                const selects = document.querySelectorAll('.input-oar-select');
+                oarIds.forEach((id, i) => { if (selects[i]) selects[i].value = id; });
+            }
+
+            // クルーをセット（シート割り当て）
+            if (schedule.crewDetailsMap && Object.keys(schedule.crewDetailsMap).length > 0) {
+                const seatInputs = document.querySelectorAll('.seat-user-id');
+                Object.entries(schedule.crewDetailsMap).forEach(([seatId, userId]) => {
+                    const input = document.querySelector(`.seat-user-id[data-seat-id="${seatId}"]`);
+                    if (input) {
+                        input.value = userId;
+                        // input変更をトリガー
+                        input.dispatchEvent(new Event('change'));
+                    }
+                });
+            }
+
+            showToast('前回の乗艇データを読み込みました', 'success');
+        }, 150);
+    }, 100);
+}
+
 function deleteSchedule() {
     if (!currentInputData?.schedule) return;
 
@@ -6364,10 +6445,10 @@ function saveMasterItem() {
 // Function to populate/update boat and oar selects in input modal
 // 艇種ごとのオール必要本数
 const OAR_COUNT_BY_BOAT_TYPE = {
-    '1x': 2,  // シングル: スカル2本
-    '2x': 4,  // ダブル: スカル4本
+    '1x': 1,  // シングル: スカル1セット
+    '2x': 2,  // ダブル: スカル2セット
     '2-': 2,  // ペア: スイープ2本
-    '4x': 8,  // クォード: スカル8本
+    '4x': 4,  // クォード: スカル4セット
     '4+': 4,  // 付きフォア: スイープ4本
     '4-': 4,  // なしフォア: スイープ4本
     '8+': 8,  // エイト: スイープ8本
@@ -6433,7 +6514,8 @@ function populateOarSelects() {
     const countLabel = document.getElementById('oar-count-label');
     if (countLabel) {
         const typeLabel = isScull ? 'スカル' : isSweep ? 'スイープ' : '';
-        countLabel.textContent = boatType ? `(${typeLabel} ${oarCount}本)` : '';
+        const unitLabel = isScull ? 'セット' : '本';
+        countLabel.textContent = boatType ? `(${typeLabel} ${oarCount}${unitLabel})` : '';
     }
 
     // 既存の選択値を保持
@@ -7045,7 +7127,7 @@ function renderBoatsList() {
 // オール名からプレフィックス(pe,co,ft,vo,so)を抽出
 function getOarPrefix(name) {
     const n = (name || '').toLowerCase();
-    const prefixes = ['pe', 'co', 'ft', 'vo', 'so'];
+    const prefixes = ['pe', 'co', 'ft', 'vo', 'sk'];
     for (const p of prefixes) {
         if (n.startsWith(p) || n.includes(' ' + p) || n.includes('-' + p) || n.includes('_' + p)) return p;
     }
@@ -7064,7 +7146,7 @@ function getOarNumber(name) {
 
 // オールのソート: プレフィックス順 → 数字順
 function sortOars(oars) {
-    const prefixOrder = { 'pe': 0, 'co': 1, 'ft': 2, 'vo': 3, 'so': 4, 'zz': 5 };
+    const prefixOrder = { 'pe': 0, 'co': 1, 'ft': 2, 'vo': 3, 'sk': 4, 'zz': 5 };
     return [...oars].sort((a, b) => {
         const pa = prefixOrder[getOarPrefix(a.name)] ?? 5;
         const pb = prefixOrder[getOarPrefix(b.name)] ?? 5;
