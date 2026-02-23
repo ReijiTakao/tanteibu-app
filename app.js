@@ -4683,8 +4683,12 @@ function renderAllMembersErgo() {
         return;
     }
 
-    // 選択ユーザーの記録をフィルタ
-    let records = state.ergoRecords.filter(r => r.userId === selectedUserId);
+    // 選択ユーザーの記録をフィルタ（JustRowとその他を除外）
+    let records = state.ergoRecords.filter(r => {
+        if (r.userId !== selectedUserId) return false;
+        if (r.menuKey === 'JustRow' || r.menuKey === 'その他') return false;
+        return true;
+    });
 
     // メニューフィルタ
     if (selectedMenu) {
@@ -4692,7 +4696,7 @@ function renderAllMembersErgo() {
     }
 
     // 日付で降順ソート
-    records.sort((a, b) => new Date(b.date || b.rawDate || 0) - new Date(a.date || a.rawDate || 0));
+    records.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
     if (records.length === 0) {
         const userName = state.users.find(u => u.id === selectedUserId)?.name || '選手';
@@ -4700,31 +4704,8 @@ function renderAllMembersErgo() {
         return;
     }
 
-    // 記録カードを描画
-    listEl.innerHTML = records.map(record => {
-        const date = record.date || record.rawDate || '';
-        const displayDate = date ? new Date(date).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' }) : '';
-        const menu = record.menuKey || record.description || '';
-        const time = record.formattedTime || record.displayTime || formatErgoTime(record.time);
-        const pace = record.pace || '';
-        const distance = record.distance ? `${record.distance}m` : '';
-
-        return `
-            <div class="ergo-record-card" style="padding:12px;margin-bottom:8px;background:var(--bg-white);border-radius:12px;border:1px solid var(--border-color);">
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <div>
-                        <div style="font-weight:700;font-size:15px;color:var(--text-primary);">${menu}</div>
-                        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${displayDate}</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div style="font-weight:700;font-size:16px;color:var(--accent-color);">${time}</div>
-                        ${pace ? `<div style="font-size:12px;color:var(--text-muted);">/500m: ${pace}</div>` : ''}
-                        ${distance ? `<div style="font-size:12px;color:var(--text-muted);">${distance}</div>` : ''}
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
+    // 既存のrenderRecordCardを使って詳細付きカードを描画（クリックで詳細モーダルも開く）
+    listEl.innerHTML = records.slice(0, 50).map(r => renderRecordCard(r, true)).join('');
 }
 
 /**
