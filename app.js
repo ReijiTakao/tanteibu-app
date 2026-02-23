@@ -5817,6 +5817,7 @@ function toggleBoatRiggingMode(boatId, e) {
     }
 
     renderMasterList();
+    renderEquipmentStatus();
     showToast(`${boat.name}: ${CONVERTIBLE_LABELS[newMode]}モードに切替`, 'success');
 }
 
@@ -6829,21 +6830,50 @@ function renderBoatsList() {
         container.innerHTML = '<div class="empty-state"><p>艇データがありません</p></div>';
         return;
     }
+
+    const orgColors = { '男子部': '#3b82f6', '女子部': '#ec4899', '医学部': '#10b981', 'OB': '#f59e0b' };
+    const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
+
     container.innerHTML = boats.map(b => {
-        const status = b.availability || b.status || '不明';
-        const statusIcon = status === '使用可能' ? '🟢' : status === '修理中' ? '🔴' : '🟡';
-        const type = b.type || '';
-        const notes = b.notes || b.memo || '';
+        const status = b.status || (b.availability === '使用不可' ? 'broken' : 'available');
+        const statusText = translateStatus(status);
+        const statusIcon = statusText === '使用可能' ? '🟢' : statusText === '故障' ? '🔴' : statusText === '修理中' ? '🟠' : '🟡';
+        const btColor = boatTypeColors[b.type] || '#6b7280';
+        const orgLabel = b.organization || '';
+        const orgBadge = orgLabel ? `<span style="background:${orgColors[orgLabel] || '#6b7280'};color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">${orgLabel}</span>` : '';
+
+        // コンバーチブル艇の切替ボタン
+        const isConvertible = isConvertibleBoat(b.type);
+        const riggingMode = getBoatRiggingMode(b);
+        let convertBtnHtml = '';
+        if (isConvertible) {
+            const modeLabel = CONVERTIBLE_LABELS[riggingMode] || riggingMode;
+            convertBtnHtml = `
+                <div style="display:flex;align-items:center;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border-color);">
+                    <span style="font-size:12px;color:var(--text-muted);">現在:</span>
+                    <span style="background:#7c3aed;color:#fff;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:600;">${modeLabel}モード</span>
+                    <button onclick="toggleBoatRiggingMode('${b.id}', event)" style="background:var(--accent-color);color:#fff;border:none;padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">🔄 切替</button>
+                </div>`;
+        }
+
+        const memo = b.memo || b.notes || '';
+        const details = b.details || '';
+
         return `
-            <div style="padding:12px;margin-bottom:8px;background:var(--bg-white);border-radius:12px;border:1px solid var(--border-color);">
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <div>
-                        <div style="font-weight:700;font-size:15px;color:var(--text-primary);">${b.name}</div>
-                        ${type ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${type}</div>` : ''}
+            <div style="padding:14px;margin-bottom:10px;background:var(--bg-white);border-radius:12px;border:1px solid var(--border-color);">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                    <div style="flex:1;">
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <span style="font-weight:700;font-size:15px;color:var(--text-primary);">${b.name}</span>
+                            <span style="background:${btColor};color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">${b.type}</span>
+                            ${orgBadge}
+                        </div>
                     </div>
-                    <div style="font-size:13px;font-weight:600;">${statusIcon} ${status}</div>
+                    <div style="font-size:13px;font-weight:600;white-space:nowrap;">${statusIcon} ${statusText}</div>
                 </div>
-                ${notes ? `<div style="font-size:12px;color:var(--text-muted);margin-top:6px;padding-top:6px;border-top:1px solid var(--border-color);">${notes}</div>` : ''}
+                ${memo ? `<div style="font-size:12px;color:var(--text-muted);margin-top:6px;">${memo}</div>` : ''}
+                ${details ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;padding:6px 8px;background:var(--bg-light);border-radius:6px;">📋 ${details}</div>` : ''}
+                ${convertBtnHtml}
             </div>`;
     }).join('');
 }
@@ -6856,22 +6886,35 @@ function renderOarsList() {
         container.innerHTML = '<div class="empty-state"><p>オールデータがありません</p></div>';
         return;
     }
+
+    const orgColors = { '男子部': '#3b82f6', '女子部': '#ec4899', '医学部': '#10b981', 'OB': '#f59e0b' };
+
     container.innerHTML = oars.map(o => {
-        const status = o.availability || o.status || '不明';
-        const statusIcon = status === '使用可能' ? '🟢' : status === '修理中' ? '🔴' : '🟡';
+        const status = o.status || (o.availability === '使用不可' ? 'broken' : 'available');
+        const statusText = translateStatus(status);
+        const statusIcon = statusText === '使用可能' ? '🟢' : statusText === '故障' ? '🔴' : statusText === '修理中' ? '🟠' : '🟡';
         const type = o.type || '';
         const side = o.side || '';
-        const notes = o.notes || o.memo || '';
+        const orgLabel = o.organization || '';
+        const orgBadge = orgLabel ? `<span style="background:${orgColors[orgLabel] || '#6b7280'};color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">${orgLabel}</span>` : '';
+        const memo = o.memo || o.notes || '';
+        const details = o.details || '';
+
         return `
-            <div style="padding:12px;margin-bottom:8px;background:var(--bg-white);border-radius:12px;border:1px solid var(--border-color);">
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <div>
-                        <div style="font-weight:700;font-size:15px;color:var(--text-primary);">${o.name}</div>
-                        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${[type, side].filter(Boolean).join(' / ')}</div>
+            <div style="padding:14px;margin-bottom:10px;background:var(--bg-white);border-radius:12px;border:1px solid var(--border-color);">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                    <div style="flex:1;">
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <span style="font-weight:700;font-size:15px;color:var(--text-primary);">${o.name}</span>
+                            ${type ? `<span style="background:#6b7280;color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">${type}</span>` : ''}
+                            ${side ? `<span style="font-size:12px;color:var(--text-muted);">${side}</span>` : ''}
+                            ${orgBadge}
+                        </div>
                     </div>
-                    <div style="font-size:13px;font-weight:600;">${statusIcon} ${status}</div>
+                    <div style="font-size:13px;font-weight:600;white-space:nowrap;">${statusIcon} ${statusText}</div>
                 </div>
-                ${notes ? `<div style="font-size:12px;color:var(--text-muted);margin-top:6px;padding-top:6px;border-top:1px solid var(--border-color);">${notes}</div>` : ''}
+                ${memo ? `<div style="font-size:12px;color:var(--text-muted);margin-top:6px;">${memo}</div>` : ''}
+                ${details ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;padding:6px 8px;background:var(--bg-light);border-radius:6px;">📋 ${details}</div>` : ''}
             </div>`;
     }).join('');
 }
