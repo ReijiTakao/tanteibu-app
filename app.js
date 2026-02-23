@@ -1861,8 +1861,11 @@ function classifyErgoSessions(reclassify = false) {
         DB.save('ergo_records', state.ergoRecords);
 
         // Supabaseにもergo_recordsを同期（バックグラウンド・新規追加分のみ）
+        // 大量同期時はsync-indicatorの頻繁更新を抑制
         if (DB.useSupabase && window.SupabaseConfig?.db && newlyAddedRecordIds.length > 0) {
             const newRecords = state.ergoRecords.filter(r => newlyAddedRecordIds.includes(r.id));
+            if (window.SupabaseConfig.suppressSyncIndicator) window.SupabaseConfig.suppressSyncIndicator(true);
+            showSyncStatus('syncing');
             Promise.all(newRecords.map(record => {
                 const supaRecord = {
                     ...record,
@@ -1872,7 +1875,12 @@ function classifyErgoSessions(reclassify = false) {
                     console.warn('Ergo record sync failed:', record.id, e);
                 });
             })).then(() => {
-                console.log(`${newRecords.length}件の新規エルゴ記録をSupabaseに同期完了`);
+                console.log(newRecords.length + ' ergo records synced to Supabase');
+                if (window.SupabaseConfig.suppressSyncIndicator) window.SupabaseConfig.suppressSyncIndicator(false);
+                showSyncStatus('success');
+            }).catch(() => {
+                if (window.SupabaseConfig.suppressSyncIndicator) window.SupabaseConfig.suppressSyncIndicator(false);
+                showSyncStatus('error');
             });
         }
     } catch (error) {
@@ -2187,11 +2195,15 @@ async function syncConcept2() {
                     r.concept2Id && !savedConcept2Ids.has(r.concept2Id)
                 );
 
+                // sync-indicator抑制+バッチ処理
+                if (window.SupabaseConfig.suppressSyncIndicator) window.SupabaseConfig.suppressSyncIndicator(true);
+                showSyncStatus('syncing');
                 let supabaseSaved = 0;
-                for (const record of unsavedRecords) {
-                    try {
-                        await DB.saveErgoRecord({
-                            id: generateId(), // UUID形式で新規生成
+                for (let i = 0; i < unsavedRecords.length; i += 5) {
+                    const batch = unsavedRecords.slice(i, i + 5);
+                    const results = await Promise.allSettled(batch.map(record =>
+                        DB.saveErgoRecord({
+                            id: generateId(),
                             userId: record.userId,
                             date: record.date,
                             distance: record.distance,
@@ -2204,16 +2216,18 @@ async function syncConcept2() {
                             category: record.category,
                             source: 'Concept2',
                             rawData: { concept2Id: record.concept2Id }
-                        });
-                        supabaseSaved++;
-                    } catch (e) {
-                        console.warn('Supabase ergo save failed:', e);
-                    }
+                        })
+                    ));
+                    supabaseSaved += results.filter(r => r.status === 'fulfilled').length;
                 }
+                if (window.SupabaseConfig.suppressSyncIndicator) window.SupabaseConfig.suppressSyncIndicator(false);
+                showSyncStatus('success');
                 if (supabaseSaved > 0) {
-                    console.log(`Supabaseにエルゴ${supabaseSaved}件保存完了`);
+                    console.log('Supabase ergo saved: ' + supabaseSaved);
                 }
             } catch (e) {
+                if (window.SupabaseConfig.suppressSyncIndicator) window.SupabaseConfig.suppressSyncIndicator(false);
+                showSyncStatus('error');
                 console.warn('Supabase ergo sync error:', e);
             }
         }
@@ -2298,28 +2312,30 @@ function reclassifyAllErgoData() {
         DB.save('ergo_records', state.ergoRecords);
         DB.save('ergoSessions', state.ergoSessions);
 
-        // Supabaseに全ergoRecordsを再同期（menuKey/categoryが変更された）
+        // Supabaseに全ergoRecordsを再同期（大量同期時はsync-indicator抑制）
         if (DB.useSupabase && window.SupabaseConfig?.db) {
             const allRecords = state.ergoRecords.filter(r =>
                 r.userId === state.currentUser.id
             );
+            if (window.SupabaseConfig.suppressSyncIndicator) window.SupabaseConfig.suppressSyncIndicator(true);
+            showSyncStatus('syncing');
             let synced = 0;
             let failed = 0;
-            for (const record of allRecords) {
-                try {
+            for (let i = 0; i < allRecords.length; i += 5) {
+                const batch = allRecords.slice(i, i + 5);
+                const results = await Promise.allSettled(batch.map(record => {
                     const supaRecord = {
                         ...record,
                         rawData: record.rawData || (record.concept2Id ? { concept2Id: record.concept2Id } : null)
                     };
-                    await window.SupabaseConfig.db.saveErgoRecord(supaRecord);
-                    synced++;
-                } catch (e) {
-                    failed++;
-                    console.warn('Reclassify sync failed:', record.id, e);
-                }
+                    return window.SupabaseConfig.db.saveErgoRecord(supaRecord);
+                }));
+                results.forEach(r => r.status === 'fulfilled' ? synced++ : failed++);
             }
-            console.log(`再分類Supabase同期: ${synced}件成功, ${failed}件失敗`);
-            if (synced > 0) showToast(`${synced}件をSupabaseに同期しました`, 'success');
+            if (window.SupabaseConfig.suppressSyncIndicator) window.SupabaseConfig.suppressSyncIndicator(false);
+            showSyncStatus(failed > 0 ? 'error' : 'success');
+            console.log('Reclassify sync: ' + synced + ' ok, ' + failed + ' failed');
+            if (synced > 0) showToast(synced + ' records synced', 'success');
         }
 
         renderErgoRecords();
