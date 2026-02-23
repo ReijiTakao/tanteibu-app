@@ -3346,7 +3346,6 @@ function filterCrew(query) {
     // Array.from(document.querySelectorAll('.selected-crew-tag')).forEach(t => selectedIds.push(t.dataset.userId));
 
     let filtered = state.users.filter(u =>
-        u.id !== state.currentUser?.id &&
         u.approvalStatus === '承認済み' &&
         !selectedIds.includes(u.id)
     );

@@ -208,6 +208,12 @@ const SupabaseDB = {
     // --- スケジュール ---
     // camelCase(アプリ) → DB(snake_case + quoted)に変換
     _toScheduleRow(s) {
+        // oarIds, autoCreatedBy, autoCreatedByName はcrewDetailsMapに埋め込む（テーブルカラム不要）
+        const crewDetailsMap = { ...(s.crewDetailsMap || {}) };
+        if (s.oarIds && s.oarIds.length > 0) crewDetailsMap.__oarIds = s.oarIds;
+        if (s.autoCreatedBy) crewDetailsMap.__autoCreatedBy = s.autoCreatedBy;
+        if (s.autoCreatedByName) crewDetailsMap.__autoCreatedByName = s.autoCreatedByName;
+
         return {
             id: s.id,
             user_id: s.userId,
@@ -220,14 +226,11 @@ const SupabaseDB = {
             ergo_id: s.ergoId || null,
             boat_id: s.boatId || null,
             oar_id: s.oarId || null,
-            "oarIds": s.oarIds || [],
             "boatType": s.boatType || null,
             "crewIds": s.crewIds || [],
-            "crewDetailsMap": s.crewDetailsMap || {},
+            "crewDetailsMap": crewDetailsMap,
             "mealTypes": s.mealTypes || [],
             "videoDuration": s.videoDuration || null,
-            "autoCreatedBy": s.autoCreatedBy || null,
-            "autoCreatedByName": s.autoCreatedByName || null,
             start_time: s.startTime || null,
             memo: s.memo || null,
             updated_at: s.updatedAt || new Date().toISOString()
@@ -235,6 +238,16 @@ const SupabaseDB = {
     },
     // DB(snake_case + quoted) → camelCase(アプリ)に変換
     _fromScheduleRow(r) {
+        // crewDetailsMapから埋め込みフィールドを展開
+        const rawMap = r.crewDetailsMap || {};
+        const oarIds = rawMap.__oarIds || [];
+        const autoCreatedBy = rawMap.__autoCreatedBy || null;
+        const autoCreatedByName = rawMap.__autoCreatedByName || null;
+        const crewDetailsMap = { ...rawMap };
+        delete crewDetailsMap.__oarIds;
+        delete crewDetailsMap.__autoCreatedBy;
+        delete crewDetailsMap.__autoCreatedByName;
+
         return {
             id: r.id,
             userId: r.user_id,
@@ -247,14 +260,14 @@ const SupabaseDB = {
             ergoId: r.ergo_id,
             boatId: r.boat_id,
             oarId: r.oar_id,
-            oarIds: r.oarIds || [],
+            oarIds: oarIds,
             boatType: r.boatType,
             crewIds: r.crewIds || [],
-            crewDetailsMap: r.crewDetailsMap || {},
+            crewDetailsMap: crewDetailsMap,
             mealTypes: r.mealTypes || [],
             videoDuration: r.videoDuration,
-            autoCreatedBy: r.autoCreatedBy || null,
-            autoCreatedByName: r.autoCreatedByName || null,
+            autoCreatedBy: autoCreatedBy,
+            autoCreatedByName: autoCreatedByName,
             startTime: r.start_time,
             memo: r.memo,
             updatedAt: r.updated_at,
