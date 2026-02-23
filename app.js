@@ -2293,30 +2293,33 @@ function initMainScreen() {
 
 // 手動で全エルゴデータを再分類
 function reclassifyAllErgoData() {
-    showConfirmModal('全エルゴデータの分類をやり直します。よろしいですか？', () => {
+    showConfirmModal('全エルゴデータの分類をやり直します。よろしいですか？', async () => {
         classifyErgoSessions(true);
         DB.save('ergo_records', state.ergoRecords);
         DB.save('ergoSessions', state.ergoSessions);
 
-        // Supabaseにも再分類結果を同期（menuKey/categoryが変更された可能性）
+        // Supabaseに全ergoRecordsを再同期（menuKey/categoryが変更された）
         if (DB.useSupabase && window.SupabaseConfig?.db) {
-            const c2Records = state.ergoRecords.filter(r =>
-                r.source === 'Concept2' || r.source === 'concept2'
+            const allRecords = state.ergoRecords.filter(r =>
+                r.userId === state.currentUser.id
             );
             let synced = 0;
-            Promise.all(c2Records.map(record => {
-                const supaRecord = {
-                    ...record,
-                    id: record.id?.startsWith('c2_') ? generateId() : record.id,
-                    source: 'Concept2',
-                    rawData: { concept2Id: record.concept2Id || '' }
-                };
-                return DB.saveErgoRecord(supaRecord).then(() => synced++).catch(e => {
+            let failed = 0;
+            for (const record of allRecords) {
+                try {
+                    const supaRecord = {
+                        ...record,
+                        rawData: record.rawData || (record.concept2Id ? { concept2Id: record.concept2Id } : null)
+                    };
+                    await window.SupabaseConfig.db.saveErgoRecord(supaRecord);
+                    synced++;
+                } catch (e) {
+                    failed++;
                     console.warn('Reclassify sync failed:', record.id, e);
-                });
-            })).then(() => {
-                if (synced > 0) console.log(`再分類: ${synced}件をSupabaseに同期完了`);
-            });
+                }
+            }
+            console.log(`再分類Supabase同期: ${synced}件成功, ${failed}件失敗`);
+            if (synced > 0) showToast(`${synced}件をSupabaseに同期しました`, 'success');
         }
 
         renderErgoRecords();
