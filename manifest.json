@@ -4,7 +4,7 @@
     "description": "慶應義塾端艇部ボート部門 出欠・練習管理アプリ",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#1a365d",
+    "background_color": "#0d1b3e",
     "theme_color": "#1a365d",
     "orientation": "portrait",
     "lang": "ja",
