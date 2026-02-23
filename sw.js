@@ -1,6 +1,6 @@
 // Service Worker for 端艇部管理 PWA
 // バージョンを更新するとキャッシュが自動リフレッシュされます
-const CACHE_VERSION = 'tanteibu-v16';
+const CACHE_VERSION = 'tanteibu-v17';
 const CACHE_NAME = CACHE_VERSION;
 
 // クライアントからの更新要求を受信

@@ -1002,8 +1002,6 @@ function showScreen(screenId) {
         if (onboarding) onboarding.style.display = 'none';
         // ロール別タブ表示制御
         applyRoleBasedTabs();
-        // 5分刻み時間セレクター初期化
-        initTimeSelect();
     }
 }
 
@@ -1046,10 +1044,6 @@ function getDefaultStartTime(dateStr, timeSlot) {
     return '05:40';
 }
 
-// initTimeSelectは不要（input type=timeに移行済み）だが後方互換のため空関数として残す
-function initTimeSelect() {
-    // input type="time" を使用するため、selectへのoption追加は不要
-}
 
 function switchTab(tabId) {
     // 安定性のため: タブ切り替え時はログイン画面を強制非表示
@@ -1422,7 +1416,6 @@ function processConceptData(results) {
     renderErgoRecords();
 }
 
-// function disconnectConcept2 removed (duplicate)
 
 function updateConcept2UI() {
     const user = state.currentUser;
@@ -1875,7 +1868,6 @@ function classifyErgoSessions(reclassify = false) {
                     console.warn('Ergo record sync failed:', record.id, e);
                 });
             })).then(() => {
-                console.log(newRecords.length + ' ergo records synced to Supabase');
                 if (window.SupabaseConfig.suppressSyncIndicator) window.SupabaseConfig.suppressSyncIndicator(false);
                 showSyncStatus('success');
             }).catch(() => {
@@ -2223,7 +2215,6 @@ async function syncConcept2() {
                 if (window.SupabaseConfig.suppressSyncIndicator) window.SupabaseConfig.suppressSyncIndicator(false);
                 showSyncStatus('success');
                 if (supabaseSaved > 0) {
-                    console.log('Supabase ergo saved: ' + supabaseSaved);
                 }
             } catch (e) {
                 if (window.SupabaseConfig.suppressSyncIndicator) window.SupabaseConfig.suppressSyncIndicator(false);
@@ -2334,7 +2325,6 @@ function reclassifyAllErgoData() {
             }
             if (window.SupabaseConfig.suppressSyncIndicator) window.SupabaseConfig.suppressSyncIndicator(false);
             showSyncStatus(failed > 0 ? 'error' : 'success');
-            console.log('Reclassify sync: ' + synced + ' ok, ' + failed + ' failed');
             if (synced > 0) showToast(synced + ' records synced', 'success');
         }
 
@@ -3113,7 +3103,6 @@ function deleteSchedule() {
 // =========================================
 // 艇・オール・クルー選択
 // =========================================
-// function populateBoatOarSelects removed (duplicate)
 
 function filterBoatSelect(type) {
     const boatSelect = document.getElementById('input-boat');
@@ -6239,7 +6228,6 @@ function saveMasterItem() {
     if (DB.useSupabase && window.SupabaseConfig?.db) {
         window.SupabaseConfig.db.saveMasterItem(currentMasterType, newItem).then(result => {
             if (result) {
-                console.log('✅ Master item saved to Supabase:', currentMasterType, newItem.id);
             } else {
                 showToast('⚠️ Supabase同期に失敗しました（ローカルには保存済み）', 'error');
             }
