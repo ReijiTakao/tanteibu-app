@@ -5040,6 +5040,36 @@ function openErgoDetail(recordId) {
     document.getElementById('ergo-detail-split').textContent = record.split || '-';
     document.getElementById('ergo-detail-rate').textContent = record.strokeRate || '-';
 
+    // ワット / カロリー / ドラッグファクタ表示
+    const rawData = record.rawData || raw || {};
+    const workout = rawData.workout || rawData;
+    const avgWatts = record.watts || workout.avg_watts || workout.watts || null;
+    const calories = record.calories || workout.calories || workout.cal_hr || null;
+    const dragFactor = record.dragFactor || workout.drag_factor || workout.dragFactor || null;
+
+    const wattsRow = document.getElementById('ergo-detail-watts-row');
+    const calRow = document.getElementById('ergo-detail-cal-row');
+    const dfRow = document.getElementById('ergo-detail-df-row');
+
+    if (wattsRow) {
+        if (avgWatts) {
+            document.getElementById('ergo-detail-watts').textContent = `${avgWatts} W`;
+            wattsRow.style.display = '';
+        } else { wattsRow.style.display = 'none'; }
+    }
+    if (calRow) {
+        if (calories) {
+            document.getElementById('ergo-detail-cal').textContent = `${calories} kcal`;
+            calRow.style.display = '';
+        } else { calRow.style.display = 'none'; }
+    }
+    if (dfRow) {
+        if (dragFactor) {
+            document.getElementById('ergo-detail-df').textContent = dragFactor;
+            dfRow.style.display = '';
+        } else { dfRow.style.display = 'none'; }
+    }
+
     // IDT表示（2000m TTの場合）
     const idtDiv = document.getElementById('ergo-detail-idt');
     if (idtDiv) {
@@ -5052,7 +5082,6 @@ function openErgoDetail(recordId) {
             if (weight && actualTime) {
                 const idtSeconds = calculateIDTSeconds(weight, gender);
                 const idtValue = calculateIDTPercent(actualTime, idtSeconds);
-                const idtFormatted = formatTime(idtSeconds);
 
                 let idtClass = 'idt-low';
                 if (idtValue >= 100) idtClass = 'idt-high';
@@ -5062,7 +5091,6 @@ function openErgoDetail(recordId) {
                     <div class="idt-detail-label">⚖️ IDT（体重 ${weight}kg）</div>
                     <div style="display:flex;align-items:baseline;gap:12px;">
                         <span class="idt-detail-value ${idtClass}">${idtValue.toFixed(1)}</span>
-                        <span style="font-size:12px;color:#888;">目標: ${idtFormatted}</span>
                     </div>
                 `;
                 idtDiv.classList.remove('hidden');
@@ -6769,8 +6797,84 @@ async function initRigging() {
         saveBtn.parentNode.replaceChild(newBtn, saveBtn);
         newBtn.onclick = () => saveRigging(document.getElementById('rigging-boat-select').value);
     }
+
+    // 設備状態一覧をレンダリング
+    renderEquipmentStatus();
 }
 
+// =========================================
+// 設備状態一覧
+// =========================================
+
+function switchEquipView(view) {
+    document.querySelectorAll('[data-equip-view]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.equipView === view);
+    });
+    const boatsList = document.getElementById('equip-boats-list');
+    const oarsList = document.getElementById('equip-oars-list');
+    if (boatsList) boatsList.classList.toggle('hidden', view !== 'boats');
+    if (oarsList) oarsList.classList.toggle('hidden', view !== 'oars');
+}
+
+function renderEquipmentStatus() {
+    renderBoatsList();
+    renderOarsList();
+}
+
+function renderBoatsList() {
+    const container = document.getElementById('equip-boats-list');
+    if (!container) return;
+    const boats = state.boats || [];
+    if (boats.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>艇データがありません</p></div>';
+        return;
+    }
+    container.innerHTML = boats.map(b => {
+        const status = b.availability || b.status || '不明';
+        const statusIcon = status === '使用可能' ? '🟢' : status === '修理中' ? '🔴' : '🟡';
+        const type = b.type || '';
+        const notes = b.notes || b.memo || '';
+        return `
+            <div style="padding:12px;margin-bottom:8px;background:var(--bg-white);border-radius:12px;border:1px solid var(--border-color);">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <div style="font-weight:700;font-size:15px;color:var(--text-primary);">${b.name}</div>
+                        ${type ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${type}</div>` : ''}
+                    </div>
+                    <div style="font-size:13px;font-weight:600;">${statusIcon} ${status}</div>
+                </div>
+                ${notes ? `<div style="font-size:12px;color:var(--text-muted);margin-top:6px;padding-top:6px;border-top:1px solid var(--border-color);">${notes}</div>` : ''}
+            </div>`;
+    }).join('');
+}
+
+function renderOarsList() {
+    const container = document.getElementById('equip-oars-list');
+    if (!container) return;
+    const oars = state.oars || [];
+    if (oars.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>オールデータがありません</p></div>';
+        return;
+    }
+    container.innerHTML = oars.map(o => {
+        const status = o.availability || o.status || '不明';
+        const statusIcon = status === '使用可能' ? '🟢' : status === '修理中' ? '🔴' : '🟡';
+        const type = o.type || '';
+        const side = o.side || '';
+        const notes = o.notes || o.memo || '';
+        return `
+            <div style="padding:12px;margin-bottom:8px;background:var(--bg-white);border-radius:12px;border:1px solid var(--border-color);">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <div style="font-weight:700;font-size:15px;color:var(--text-primary);">${o.name}</div>
+                        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${[type, side].filter(Boolean).join(' / ')}</div>
+                    </div>
+                    <div style="font-size:13px;font-weight:600;">${statusIcon} ${status}</div>
+                </div>
+                ${notes ? `<div style="font-size:12px;color:var(--text-muted);margin-top:6px;padding-top:6px;border-top:1px solid var(--border-color);">${notes}</div>` : ''}
+            </div>`;
+    }).join('');
+}
 // =========================================
 // クルーリギング閲覧（コックス/コーチ用）
 // =========================================
@@ -8983,20 +9087,42 @@ function calculateIDT() {
     const genderBtn = document.querySelector('#idt-gender-toggle .gender-btn.active');
     const gender = genderBtn?.dataset.gender || 'man';
 
-    const targetSeconds = calculateIDTSeconds(weight, gender);
+    // IDT100のタイム（秒）
+    const idt100Seconds = calculateIDTSeconds(weight, gender);
 
-    // フォーマット (MM:SS.s)
-    const formattedTime = formatTime(targetSeconds);
+    // IDT75~95のタイムを計算（IDT = idt100 / actual * 100 → actual = idt100 * 100 / idt）
+    const idtLevels = [75, 80, 85, 90, 95, 100];
+    let tableRows = '';
+    idtLevels.forEach(idt => {
+        const actualSeconds = idt100Seconds * 100 / idt;
+        const formattedTime = formatTime(actualSeconds);
+        const splitSeconds = actualSeconds / 4;
+        const formattedSplit = formatTime(splitSeconds);
+        const highlight = idt === 100 ? ' style="background:var(--accent-color);color:#fff;font-weight:700;"' : '';
+        tableRows += `<tr${highlight}>
+            <td style="padding:6px 10px;text-align:center;font-weight:600;">IDT ${idt}</td>
+            <td style="padding:6px 10px;text-align:center;">${formattedTime}</td>
+            <td style="padding:6px 10px;text-align:center;color:var(--text-muted);">${formattedSplit}</td>
+        </tr>`;
+    });
 
-    // 500m平均ペース (targetSeconds / 4)
-    const splitSeconds = targetSeconds / 4;
-    const formattedSplit = formatTime(splitSeconds);
+    const container = document.getElementById('idt-table-container');
+    container.innerHTML = `
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">体重 ${weight}kg（${gender === 'man' ? '男子' : '女子'}）</div>
+        <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;font-size:14px;">
+            <thead>
+                <tr style="background:var(--bg-light);border-bottom:2px solid var(--border-color);">
+                    <th style="padding:8px 10px;text-align:center;">IDT</th>
+                    <th style="padding:8px 10px;text-align:center;">2000m タイム</th>
+                    <th style="padding:8px 10px;text-align:center;">500m ペース</th>
+                </tr>
+            </thead>
+            <tbody>${tableRows}</tbody>
+        </table>
+    `;
 
     const resultBox = document.getElementById('idt-result-box');
     resultBox.style.display = 'block';
-
-    document.getElementById('idt-target-time').textContent = formattedTime;
-    document.getElementById('idt-target-split').textContent = formattedSplit;
 }
 
 // =========================================
