@@ -6833,16 +6833,29 @@ function renderBoatsList() {
 
     const orgColors = { '男子部': '#3b82f6', '女子部': '#ec4899', '医学部': '#10b981', 'OB': '#f59e0b' };
     const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
+    const boatTypeLabels = { '1x': 'シングル', '2x': 'ダブル', '2-': 'ペア', '4x': 'クォード', '4+': '付きフォア', '4-': 'なしフォア', '8+': 'エイト' };
+    const typeOrder = ['8+', '4+', '4-', '4x', '2-', '2x', '1x'];
 
-    container.innerHTML = boats.map(b => {
+    // 種類別にグループ化
+    const grouped = {};
+    boats.forEach(b => {
+        const type = b.type || 'その他';
+        if (!grouped[type]) grouped[type] = [];
+        grouped[type].push(b);
+    });
+
+    // 順序通りにレンダリング
+    const sortedTypes = typeOrder.filter(t => grouped[t]);
+    // typeOrderにない種類も末尾に追加
+    Object.keys(grouped).forEach(t => { if (!sortedTypes.includes(t)) sortedTypes.push(t); });
+
+    const renderCard = (b) => {
         const status = b.status || (b.availability === '使用不可' ? 'broken' : 'available');
         const statusText = translateStatus(status);
         const statusIcon = statusText === '使用可能' ? '🟢' : statusText === '故障' ? '🔴' : statusText === '修理中' ? '🟠' : '🟡';
-        const btColor = boatTypeColors[b.type] || '#6b7280';
         const orgLabel = b.organization || '';
         const orgBadge = orgLabel ? `<span style="background:${orgColors[orgLabel] || '#6b7280'};color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">${orgLabel}</span>` : '';
 
-        // コンバーチブル艇の切替ボタン
         const isConvertible = isConvertibleBoat(b.type);
         const riggingMode = getBoatRiggingMode(b);
         let convertBtnHtml = '';
@@ -6860,20 +6873,32 @@ function renderBoatsList() {
         const details = b.details || '';
 
         return `
-            <div style="padding:14px;margin-bottom:10px;background:var(--bg-white);border-radius:12px;border:1px solid var(--border-color);">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                    <div style="flex:1;">
-                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                            <span style="font-weight:700;font-size:15px;color:var(--text-primary);">${b.name}</span>
-                            <span style="background:${btColor};color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">${b.type}</span>
-                            ${orgBadge}
-                        </div>
+            <div style="padding:12px 14px;margin-bottom:6px;background:var(--bg-white);border-radius:10px;border:1px solid var(--border-color);">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1;">
+                        <span style="font-weight:700;font-size:14px;color:var(--text-primary);">${b.name}</span>
+                        ${orgBadge}
                     </div>
-                    <div style="font-size:13px;font-weight:600;white-space:nowrap;">${statusIcon} ${statusText}</div>
+                    <div style="font-size:12px;font-weight:600;white-space:nowrap;">${statusIcon} ${statusText}</div>
                 </div>
-                ${memo ? `<div style="font-size:12px;color:var(--text-muted);margin-top:6px;">${memo}</div>` : ''}
-                ${details ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;padding:6px 8px;background:var(--bg-light);border-radius:6px;">📋 ${details}</div>` : ''}
+                ${memo ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${memo}</div>` : ''}
+                ${details ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;padding:5px 8px;background:var(--bg-light);border-radius:6px;">📋 ${details}</div>` : ''}
                 ${convertBtnHtml}
+            </div>`;
+    };
+
+    container.innerHTML = sortedTypes.map(type => {
+        const btColor = boatTypeColors[type] || '#6b7280';
+        const label = boatTypeLabels[type] || type;
+        const count = grouped[type].length;
+        return `
+            <div style="margin-bottom:16px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid ${btColor};">
+                    <span style="background:${btColor};color:#fff;padding:3px 10px;border-radius:8px;font-size:13px;font-weight:700;">${type}</span>
+                    <span style="font-weight:700;font-size:14px;color:var(--text-primary);">${label}</span>
+                    <span style="font-size:12px;color:var(--text-muted);">(${count}艇)</span>
+                </div>
+                ${grouped[type].map(renderCard).join('')}
             </div>`;
     }).join('');
 }
