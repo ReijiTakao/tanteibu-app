@@ -900,10 +900,11 @@
 
 
                 <div class="form-group hidden" id="oar-group">
-                    <label>オール</label>
-                    <select id="input-oar">
-                        <option value="">選択してください</option>
-                    </select>
+                    <label>オール <span id="oar-count-label"
+                            style="font-weight:400;font-size:12px;color:var(--text-muted);"></span></label>
+                    <div id="oar-selects-container">
+                        <!-- JSで艇種に応じた本数分のselectを動的生成 -->
+                    </div>
                 </div>
 
                 <div class="form-group hidden" id="crew-group">

@@ -2534,10 +2534,13 @@ function createTimeSlotHTML(dateStr, timeSlot) {
         if (schedule.startTime) {
             details = (details ? details + ' ' : '') + schedule.startTime + '〜';
         }
+        if (schedule.autoCreatedByName) {
+            details = (details ? details + ' ' : '') + `👤${schedule.autoCreatedByName}が登録`;
+        }
     }
 
     return `
-        <div class="time-slot" data-date="${dateStr}" data-slot="${timeSlot}">
+        <div class="time-slot" data-date="${dateStr}" data-slot="${timeSlot}"${schedule ? ` data-schedule-id="${schedule.id}"` : ''}>
             <span class="slot-time">${timeSlot}</span>
             <div class="slot-content">
                 <span class="slot-type-badge ${badgeClass}">${badgeText}</span>
@@ -2696,7 +2699,14 @@ function openInputModal(dateStr, timeSlot, scheduleId = null) {
         }
 
         if (schedule.boatId) document.getElementById('input-boat').value = schedule.boatId;
-        if (schedule.oarId) document.getElementById('input-oar').value = schedule.oarId;
+        // oarIds復元（複数オール）
+        if (schedule.oarIds || schedule.oarId) {
+            setTimeout(() => {
+                const oarIds = schedule.oarIds || (schedule.oarId ? [schedule.oarId] : []);
+                const selects = document.querySelectorAll('.input-oar-select');
+                oarIds.forEach((id, i) => { if (selects[i]) selects[i].value = id; });
+            }, 50);
+        }
 
         // 炊事の復元
         if (schedule.mealTypes && schedule.mealTypes.length > 0) {
@@ -2975,7 +2985,8 @@ function saveSchedule() {
         ergoType: document.querySelector('.ergo-type-btn.active')?.dataset.value || null,
         boatType: document.querySelector('.boat-type-btn.active')?.dataset.value || null,
         boatId: document.getElementById('input-boat').value || null,
-        oarId: document.getElementById('input-oar').value || null,
+        oarIds: Array.from(document.querySelectorAll('.input-oar-select')).map(s => s.value).filter(v => v),
+        oarId: document.querySelector('.input-oar-select')?.value || null, // 後方互換
         crewIds: [],
         crewDetailsMap: {},
         mealTypes: Array.from(document.querySelectorAll('.meal-type-btn.active')).map(b => b.dataset.value),
@@ -3072,9 +3083,106 @@ function saveSchedule() {
         autoCreatePracticeNote(newSchedule);
     }
 
+    // クルー自動登録（乗艇練習でクルーメンバーがいる場合）
+    if (newSchedule.scheduleType === SCHEDULE_TYPES.BOAT && newSchedule.crewIds && newSchedule.crewIds.length > 0) {
+        autoRegisterCrewSchedules(newSchedule);
+    }
+
     closeInputModal();
     renderWeekCalendar();
     showToast('保存しました', 'success');
+}
+
+/**
+ * クルー自動登録: 登録者のスケジュールを他クルーメンバーにも自動反映
+ */
+function autoRegisterCrewSchedules(sourceSchedule) {
+    const currentUserId = state.currentUser?.id;
+    // 自分以外のクルーメンバーを取得
+    const otherMembers = (sourceSchedule.crewIds || []).filter(id => id !== currentUserId);
+    if (otherMembers.length === 0) return;
+
+    // 既存スケジュールの確認
+    const conflicting = [];
+    const noConflict = [];
+    otherMembers.forEach(memberId => {
+        const existing = state.schedules.find(s =>
+            s.userId === memberId && s.date === sourceSchedule.date && s.timeSlot === sourceSchedule.timeSlot
+        );
+        if (existing) {
+            const profile = (state.profiles || []).find(p => p.id === memberId);
+            conflicting.push({ memberId, name: profile?.name || memberId, existingSchedule: existing });
+        } else {
+            noConflict.push(memberId);
+        }
+    });
+
+    // 競合がなければ即座に全員登録
+    if (conflicting.length === 0) {
+        otherMembers.forEach(memberId => {
+            createCrewMemberSchedule(memberId, sourceSchedule);
+        });
+        DB.save('schedules', state.schedules);
+        showToast(`クルー ${otherMembers.length}名にも自動登録しました`, 'success');
+        return;
+    }
+
+    // 競合ありの場合は確認ダイアログ
+    const conflictNames = conflicting.map(c => c.name).join('、');
+    showConfirmModal(
+        `${conflictNames} は既に予定が登録されています。上書きしますか？`,
+        () => {
+            // 上書き: 既存を削除して新規登録
+            conflicting.forEach(c => {
+                state.schedules = state.schedules.filter(s => s.id !== c.existingSchedule.id);
+                // 旧スケジュールのSupabase削除
+                DB.deleteSchedule(c.existingSchedule.id).catch(e => console.warn('Delete old schedule failed:', e));
+            });
+            // 全員登録
+            otherMembers.forEach(memberId => {
+                createCrewMemberSchedule(memberId, sourceSchedule);
+            });
+            DB.save('schedules', state.schedules);
+            renderWeekCalendar();
+            showToast(`クルー ${otherMembers.length}名にも自動登録しました`, 'success');
+        },
+        () => {
+            // キャンセル: 競合なしのメンバーのみ登録
+            noConflict.forEach(memberId => {
+                createCrewMemberSchedule(memberId, sourceSchedule);
+            });
+            if (noConflict.length > 0) {
+                DB.save('schedules', state.schedules);
+                renderWeekCalendar();
+                showToast(`${noConflict.length}名に自動登録しました（既存予定は維持）`, 'info');
+            }
+        },
+        '上書きする'
+    );
+}
+
+/**
+ * クルーメンバーのスケジュールを作成
+ */
+function createCrewMemberSchedule(memberId, sourceSchedule) {
+    const memberSchedule = {
+        ...sourceSchedule,
+        id: generateId(),
+        userId: memberId,
+        autoCreatedBy: state.currentUser?.id || null,
+        autoCreatedByName: state.currentUser?.name || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+    state.schedules.push(memberSchedule);
+
+    // Supabase同期
+    DB.saveSchedule(memberSchedule).catch(e => {
+        console.warn('Crew member schedule sync failed:', e);
+    });
+
+    // 自動で練習ノートも作成
+    autoCreatePracticeNote(memberSchedule);
 }
 
 function deleteSchedule() {
@@ -5757,7 +5865,10 @@ function getLastUsedBoatForOar(oarId) {
     let lastSchedule = null;
     for (let i = schedules.length - 1; i >= 0; i--) {
         const s = schedules[i];
-        if (s.oarId === oarId || s.oar === oarId) {
+        // oarIds配列またはoarId単体で検索
+        const matchesOarIds = s.oarIds && Array.isArray(s.oarIds) && s.oarIds.includes(oarId);
+        const matchesOarId = s.oarId === oarId || s.oar === oarId;
+        if (matchesOarIds || matchesOarId) {
             lastSchedule = s;
             break;
         }
@@ -6251,6 +6362,17 @@ function saveMasterItem() {
 }
 
 // Function to populate/update boat and oar selects in input modal
+// 艇種ごとのオール必要本数
+const OAR_COUNT_BY_BOAT_TYPE = {
+    '1x': 2,  // シングル: スカル2本
+    '2x': 4,  // ダブル: スカル4本
+    '2-': 2,  // ペア: スイープ2本
+    '4x': 8,  // クォード: スカル8本
+    '4+': 4,  // 付きフォア: スイープ4本
+    '4-': 4,  // なしフォア: スイープ4本
+    '8+': 8,  // エイト: スイープ8本
+};
+
 function populateBoatOarSelects() {
     // Boats（艇種フィルタ適用）
     const boatSelect = document.getElementById('input-boat');
@@ -6272,7 +6394,6 @@ function populateBoatOarSelects() {
                 if (selectedBoatType === '8+' && b.name.includes('エイト')) return true;
                 return false;
             });
-            // 該当なしなら全件表示
             if (filteredBoats.length === 0) filteredBoats = (state.boats || []);
         }
 
@@ -6281,9 +6402,10 @@ function populateBoatOarSelects() {
             const status = b.status || (b.availability === '使用不可' ? 'broken' : 'available');
             const isUnavailable = status !== 'available';
             const statusLabel = isUnavailable ? ` (${translateStatus(status)})` : '';
+            const statusEmoji = isUnavailable ? '🔴 ' : '🟢 ';
             const option = document.createElement('option');
             option.value = b.id;
-            option.textContent = `${b.name}${statusLabel} `;
+            option.textContent = `${statusEmoji}${b.name}${statusLabel}`;
             if (isUnavailable) {
                 option.disabled = true;
                 option.style.color = '#999';
@@ -6293,51 +6415,59 @@ function populateBoatOarSelects() {
         boatSelect.value = currentVal;
     }
 
-    // Oars - スイープ/スカルフィルタ + 数字ソート
-    const oarSelect = document.getElementById('input-oar');
-    if (oarSelect) {
-        const currentVal = oarSelect.value;
-        oarSelect.innerHTML = '<option value="">選択してください</option>';
+    // Oars - 艇種に応じた本数分のselect生成
+    populateOarSelects();
+}
 
-        // 選択中の艇種からスイープ/スカルを判定
-        const activeBoatTypeBtn = document.querySelector('.boat-type-btn.active');
-        const boatType = activeBoatTypeBtn ? activeBoatTypeBtn.dataset.value : '';
-        const isSweep = ['2-', '4+', '8+'].includes(boatType);
-        const isScull = ['1x', '2x', '4x'].includes(boatType);
+function populateOarSelects() {
+    const container = document.getElementById('oar-selects-container');
+    if (!container) return;
 
-        let filteredOars = (state.oars || []);
-        if (boatType && (isSweep || isScull)) {
-            filteredOars = filteredOars.filter(o => {
-                const oarType = (o.type || '').toLowerCase();
-                if (isSweep) return oarType.includes('sweep') || oarType.includes('スイープ');
-                if (isScull) return oarType.includes('scull') || oarType.includes('スカル');
-                return true;
-            });
-        }
+    const activeBoatTypeBtn = document.querySelector('.boat-type-btn.active');
+    const boatType = activeBoatTypeBtn ? activeBoatTypeBtn.dataset.value : '';
+    const oarCount = OAR_COUNT_BY_BOAT_TYPE[boatType] || 1;
+    const isSweep = ['2-', '4+', '4-', '8+'].includes(boatType);
+    const isScull = ['1x', '2x', '4x'].includes(boatType);
 
-        // 名前内の数字でソート
-        filteredOars.sort((a, b) => {
-            const numA = parseInt((a.name || '').match(/\d+/)?.[0] || '99999');
-            const numB = parseInt((b.name || '').match(/\d+/)?.[0] || '99999');
-            if (numA !== numB) return numA - numB;
-            return (a.name || '').localeCompare(b.name || '');
+    // ラベル更新
+    const countLabel = document.getElementById('oar-count-label');
+    if (countLabel) {
+        const typeLabel = isScull ? 'スカル' : isSweep ? 'スイープ' : '';
+        countLabel.textContent = boatType ? `(${typeLabel} ${oarCount}本)` : '';
+    }
+
+    // 既存の選択値を保持
+    const existingSelects = container.querySelectorAll('.input-oar-select');
+    const existingValues = Array.from(existingSelects).map(s => s.value);
+
+    // フィルタ＆ソート済みオールリスト
+    let filteredOars = (state.oars || []);
+    if (boatType && (isSweep || isScull)) {
+        filteredOars = filteredOars.filter(o => {
+            const oarType = (o.type || '').toLowerCase();
+            if (isSweep) return oarType.includes('sweep') || oarType.includes('スイープ');
+            if (isScull) return oarType.includes('scull') || oarType.includes('スカル');
+            return true;
         });
+    }
+    filteredOars = sortOars(filteredOars);
 
-        filteredOars.forEach(o => {
+    // 本数分のselectを生成
+    let html = '';
+    for (let i = 0; i < oarCount; i++) {
+        const savedVal = existingValues[i] || '';
+        html += `<select class="input-oar-select" data-oar-index="${i}" style="margin-bottom:6px;">
+            <option value="">オール ${i + 1} を選択</option>
+            ${filteredOars.map(o => {
             const status = o.status || (o.availability === '使用不可' ? 'broken' : 'available');
             const isUnavailable = status !== 'available';
+            const statusEmoji = isUnavailable ? '🔴 ' : '🟢 ';
             const statusLabel = isUnavailable ? ` (${translateStatus(status)})` : '';
-            const option = document.createElement('option');
-            option.value = o.id;
-            option.textContent = `${o.name} (${o.type})${statusLabel} `;
-            if (isUnavailable) {
-                option.disabled = true;
-                option.style.color = '#999';
-            }
-            oarSelect.appendChild(option);
-        });
-        oarSelect.value = currentVal;
+            return `<option value="${o.id}" ${isUnavailable ? 'disabled style="color:#999"' : ''} ${savedVal === o.id ? 'selected' : ''}>${statusEmoji}${o.name}${statusLabel}</option>`;
+        }).join('')}
+        </select>`;
     }
+    container.innerHTML = html;
 }
 
 function deleteMasterItem(e) {
@@ -6912,6 +7042,50 @@ function renderBoatsList() {
     }).join('');
 }
 
+// オール名からプレフィックス(pe,co,ft,vo,so)を抽出
+function getOarPrefix(name) {
+    const n = (name || '').toLowerCase();
+    const prefixes = ['pe', 'co', 'ft', 'vo', 'so'];
+    for (const p of prefixes) {
+        if (n.startsWith(p) || n.includes(' ' + p) || n.includes('-' + p) || n.includes('_' + p)) return p;
+    }
+    // 名前中に部分一致
+    for (const p of prefixes) {
+        if (n.includes(p)) return p;
+    }
+    return 'zz'; // 不明は末尾
+}
+
+// オール名から数字を抽出
+function getOarNumber(name) {
+    const match = (name || '').match(/(\d+)/);
+    return match ? parseInt(match[1]) : 99999;
+}
+
+// オールのソート: プレフィックス順 → 数字順
+function sortOars(oars) {
+    const prefixOrder = { 'pe': 0, 'co': 1, 'ft': 2, 'vo': 3, 'so': 4, 'zz': 5 };
+    return [...oars].sort((a, b) => {
+        const pa = prefixOrder[getOarPrefix(a.name)] ?? 5;
+        const pb = prefixOrder[getOarPrefix(b.name)] ?? 5;
+        if (pa !== pb) return pa - pb;
+        const na = getOarNumber(a.name);
+        const nb = getOarNumber(b.name);
+        if (na !== nb) return na - nb;
+        return (a.name || '').localeCompare(b.name || '');
+    });
+}
+
+// オールがスイープかスカルか判定
+function isOarSweep(oar) {
+    const t = (oar.type || '').toLowerCase();
+    return t.includes('sweep') || t.includes('スイープ');
+}
+function isOarScull(oar) {
+    const t = (oar.type || '').toLowerCase();
+    return t.includes('scull') || t.includes('スカル');
+}
+
 function renderOarsList() {
     const container = document.getElementById('equip-oars-list');
     if (!container) return;
@@ -6922,33 +7096,68 @@ function renderOarsList() {
     }
 
     const orgColors = { '男子部': '#3b82f6', '女子部': '#ec4899', '医学部': '#10b981', 'OB': '#f59e0b' };
+    const boatTypeLabels = { '1x': 'シングル', '2x': 'ダブル', '2-': 'ペア', '4x': 'クォード', '4+': '付きフォア', '4-': 'なしフォア', '8+': 'エイト' };
 
-    container.innerHTML = oars.map(o => {
+    // スイープ / スカル / その他 に分類
+    const sweepOars = sortOars(oars.filter(o => isOarSweep(o)));
+    const scullOars = sortOars(oars.filter(o => isOarScull(o)));
+    const otherOars = sortOars(oars.filter(o => !isOarSweep(o) && !isOarScull(o)));
+
+    const groups = [];
+    if (scullOars.length > 0) groups.push({ label: 'スカル (Scull)', color: '#6366f1', icon: '🔵', oars: scullOars });
+    if (sweepOars.length > 0) groups.push({ label: 'スイープ (Sweep)', color: '#dc2626', icon: '🔴', oars: sweepOars });
+    if (otherOars.length > 0) groups.push({ label: 'その他', color: '#6b7280', icon: '⚪', oars: otherOars });
+
+    const renderOarCard = (o) => {
         const status = o.status || (o.availability === '使用不可' ? 'broken' : 'available');
         const statusText = translateStatus(status);
         const statusIcon = statusText === '使用可能' ? '🟢' : statusText === '故障' ? '🔴' : statusText === '修理中' ? '🟠' : '🟡';
-        const type = o.type || '';
         const side = o.side || '';
         const orgLabel = o.organization || '';
         const orgBadge = orgLabel ? `<span style="background:${orgColors[orgLabel] || '#6b7280'};color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">${orgLabel}</span>` : '';
         const memo = o.memo || o.notes || '';
         const details = o.details || '';
 
+        // 最後に使った船の情報
+        const lastBoat = getLastUsedBoatForOar(o.id);
+        let lastBoatBadge = '';
+        if (lastBoat) {
+            const btLabel = boatTypeLabels[lastBoat.type] || lastBoat.type || '';
+            lastBoatBadge = `<span style="background:#7c3aed;color:#fff;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;" title="最後に使用: ${lastBoat.name} (${lastBoat.date})">${btLabel}${lastBoat.type ? ' ' + lastBoat.type : ''}</span>`;
+        }
+
+        // オール長のモード表示（スイープならペア/フォア/エイト、スカルならシングル/ダブル/クォード）
+        let lengthBadge = '';
+        if (o.length) {
+            lengthBadge = `<span style="background:#059669;color:#fff;padding:2px 6px;border-radius:6px;font-size:10px;font-weight:600;">${o.length}cm</span>`;
+        }
+
         return `
-            <div style="padding:14px;margin-bottom:10px;background:var(--bg-white);border-radius:12px;border:1px solid var(--border-color);">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                    <div style="flex:1;">
-                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                            <span style="font-weight:700;font-size:15px;color:var(--text-primary);">${o.name}</span>
-                            ${type ? `<span style="background:#6b7280;color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">${type}</span>` : ''}
-                            ${side ? `<span style="font-size:12px;color:var(--text-muted);">${side}</span>` : ''}
-                            ${orgBadge}
-                        </div>
+            <div style="padding:10px 14px;margin-bottom:6px;background:var(--bg-white);border-radius:10px;border:1px solid var(--border-color);${status !== 'available' ? 'opacity:0.6;' : ''}">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;flex:1;">
+                        <span style="font-weight:700;font-size:14px;color:var(--text-primary);">${o.name}</span>
+                        ${side ? `<span style="font-size:11px;color:var(--text-muted);background:var(--bg-light);padding:1px 6px;border-radius:4px;">${side}</span>` : ''}
+                        ${orgBadge}
+                        ${lastBoatBadge}
+                        ${lengthBadge}
                     </div>
-                    <div style="font-size:13px;font-weight:600;white-space:nowrap;">${statusIcon} ${statusText}</div>
+                    <div style="font-size:12px;font-weight:600;white-space:nowrap;">${statusIcon} ${statusText}</div>
                 </div>
-                ${memo ? `<div style="font-size:12px;color:var(--text-muted);margin-top:6px;">${memo}</div>` : ''}
-                ${details ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;padding:6px 8px;background:var(--bg-light);border-radius:6px;">📋 ${details}</div>` : ''}
+                ${memo ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${memo}</div>` : ''}
+                ${details ? `<div style="font-size:11px;color:var(--text-secondary);margin-top:3px;padding:4px 8px;background:var(--bg-light);border-radius:6px;">📋 ${details}</div>` : ''}
+            </div>`;
+    };
+
+    container.innerHTML = groups.map(g => {
+        return `
+            <div style="margin-bottom:16px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid ${g.color};">
+                    <span style="font-size:16px;">${g.icon}</span>
+                    <span style="font-weight:700;font-size:14px;color:var(--text-primary);">${g.label}</span>
+                    <span style="font-size:12px;color:var(--text-muted);">(${g.oars.length}本)</span>
+                </div>
+                ${g.oars.map(renderOarCard).join('')}
             </div>`;
     }).join('');
 }
