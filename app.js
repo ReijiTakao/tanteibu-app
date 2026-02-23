@@ -2521,6 +2521,10 @@ function createTimeSlotHTML(dateStr, timeSlot) {
                 badgeClass = 'run';
                 badgeText = `🏃 ${schedule.scheduleType}`;
                 break;
+            case SCHEDULE_TYPES.OFF:
+                badgeClass = 'off';
+                badgeText = `🏖️ OFF`;
+                break;
         }
         if (schedule.startTime) {
             details = (details ? details + ' ' : '') + schedule.startTime + '〜';
