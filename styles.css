@@ -704,7 +704,6 @@ body {
     font-weight: 600;
     white-space: nowrap;
     letter-spacing: 0.01em;
-    pointer-events: none;
 }
 
 /* =========================================
@@ -2085,7 +2084,6 @@ textarea {
     transition: all var(--transition-fast);
     box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
     letter-spacing: 0.01em;
-    pointer-events: none;
 }
 
 .primary-btn:active {
