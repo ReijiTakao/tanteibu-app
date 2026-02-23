@@ -2214,8 +2214,7 @@ async function syncConcept2() {
                 }
                 if (window.SupabaseConfig.suppressSyncIndicator) window.SupabaseConfig.suppressSyncIndicator(false);
                 showSyncStatus('success');
-                if (supabaseSaved > 0) {
-                }
+                // sync completed
             } catch (e) {
                 if (window.SupabaseConfig.suppressSyncIndicator) window.SupabaseConfig.suppressSyncIndicator(false);
                 showSyncStatus('error');
@@ -6227,8 +6226,7 @@ function saveMasterItem() {
     // Supabaseにも個別保存
     if (DB.useSupabase && window.SupabaseConfig?.db) {
         window.SupabaseConfig.db.saveMasterItem(currentMasterType, newItem).then(result => {
-            if (result) {
-            } else {
+            if (!result) {
                 showToast('⚠️ Supabase同期に失敗しました（ローカルには保存済み）', 'error');
             }
         }).catch(e => {
