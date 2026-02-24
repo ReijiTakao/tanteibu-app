@@ -5031,6 +5031,105 @@ textarea {
 }
 
 /* =========================================
+   乗艇メニュー入力
+   ========================================= */
+.rowing-menu-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.rowing-menu-item {
+    background: var(--bg-secondary);
+    border-radius: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+}
+
+.rm-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.rm-mode-toggle {
+    display: inline-flex;
+    gap: 0;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--accent-color);
+    flex-shrink: 0;
+}
+
+.rm-mode-btn {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    background: transparent;
+    color: var(--accent-color);
+    transition: all 0.15s ease;
+}
+
+.rm-mode-btn.active {
+    background: var(--accent-color);
+    color: white;
+}
+
+.rm-remove-btn {
+    background: none;
+    border: none;
+    color: #ef4444;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-left: auto;
+}
+
+.rm-remove-btn:active {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.rm-fields {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.rm-field {
+    flex: 1;
+    min-width: 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.rm-field label {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.rm-field input {
+    padding: 5px 6px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    text-align: center;
+    background: var(--bg-white);
+    color: var(--text-primary);
+}
+
+.rm-field input::placeholder {
+    color: #aaa;
+    font-size: 11px;
+}
+
+/* =========================================
    練習記録フィルターバー
    ========================================= */
 .pn-filter-bar {

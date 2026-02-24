@@ -4287,6 +4287,14 @@ function renderPracticeNotesList() {
             if (hasWeight) {
                 menuInfoParts.push(`${note.weightMenus.length}種目`);
             }
+            const hasRowingMenu = note.rowingMenus && note.rowingMenus.length > 0;
+            if (hasRowingMenu) {
+                const menuSummary = note.rowingMenus.map(m => {
+                    if (m.mode === 'onoff') return `${m.onDist}on${m.offDist}off`;
+                    return `rt${m.rate}`;
+                }).join(', ');
+                menuInfoParts.push(menuSummary);
+            }
             if (hasErgo) {
                 menuInfoParts.push('エルゴデータ');
             }
@@ -4381,6 +4389,17 @@ function openPracticeNoteModal(noteId) {
     } else {
         distanceGroup.classList.add('hidden');
         document.getElementById('practice-note-distance').value = '';
+    }
+
+    // 乗艇メニュー（乗艇時のみ表示）
+    const rowingMenuGroup = document.getElementById('rowing-menu-group');
+    if (schedule && schedule.scheduleType === SCHEDULE_TYPES.BOAT) {
+        rowingMenuGroup.classList.remove('hidden');
+        renderRowingMenuItems(note.rowingMenus || []);
+    } else {
+        rowingMenuGroup.classList.add('hidden');
+        const rmList = document.getElementById('rowing-menu-list');
+        if (rmList) rmList.innerHTML = '';
     }
 
     // ラン距離入力（ラン時のみ表示）
@@ -4605,6 +4624,12 @@ function savePracticeNote() {
         note.weightMenus = getWeightMenuData();
     }
 
+    // 乗艇メニューを保存
+    const rowingMenuGroup = document.getElementById('rowing-menu-group');
+    if (rowingMenuGroup && !rowingMenuGroup.classList.contains('hidden')) {
+        note.rowingMenus = getRowingMenuData();
+    }
+
     note.updatedAt = new Date().toISOString();
 
     DB.save('practice_notes', state.practiceNotes);
@@ -4612,6 +4637,11 @@ function savePracticeNote() {
     // Supabaseにも保存
     if (DB.useSupabase && window.SupabaseConfig?.db) {
         window.SupabaseConfig.db.savePracticeNote(note).catch(e => console.warn('Practice note sync failed:', e));
+    }
+
+    // クルー共有: 乗艇メニューを同クルーのメンバーに自動コピー
+    if (note.rowingMenus && note.rowingMenus.length > 0 && note.scheduleType === SCHEDULE_TYPES.BOAT) {
+        shareRowingMenuToCrew(note);
     }
 
     modal.classList.add('hidden');
@@ -4704,6 +4734,151 @@ function getWeightMenuData() {
         }
     });
     return data;
+}
+
+// =========================================
+// 乗艇メニュー入力
+// =========================================
+
+function addRowingMenuItem(mode, rate, distance, avgTime, onDist, offDist) {
+    const list = document.getElementById('rowing-menu-list');
+    if (!list) return;
+
+    const isOnOff = mode === 'onoff';
+    const item = document.createElement('div');
+    item.className = 'rowing-menu-item';
+    item.dataset.mode = isOnOff ? 'onoff' : 'normal';
+
+    item.innerHTML = `
+        <div class="rm-header">
+            <div class="rm-mode-toggle">
+                <button type="button" class="rm-mode-btn ${!isOnOff ? 'active' : ''}" data-mode="normal" onclick="switchRowingMenuMode(this)">通常</button>
+                <button type="button" class="rm-mode-btn ${isOnOff ? 'active' : ''}" data-mode="onoff" onclick="switchRowingMenuMode(this)">On/Off</button>
+            </div>
+            <button type="button" class="rm-remove-btn" onclick="this.closest('.rowing-menu-item').remove()">✕</button>
+        </div>
+        <div class="rm-fields rm-normal-fields" ${isOnOff ? 'style="display:none"' : ''}>
+            <div class="rm-field">
+                <label>レート</label>
+                <input type="number" class="rm-rate" placeholder="20" min="10" max="50" value="${rate || ''}">
+            </div>
+            <div class="rm-field">
+                <label>距離(m)</label>
+                <input type="number" class="rm-distance" placeholder="6000" min="0" step="100" value="${(!isOnOff && distance) || ''}">
+            </div>
+            <div class="rm-field">
+                <label>Ave(/500m)</label>
+                <input type="text" class="rm-avgtime" placeholder="2:05" value="${avgTime || ''}">
+            </div>
+        </div>
+        <div class="rm-fields rm-onoff-fields" ${!isOnOff ? 'style="display:none"' : ''}>
+            <div class="rm-field">
+                <label>On(m)</label>
+                <input type="number" class="rm-on" placeholder="300" min="0" step="50" value="${onDist || ''}">
+            </div>
+            <div class="rm-field">
+                <label>Off(m)</label>
+                <input type="number" class="rm-off" placeholder="200" min="0" step="50" value="${offDist || ''}">
+            </div>
+            <div class="rm-field">
+                <label>レート</label>
+                <input type="number" class="rm-rate-onoff" placeholder="28" min="10" max="50" value="${(isOnOff && rate) || ''}">
+            </div>
+            <div class="rm-field">
+                <label>合計(m)</label>
+                <input type="number" class="rm-distance-onoff" placeholder="3000" min="0" step="100" value="${(isOnOff && distance) || ''}">
+            </div>
+            <div class="rm-field">
+                <label>Ave</label>
+                <input type="text" class="rm-avgtime-onoff" placeholder="1:50" value="${(isOnOff && avgTime) || ''}">
+            </div>
+        </div>
+    `;
+    list.appendChild(item);
+}
+
+function switchRowingMenuMode(btn) {
+    const item = btn.closest('.rowing-menu-item');
+    const mode = btn.dataset.mode;
+    item.dataset.mode = mode;
+    item.querySelectorAll('.rm-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    item.querySelector('.rm-normal-fields').style.display = mode === 'normal' ? '' : 'none';
+    item.querySelector('.rm-onoff-fields').style.display = mode === 'onoff' ? '' : 'none';
+}
+
+function renderRowingMenuItems(items) {
+    const list = document.getElementById('rowing-menu-list');
+    if (!list) return;
+    list.innerHTML = '';
+    if (items && items.length > 0) {
+        items.forEach(m => addRowingMenuItem(m.mode, m.rate, m.distance, m.avgTime, m.onDist, m.offDist));
+    }
+}
+
+function getRowingMenuData() {
+    const items = document.querySelectorAll('#rowing-menu-list .rowing-menu-item');
+    const data = [];
+    items.forEach(item => {
+        const mode = item.dataset.mode || 'normal';
+        if (mode === 'onoff') {
+            const onDist = parseInt(item.querySelector('.rm-on')?.value) || 0;
+            const offDist = parseInt(item.querySelector('.rm-off')?.value) || 0;
+            const rate = parseInt(item.querySelector('.rm-rate-onoff')?.value) || 0;
+            const distance = parseInt(item.querySelector('.rm-distance-onoff')?.value) || 0;
+            const avgTime = item.querySelector('.rm-avgtime-onoff')?.value?.trim() || '';
+            if (onDist || offDist || rate || distance) {
+                data.push({ mode: 'onoff', onDist, offDist, rate, distance, avgTime });
+            }
+        } else {
+            const rate = parseInt(item.querySelector('.rm-rate')?.value) || 0;
+            const distance = parseInt(item.querySelector('.rm-distance')?.value) || 0;
+            const avgTime = item.querySelector('.rm-avgtime')?.value?.trim() || '';
+            if (rate || distance) {
+                data.push({ mode: 'normal', rate, distance, avgTime });
+            }
+        }
+    });
+    return data;
+}
+
+// クルー共有: 乗艇メニューを同クルーメンバーに自動コピー
+function shareRowingMenuToCrew(note) {
+    if (!note.rowingMenus || note.rowingMenus.length === 0) return;
+
+    // 同日・同艇のスケジュールを検索してクルーメンバーを特定
+    const mySchedule = state.schedules.find(s => s.id === note.scheduleId);
+    if (!mySchedule || !mySchedule.crewIds || mySchedule.crewIds.length === 0) return;
+
+    let sharedCount = 0;
+    mySchedule.crewIds.forEach(memberId => {
+        if (memberId === note.userId) return; // 自分はスキップ
+
+        // そのメンバーの同日の乗艇練習ノートを探す
+        const memberNote = state.practiceNotes.find(n =>
+            n.userId === memberId &&
+            n.date === note.date &&
+            (n.scheduleType === SCHEDULE_TYPES.BOAT || n.scheduleType === '乗艇')
+        );
+
+        if (memberNote) {
+            // 既にメニューがある場合は上書きしない
+            if (memberNote.rowingMenus && memberNote.rowingMenus.length > 0) return;
+
+            memberNote.rowingMenus = JSON.parse(JSON.stringify(note.rowingMenus));
+            memberNote.rowingMenusSharedFrom = note.userId;
+            memberNote.updatedAt = new Date().toISOString();
+            sharedCount++;
+
+            if (DB.useSupabase && window.SupabaseConfig?.db) {
+                window.SupabaseConfig.db.savePracticeNote(memberNote).catch(e => console.warn('Crew share sync failed:', e));
+            }
+        }
+    });
+
+    if (sharedCount > 0) {
+        DB.save('practice_notes', state.practiceNotes);
+        showToast(`メニューをクルー${sharedCount}人に共有しました`, 'success');
+    }
 }
 
 // =========================================

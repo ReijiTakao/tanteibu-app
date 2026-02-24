@@ -1306,6 +1306,17 @@
                     <p class="help-text">Mile makes champion — 漕いだ距離がマイレージランキングに反映されます</p>
                 </div>
 
+                <!-- 乗艇メニュー詳細（乗艇時のみ表示） -->
+                <div class="form-group hidden" id="rowing-menu-group">
+                    <label>🚣 練習メニュー（任意）</label>
+                    <p class="help-text" style="margin-bottom:8px;">メニューごとにレート・距離・aveタイムを記録できます</p>
+                    <div id="rowing-menu-list" class="rowing-menu-list">
+                        <!-- JSで動的生成 -->
+                    </div>
+                    <button type="button" id="add-rowing-menu-btn" class="secondary-btn small-btn"
+                        onclick="addRowingMenuItem()">＋ メニュー追加</button>
+                </div>
+
                 <!-- ラン距離（ラン時のみ表示） -->
                 <div class="form-group hidden" id="running-distance-group">
                     <label>🏃 走った距離 (km)</label>
