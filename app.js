@@ -4397,97 +4397,98 @@ function openPracticeNoteModal(noteId) {
     } else {
         distanceGroup.classList.add('hidden');
         document.getElementById('practice-note-distance').value = '';
+    }
 
-        // 乗艇メニュー（乗艇時のみ表示）
-        const rowingMenuGroup = document.getElementById('rowing-menu-group');
-        if (schedule && schedule.scheduleType === SCHEDULE_TYPES.BOAT) {
-            rowingMenuGroup.classList.remove('hidden');
-            renderRowingMenuItems(note.rowingMenus || []);
-        } else {
-            rowingMenuGroup.classList.add('hidden');
-            const rmList = document.getElementById('rowing-menu-list');
-            if (rmList) rmList.innerHTML = '';
-        }
+    // 乗艇メニュー（乗艇時のみ表示）
+    const rowingMenuGroup = document.getElementById('rowing-menu-group');
+    if (schedule && schedule.scheduleType === SCHEDULE_TYPES.BOAT) {
+        rowingMenuGroup.classList.remove('hidden');
+        renderRowingMenuItems(note.rowingMenus || []);
+    } else {
+        rowingMenuGroup.classList.add('hidden');
+        const rmList = document.getElementById('rowing-menu-list');
+        if (rmList) rmList.innerHTML = '';
+    }
 
-        // ラン距離入力（ラン時のみ表示）
-        const runDistanceGroup = document.getElementById('running-distance-group');
-        if (schedule && schedule.scheduleType === SCHEDULE_TYPES.RUN) {
-            runDistanceGroup.classList.remove('hidden');
-            document.getElementById('practice-note-run-distance').value = note.runDistance || '';
-        } else {
-            runDistanceGroup.classList.add('hidden');
-            document.getElementById('practice-note-run-distance').value = '';
-        }
+    // ラン距離入力（ラン時のみ表示）
+    const runDistanceGroup = document.getElementById('running-distance-group');
+    if (schedule && schedule.scheduleType === SCHEDULE_TYPES.RUN) {
+        runDistanceGroup.classList.remove('hidden');
+        document.getElementById('practice-note-run-distance').value = note.runDistance || '';
+    } else {
+        runDistanceGroup.classList.add('hidden');
+        document.getElementById('practice-note-run-distance').value = '';
+    }
 
-        // ウェイト部位選択（ウェイト時のみ表示）
-        const weightPartGroup = document.getElementById('weight-body-part-group');
-        const schedType = schedule?.scheduleType || note.scheduleType || '';
-        if (schedType === SCHEDULE_TYPES.WEIGHT) {
-            weightPartGroup.classList.remove('hidden');
-            // トグルボタンの選択状態を復元
-            document.querySelectorAll('.weight-part-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.value === (note.weightBodyPart || ''));
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.weight-part-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                });
+    // ウェイト部位選択（ウェイト時のみ表示）
+    const weightPartGroup = document.getElementById('weight-body-part-group');
+    const schedType = schedule?.scheduleType || note.scheduleType || '';
+    if (schedType === SCHEDULE_TYPES.WEIGHT) {
+        weightPartGroup.classList.remove('hidden');
+        // トグルボタンの選択状態を復元
+        document.querySelectorAll('.weight-part-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.value === (note.weightBodyPart || ''));
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.weight-part-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
             });
-        } else {
-            weightPartGroup.classList.add('hidden');
-        }
-
-        // ウェイトメニュー（ウェイト時のみ表示）
-        const weightGroup = document.getElementById('weight-menu-group');
-        if (schedType === SCHEDULE_TYPES.WEIGHT) {
-            weightGroup.classList.remove('hidden');
-            renderWeightMenuItems(note.weightMenus || []);
-        } else {
-            weightGroup.classList.add('hidden');
-        }
-
-        modal.dataset.noteId = noteId;
-        modal.classList.remove('hidden');
+        });
+    } else {
+        weightPartGroup.classList.add('hidden');
     }
 
-    // エルゴデータタブに遷移して指定レコードを表示
-    function navigateToErgoRecord(recId) {
-        // 練習ノートモーダルを閉じる
-        const noteModal = document.getElementById('practice-note-modal');
-        if (noteModal) noteModal.classList.add('hidden');
-
-        // エルゴデータタブに切り替え
-        switchTab('ergo-data');
-
-        // 遷移後に該当レコードのスプリットモーダルを開く
-        setTimeout(() => {
-            const rec = state.ergoRecords.find(r => r.id === recId);
-            if (rec && typeof showSplits === 'function') {
-                showSplits(rec);
-            } else {
-                showToast('エルゴデータタブに移動しました', 'info');
-            }
-        }, 300);
+    // ウェイトメニュー（ウェイト時のみ表示）
+    const weightGroup = document.getElementById('weight-menu-group');
+    if (schedType === SCHEDULE_TYPES.WEIGHT) {
+        weightGroup.classList.remove('hidden');
+        renderWeightMenuItems(note.weightMenus || []);
+    } else {
+        weightGroup.classList.add('hidden');
     }
 
-    function renderLinkedErgoRecords(note) {
-        const container = document.getElementById('linked-ergo-records');
-        if (!note.ergoRecordIds || note.ergoRecordIds.length === 0) {
-            container.innerHTML = '<p class="text-muted">紐づけなし</p>';
-            return;
+    modal.dataset.noteId = noteId;
+    modal.classList.remove('hidden');
+}
+
+// エルゴデータタブに遷移して指定レコードを表示
+function navigateToErgoRecord(recId) {
+    // 練習ノートモーダルを閉じる
+    const noteModal = document.getElementById('practice-note-modal');
+    if (noteModal) noteModal.classList.add('hidden');
+
+    // エルゴデータタブに切り替え
+    switchTab('ergo-data');
+
+    // 遷移後に該当レコードのスプリットモーダルを開く
+    setTimeout(() => {
+        const rec = state.ergoRecords.find(r => r.id === recId);
+        if (rec && typeof showSplits === 'function') {
+            showSplits(rec);
+        } else {
+            showToast('エルゴデータタブに移動しました', 'info');
         }
+    }, 300);
+}
 
-        let html = '';
-        note.ergoRecordIds.forEach(recId => {
-            const rec = state.ergoRecords.find(r => r.id === recId);
-            if (rec) {
-                const distLabel = rec.distance ? `${rec.distance}m` : '?m';
-                const timeLabel = rec.timeDisplay || '?';
-                const splitLabel = rec.split ? `${rec.split}/500m` : '';
-                const rateLabel = rec.strokeRate ? `${rec.strokeRate} spm` : '';
-                const sourceLabel = rec.source === 'concept2' ? 'Concept2同期' : '手入力';
-                const weightLabel = rec.weight ? `${rec.weight}kg` : '';
+function renderLinkedErgoRecords(note) {
+    const container = document.getElementById('linked-ergo-records');
+    if (!note.ergoRecordIds || note.ergoRecordIds.length === 0) {
+        container.innerHTML = '<p class="text-muted">紐づけなし</p>';
+        return;
+    }
 
-                html += `
+    let html = '';
+    note.ergoRecordIds.forEach(recId => {
+        const rec = state.ergoRecords.find(r => r.id === recId);
+        if (rec) {
+            const distLabel = rec.distance ? `${rec.distance}m` : '?m';
+            const timeLabel = rec.timeDisplay || '?';
+            const splitLabel = rec.split ? `${rec.split}/500m` : '';
+            const rateLabel = rec.strokeRate ? `${rec.strokeRate} spm` : '';
+            const sourceLabel = rec.source === 'concept2' ? 'Concept2同期' : '手入力';
+            const weightLabel = rec.weight ? `${rec.weight}kg` : '';
+
+            html += `
                 <div class="linked-ergo-item-wrapper">
                     <div class="linked-ergo-item" onclick="this.parentElement.classList.toggle('expanded')">
                         <span>📊 ${distLabel} — ${timeLabel} ${splitLabel ? `(${splitLabel})` : ''}</span>
@@ -4528,172 +4529,172 @@ function openPracticeNoteModal(noteId) {
                     </div>
                 </div>
             `;
-            }
-        });
-        container.innerHTML = html || '<p class="text-muted">紐づけなし</p>';
-    }
+        }
+    });
+    container.innerHTML = html || '<p class="text-muted">紐づけなし</p>';
+}
 
-    function showErgoSelectList(noteId) {
-        const note = state.practiceNotes.find(n => n.id === noteId);
-        if (!note) return;
+function showErgoSelectList(noteId) {
+    const note = state.practiceNotes.find(n => n.id === noteId);
+    if (!note) return;
 
-        const selectList = document.getElementById('ergo-select-list');
-        // 全データから選択可能に（同日限定を解除）
-        const availableRecords = state.ergoRecords.filter(r =>
-            r.userId === note.userId &&
-            !(note.ergoRecordIds || []).includes(r.id)
-        ).sort((a, b) => new Date(b.date) - new Date(a.date)); // 新しい順
+    const selectList = document.getElementById('ergo-select-list');
+    // 全データから選択可能に（同日限定を解除）
+    const availableRecords = state.ergoRecords.filter(r =>
+        r.userId === note.userId &&
+        !(note.ergoRecordIds || []).includes(r.id)
+    ).sort((a, b) => new Date(b.date) - new Date(a.date)); // 新しい順
 
-        if (availableRecords.length === 0) {
-            selectList.innerHTML = '<p class="text-muted">紐付け可能なエルゴデータがありません</p>';
-        } else {
-            selectList.innerHTML = availableRecords.map(rec => `
+    if (availableRecords.length === 0) {
+        selectList.innerHTML = '<p class="text-muted">紐付け可能なエルゴデータがありません</p>';
+    } else {
+        selectList.innerHTML = availableRecords.map(rec => `
             <div class="ergo-select-item" data-record-id="${rec.id}">
                 <span>📊 ${rec.date || '日付不明'} | ${rec.distance || '?'}m — ${rec.timeDisplay || '?'} ${rec.menuKey ? `(${rec.menuKey})` : ''} ${rec.source === 'concept2' || rec.source === 'Concept2' ? '(C2)' : '(手入力)'}</span>
                 <button class="secondary-btn small-btn">追加</button>
             </div>
         `).join('');
 
-            selectList.querySelectorAll('.ergo-select-item button').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const recId = btn.closest('.ergo-select-item').dataset.recordId;
-                    linkErgoRecord(noteId, recId);
-                });
+        selectList.querySelectorAll('.ergo-select-item button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const recId = btn.closest('.ergo-select-item').dataset.recordId;
+                linkErgoRecord(noteId, recId);
             });
-        }
-
-        selectList.classList.remove('hidden');
+        });
     }
 
-    function linkErgoRecord(noteId, recordId) {
-        const note = state.practiceNotes.find(n => n.id === noteId);
-        if (!note) return;
-        if (!note.ergoRecordIds) note.ergoRecordIds = [];
-        if (!note.ergoRecordIds.includes(recordId)) {
-            note.ergoRecordIds.push(recordId);
-            note.updatedAt = new Date().toISOString();
-            DB.save('practice_notes', state.practiceNotes);
-            if (DB.useSupabase && window.SupabaseConfig?.db) {
-                window.SupabaseConfig.db.savePracticeNote(note).catch(e => console.warn('Practice note sync failed:', e));
-            }
-            renderLinkedErgoRecords(note);
-            showErgoSelectList(noteId);
-        }
-    }
+    selectList.classList.remove('hidden');
+}
 
-    function unlinkErgoRecord(recordId) {
-        const modal = document.getElementById('practice-note-modal');
-        const noteId = modal.dataset.noteId;
-        const note = state.practiceNotes.find(n => n.id === noteId);
-        if (!note) return;
-        note.ergoRecordIds = (note.ergoRecordIds || []).filter(id => id !== recordId);
+function linkErgoRecord(noteId, recordId) {
+    const note = state.practiceNotes.find(n => n.id === noteId);
+    if (!note) return;
+    if (!note.ergoRecordIds) note.ergoRecordIds = [];
+    if (!note.ergoRecordIds.includes(recordId)) {
+        note.ergoRecordIds.push(recordId);
         note.updatedAt = new Date().toISOString();
         DB.save('practice_notes', state.practiceNotes);
         if (DB.useSupabase && window.SupabaseConfig?.db) {
             window.SupabaseConfig.db.savePracticeNote(note).catch(e => console.warn('Practice note sync failed:', e));
         }
         renderLinkedErgoRecords(note);
+        showErgoSelectList(noteId);
+    }
+}
+
+function unlinkErgoRecord(recordId) {
+    const modal = document.getElementById('practice-note-modal');
+    const noteId = modal.dataset.noteId;
+    const note = state.practiceNotes.find(n => n.id === noteId);
+    if (!note) return;
+    note.ergoRecordIds = (note.ergoRecordIds || []).filter(id => id !== recordId);
+    note.updatedAt = new Date().toISOString();
+    DB.save('practice_notes', state.practiceNotes);
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.savePracticeNote(note).catch(e => console.warn('Practice note sync failed:', e));
+    }
+    renderLinkedErgoRecords(note);
+}
+
+function savePracticeNote() {
+    const modal = document.getElementById('practice-note-modal');
+    const noteId = modal.dataset.noteId;
+    const note = state.practiceNotes.find(n => n.id === noteId);
+    if (!note) return;
+
+    note.reflection = document.getElementById('practice-note-reflection').value || '';
+
+    // 漕いだ距離を保存
+    const distanceInput = document.getElementById('practice-note-distance');
+    if (distanceInput && distanceInput.value) {
+        note.rowingDistance = parseInt(distanceInput.value);
+    } else {
+        note.rowingDistance = null;
     }
 
-    function savePracticeNote() {
-        const modal = document.getElementById('practice-note-modal');
-        const noteId = modal.dataset.noteId;
-        const note = state.practiceNotes.find(n => n.id === noteId);
-        if (!note) return;
-
-        note.reflection = document.getElementById('practice-note-reflection').value || '';
-
-        // 漕いだ距離を保存
-        const distanceInput = document.getElementById('practice-note-distance');
-        if (distanceInput && distanceInput.value) {
-            note.rowingDistance = parseInt(distanceInput.value);
-        } else {
-            note.rowingDistance = null;
-        }
-
-        // ラン距離を保存
-        const runDistanceInput = document.getElementById('practice-note-run-distance');
-        if (runDistanceInput && runDistanceInput.value) {
-            note.runDistance = parseFloat(runDistanceInput.value);
-        } else {
-            note.runDistance = null;
-        }
-
-        // ウェイト部位を保存
-        const activePartBtn = document.querySelector('.weight-part-btn.active');
-        if (activePartBtn) {
-            note.weightBodyPart = activePartBtn.dataset.value;
-        }
-
-        // ウェイトメニューを保存
-        const weightGroup = document.getElementById('weight-menu-group');
-        if (weightGroup && !weightGroup.classList.contains('hidden')) {
-            note.weightMenus = getWeightMenuData();
-        }
-
-        // 乗艇メニューを保存
-        const rowingMenuGroup = document.getElementById('rowing-menu-group');
-        if (rowingMenuGroup && !rowingMenuGroup.classList.contains('hidden')) {
-            note.rowingMenus = getRowingMenuData();
-        }
-
-        note.updatedAt = new Date().toISOString();
-
-        DB.save('practice_notes', state.practiceNotes);
-
-        // Supabaseにも保存
-        if (DB.useSupabase && window.SupabaseConfig?.db) {
-            window.SupabaseConfig.db.savePracticeNote(note).catch(e => console.warn('Practice note sync failed:', e));
-        }
-
-        // クルー共有: 乗艇メニューを同クルーのメンバーに自動コピー
-        if (note.rowingMenus && note.rowingMenus.length > 0 && note.scheduleType === SCHEDULE_TYPES.BOAT) {
-            shareRowingMenuToCrew(note);
-        }
-
-        modal.classList.add('hidden');
-        renderPracticeNotesList();
-        showToast('保存しました', 'success');
+    // ラン距離を保存
+    const runDistanceInput = document.getElementById('practice-note-run-distance');
+    if (runDistanceInput && runDistanceInput.value) {
+        note.runDistance = parseFloat(runDistanceInput.value);
+    } else {
+        note.runDistance = null;
     }
 
-    /**
-     * 練習ノートを削除
-     */
-    function deletePracticeNote() {
-        const modal = document.getElementById('practice-note-modal');
-        const noteId = modal.dataset.noteId;
-        if (!noteId) return;
-
-        if (!confirm('この練習ノートを削除しますか？')) return;
-
-        const idx = state.practiceNotes.findIndex(n => n.id === noteId);
-        if (idx === -1) return;
-
-        state.practiceNotes.splice(idx, 1);
-        DB.save('practice_notes', state.practiceNotes);
-
-        // Supabaseからも削除
-        if (DB.useSupabase && window.SupabaseConfig?.db) {
-            window.SupabaseConfig.db.deletePracticeNote(noteId).catch(e => console.warn('Practice note delete sync failed:', e));
-        }
-
-        modal.classList.add('hidden');
-        renderPracticeNotesList();
-        showToast('練習ノートを削除しました', 'info');
+    // ウェイト部位を保存
+    const activePartBtn = document.querySelector('.weight-part-btn.active');
+    if (activePartBtn) {
+        note.weightBodyPart = activePartBtn.dataset.value;
     }
 
-    // =========================================
-    // ウェイトメニュー管理
-    // =========================================
+    // ウェイトメニューを保存
+    const weightGroup = document.getElementById('weight-menu-group');
+    if (weightGroup && !weightGroup.classList.contains('hidden')) {
+        note.weightMenus = getWeightMenuData();
+    }
 
-    function addWeightMenuItem(exercise, weight, reps, sets) {
-        const list = document.getElementById('weight-menu-list');
-        if (!list) return;
+    // 乗艇メニューを保存
+    const rowingMenuGroup = document.getElementById('rowing-menu-group');
+    if (rowingMenuGroup && !rowingMenuGroup.classList.contains('hidden')) {
+        note.rowingMenus = getRowingMenuData();
+    }
 
-        const idx = list.querySelectorAll('.weight-menu-item').length;
-        const item = document.createElement('div');
-        item.className = 'weight-menu-item';
-        item.innerHTML = `
+    note.updatedAt = new Date().toISOString();
+
+    DB.save('practice_notes', state.practiceNotes);
+
+    // Supabaseにも保存
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.savePracticeNote(note).catch(e => console.warn('Practice note sync failed:', e));
+    }
+
+    // クルー共有: 乗艇メニューを同クルーのメンバーに自動コピー
+    if (note.rowingMenus && note.rowingMenus.length > 0 && note.scheduleType === SCHEDULE_TYPES.BOAT) {
+        shareRowingMenuToCrew(note);
+    }
+
+    modal.classList.add('hidden');
+    renderPracticeNotesList();
+    showToast('保存しました', 'success');
+}
+
+/**
+ * 練習ノートを削除
+ */
+function deletePracticeNote() {
+    const modal = document.getElementById('practice-note-modal');
+    const noteId = modal.dataset.noteId;
+    if (!noteId) return;
+
+    if (!confirm('この練習ノートを削除しますか？')) return;
+
+    const idx = state.practiceNotes.findIndex(n => n.id === noteId);
+    if (idx === -1) return;
+
+    state.practiceNotes.splice(idx, 1);
+    DB.save('practice_notes', state.practiceNotes);
+
+    // Supabaseからも削除
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.deletePracticeNote(noteId).catch(e => console.warn('Practice note delete sync failed:', e));
+    }
+
+    modal.classList.add('hidden');
+    renderPracticeNotesList();
+    showToast('練習ノートを削除しました', 'info');
+}
+
+// =========================================
+// ウェイトメニュー管理
+// =========================================
+
+function addWeightMenuItem(exercise, weight, reps, sets) {
+    const list = document.getElementById('weight-menu-list');
+    if (!list) return;
+
+    const idx = list.querySelectorAll('.weight-menu-item').length;
+    const item = document.createElement('div');
+    item.className = 'weight-menu-item';
+    item.innerHTML = `
         <div class="wm-row">
             <input type="text" class="wm-exercise" placeholder="種目名 (例: ベンチプレス)" value="${exercise || ''}">
             <button type="button" class="wm-remove-btn" onclick="this.closest('.weight-menu-item').remove()">✕</button>
@@ -4713,51 +4714,51 @@ function openPracticeNoteModal(noteId) {
             </div>
         </div>
     `;
-        list.appendChild(item);
-    }
+    list.appendChild(item);
+}
 
-    function renderWeightMenuItems(items) {
-        const list = document.getElementById('weight-menu-list');
-        if (!list) return;
-        list.innerHTML = '';
-        if (items && items.length > 0) {
-            items.forEach(m => addWeightMenuItem(m.exercise, m.weight, m.reps, m.sets));
-        } else {
-            // 空なら1行追加
-            addWeightMenuItem();
+function renderWeightMenuItems(items) {
+    const list = document.getElementById('weight-menu-list');
+    if (!list) return;
+    list.innerHTML = '';
+    if (items && items.length > 0) {
+        items.forEach(m => addWeightMenuItem(m.exercise, m.weight, m.reps, m.sets));
+    } else {
+        // 空なら1行追加
+        addWeightMenuItem();
+    }
+}
+
+function getWeightMenuData() {
+    const items = document.querySelectorAll('#weight-menu-list .weight-menu-item');
+    const data = [];
+    items.forEach(item => {
+        const exercise = item.querySelector('.wm-exercise')?.value?.trim();
+        const weight = parseFloat(item.querySelector('.wm-weight')?.value) || 0;
+        const reps = parseInt(item.querySelector('.wm-reps')?.value) || 0;
+        const sets = parseInt(item.querySelector('.wm-sets')?.value) || 0;
+        if (exercise) {
+            data.push({ exercise, weight, reps, sets });
         }
-    }
+    });
+    return data;
+}
 
-    function getWeightMenuData() {
-        const items = document.querySelectorAll('#weight-menu-list .weight-menu-item');
-        const data = [];
-        items.forEach(item => {
-            const exercise = item.querySelector('.wm-exercise')?.value?.trim();
-            const weight = parseFloat(item.querySelector('.wm-weight')?.value) || 0;
-            const reps = parseInt(item.querySelector('.wm-reps')?.value) || 0;
-            const sets = parseInt(item.querySelector('.wm-sets')?.value) || 0;
-            if (exercise) {
-                data.push({ exercise, weight, reps, sets });
-            }
-        });
-        return data;
-    }
+// =========================================
+// 乗艇メニュー入力
+// =========================================
 
-    // =========================================
-    // 乗艇メニュー入力
-    // =========================================
+function addRowingMenuItem(mode, rate, distance, avgTime, onDist, offDist, wind) {
+    const list = document.getElementById('rowing-menu-list');
+    if (!list) return;
 
-    function addRowingMenuItem(mode, rate, distance, avgTime, onDist, offDist, wind) {
-        const list = document.getElementById('rowing-menu-list');
-        if (!list) return;
+    const isOnOff = mode === 'onoff';
+    const windVal = wind || '';
+    const item = document.createElement('div');
+    item.className = 'rowing-menu-item';
+    item.dataset.mode = isOnOff ? 'onoff' : 'normal';
 
-        const isOnOff = mode === 'onoff';
-        const windVal = wind || '';
-        const item = document.createElement('div');
-        item.className = 'rowing-menu-item';
-        item.dataset.mode = isOnOff ? 'onoff' : 'normal';
-
-        item.innerHTML = `
+    item.innerHTML = `
         <div class="rm-header">
             <div class="rm-mode-toggle">
                 <button type="button" class="rm-mode-btn ${!isOnOff ? 'active' : ''}" data-mode="normal" onclick="switchRowingMenuMode(this)">通常</button>
@@ -4810,481 +4811,481 @@ function openPracticeNoteModal(noteId) {
             </div>
         </div>
     `;
-        list.appendChild(item);
-    }
+    list.appendChild(item);
+}
 
-    function switchRowingMenuMode(btn) {
-        const item = btn.closest('.rowing-menu-item');
-        const mode = btn.dataset.mode;
-        item.dataset.mode = mode;
-        item.querySelectorAll('.rm-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
-        item.querySelector('.rm-normal-fields').style.display = mode === 'normal' ? '' : 'none';
-        item.querySelector('.rm-onoff-fields').style.display = mode === 'onoff' ? '' : 'none';
-    }
+function switchRowingMenuMode(btn) {
+    const item = btn.closest('.rowing-menu-item');
+    const mode = btn.dataset.mode;
+    item.dataset.mode = mode;
+    item.querySelectorAll('.rm-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    item.querySelector('.rm-normal-fields').style.display = mode === 'normal' ? '' : 'none';
+    item.querySelector('.rm-onoff-fields').style.display = mode === 'onoff' ? '' : 'none';
+}
 
-    function renderRowingMenuItems(items) {
-        const list = document.getElementById('rowing-menu-list');
-        if (!list) return;
-        list.innerHTML = '';
-        if (items && items.length > 0) {
-            items.forEach(m => addRowingMenuItem(m.mode, m.rate, m.distance, m.avgTime, m.onDist, m.offDist, m.wind));
-        }
+function renderRowingMenuItems(items) {
+    const list = document.getElementById('rowing-menu-list');
+    if (!list) return;
+    list.innerHTML = '';
+    if (items && items.length > 0) {
+        items.forEach(m => addRowingMenuItem(m.mode, m.rate, m.distance, m.avgTime, m.onDist, m.offDist, m.wind));
     }
+}
 
-    function getRowingMenuData() {
-        const items = document.querySelectorAll('#rowing-menu-list .rowing-menu-item');
-        const data = [];
-        items.forEach(item => {
-            const mode = item.dataset.mode || 'normal';
-            const wind = item.querySelector('.rm-wind')?.value || '';
-            if (mode === 'onoff') {
-                const onDist = parseInt(item.querySelector('.rm-on')?.value) || 0;
-                const offDist = parseInt(item.querySelector('.rm-off')?.value) || 0;
-                const rate = parseInt(item.querySelector('.rm-rate-onoff')?.value) || 0;
-                const distance = parseInt(item.querySelector('.rm-distance-onoff')?.value) || 0;
-                const avgTime = item.querySelector('.rm-avgtime-onoff')?.value?.trim() || '';
-                if (onDist || offDist || rate || distance) {
-                    data.push({ mode: 'onoff', onDist, offDist, rate, distance, avgTime, wind });
-                }
-            } else {
-                const rate = parseInt(item.querySelector('.rm-rate')?.value) || 0;
-                const distance = parseInt(item.querySelector('.rm-distance')?.value) || 0;
-                const avgTime = item.querySelector('.rm-avgtime')?.value?.trim() || '';
-                if (rate || distance) {
-                    data.push({ mode: 'normal', rate, distance, avgTime, wind });
-                }
+function getRowingMenuData() {
+    const items = document.querySelectorAll('#rowing-menu-list .rowing-menu-item');
+    const data = [];
+    items.forEach(item => {
+        const mode = item.dataset.mode || 'normal';
+        const wind = item.querySelector('.rm-wind')?.value || '';
+        if (mode === 'onoff') {
+            const onDist = parseInt(item.querySelector('.rm-on')?.value) || 0;
+            const offDist = parseInt(item.querySelector('.rm-off')?.value) || 0;
+            const rate = parseInt(item.querySelector('.rm-rate-onoff')?.value) || 0;
+            const distance = parseInt(item.querySelector('.rm-distance-onoff')?.value) || 0;
+            const avgTime = item.querySelector('.rm-avgtime-onoff')?.value?.trim() || '';
+            if (onDist || offDist || rate || distance) {
+                data.push({ mode: 'onoff', onDist, offDist, rate, distance, avgTime, wind });
             }
-        });
-        return data;
-    }
-
-    // クルー共有: 乗艇メニューを同クルーメンバーに自動コピー
-    function shareRowingMenuToCrew(note) {
-        if (!note.rowingMenus || note.rowingMenus.length === 0) return;
-
-        // 同日・同艇のスケジュールを検索してクルーメンバーを特定
-        const mySchedule = state.schedules.find(s => s.id === note.scheduleId);
-        if (!mySchedule || !mySchedule.crewIds || mySchedule.crewIds.length === 0) return;
-
-        let sharedCount = 0;
-        mySchedule.crewIds.forEach(memberId => {
-            if (memberId === note.userId) return; // 自分はスキップ
-
-            // そのメンバーの同日の乗艇練習ノートを探す
-            const memberNote = state.practiceNotes.find(n =>
-                n.userId === memberId &&
-                n.date === note.date &&
-                (n.scheduleType === SCHEDULE_TYPES.BOAT || n.scheduleType === '乗艇')
-            );
-
-            if (memberNote) {
-                // 既にメニューがある場合は上書きしない
-                if (memberNote.rowingMenus && memberNote.rowingMenus.length > 0) return;
-
-                memberNote.rowingMenus = JSON.parse(JSON.stringify(note.rowingMenus));
-                memberNote.rowingMenusSharedFrom = note.userId;
-                memberNote.updatedAt = new Date().toISOString();
-                sharedCount++;
-
-                if (DB.useSupabase && window.SupabaseConfig?.db) {
-                    window.SupabaseConfig.db.savePracticeNote(memberNote).catch(e => console.warn('Crew share sync failed:', e));
-                }
+        } else {
+            const rate = parseInt(item.querySelector('.rm-rate')?.value) || 0;
+            const distance = parseInt(item.querySelector('.rm-distance')?.value) || 0;
+            const avgTime = item.querySelector('.rm-avgtime')?.value?.trim() || '';
+            if (rate || distance) {
+                data.push({ mode: 'normal', rate, distance, avgTime, wind });
             }
-        });
-
-        if (sharedCount > 0) {
-            DB.save('practice_notes', state.practiceNotes);
-            showToast(`メニューをクルー${sharedCount}人に共有しました`, 'success');
         }
+    });
+    return data;
+}
+
+// クルー共有: 乗艇メニューを同クルーメンバーに自動コピー
+function shareRowingMenuToCrew(note) {
+    if (!note.rowingMenus || note.rowingMenus.length === 0) return;
+
+    // 同日・同艇のスケジュールを検索してクルーメンバーを特定
+    const mySchedule = state.schedules.find(s => s.id === note.scheduleId);
+    if (!mySchedule || !mySchedule.crewIds || mySchedule.crewIds.length === 0) return;
+
+    let sharedCount = 0;
+    mySchedule.crewIds.forEach(memberId => {
+        if (memberId === note.userId) return; // 自分はスキップ
+
+        // そのメンバーの同日の乗艇練習ノートを探す
+        const memberNote = state.practiceNotes.find(n =>
+            n.userId === memberId &&
+            n.date === note.date &&
+            (n.scheduleType === SCHEDULE_TYPES.BOAT || n.scheduleType === '乗艇')
+        );
+
+        if (memberNote) {
+            // 既にメニューがある場合は上書きしない
+            if (memberNote.rowingMenus && memberNote.rowingMenus.length > 0) return;
+
+            memberNote.rowingMenus = JSON.parse(JSON.stringify(note.rowingMenus));
+            memberNote.rowingMenusSharedFrom = note.userId;
+            memberNote.updatedAt = new Date().toISOString();
+            sharedCount++;
+
+            if (DB.useSupabase && window.SupabaseConfig?.db) {
+                window.SupabaseConfig.db.savePracticeNote(memberNote).catch(e => console.warn('Crew share sync failed:', e));
+            }
+        }
+    });
+
+    if (sharedCount > 0) {
+        DB.save('practice_notes', state.practiceNotes);
+        showToast(`メニューをクルー${sharedCount}人に共有しました`, 'success');
     }
+}
 
-    // =========================================
-    // 練習記録フィルター
-    // =========================================
+// =========================================
+// 練習記録フィルター
+// =========================================
 
-    let practiceNoteFilter = 'all';
+let practiceNoteFilter = 'all';
 
-    function filterPracticeNotes(filter) {
-        practiceNoteFilter = filter;
-        document.querySelectorAll('.pn-filter-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.filter === filter);
-        });
+function filterPracticeNotes(filter) {
+    practiceNoteFilter = filter;
+    document.querySelectorAll('.pn-filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === filter);
+    });
+    renderPracticeNotesList();
+}
+
+function openCrewNoteFromLink(crewNoteId) {
+    document.getElementById('practice-note-modal').classList.add('hidden');
+    const crewNote = state.crews.find(c => c.id === crewNoteId);
+    if (crewNote) {
+        openCrewNoteModal(crewNote);
+    }
+}
+
+function switchNoteSubtab(subtab) {
+    document.querySelectorAll('.note-subtab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.subtab === subtab);
+    });
+    document.querySelectorAll('.note-subtab-content').forEach(content => {
+        content.classList.toggle('hidden', content.id !== `subtab-${subtab}`);
+    });
+
+    if (subtab === 'practice') {
         renderPracticeNotesList();
+        renderWeeklyPracticeSummary();
+    } else if (subtab === 'crew') {
+        renderCrewList();
     }
+}
 
-    function openCrewNoteFromLink(crewNoteId) {
-        document.getElementById('practice-note-modal').classList.add('hidden');
-        const crewNote = state.crews.find(c => c.id === crewNoteId);
-        if (crewNote) {
-            openCrewNoteModal(crewNote);
-        }
+// =========================================
+// データ（記録）タブ
+// =========================================
+
+// ナビゲーション状態
+let ergoNavState = {
+    level: 'all',        // 'all' | 'category' | 'menu' | 'records'
+    category: null,      // 'distance' | 'time' | 'interval'
+    menuKey: null,       // '2000m TT' | '10000m' など
+    period: 'all'
+};
+
+// コーチ用エルゴビュー：閲覧対象ユーザーID取得
+function getErgoViewUserId() {
+    const select = document.getElementById('coach-player-select');
+    if (select && select.value && !select.closest('.hidden')) {
+        return select.value;
     }
+    return state.currentUser?.id;
+}
 
-    function switchNoteSubtab(subtab) {
-        document.querySelectorAll('.note-subtab-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.subtab === subtab);
+// =========================================
+// 全員データビュー
+// =========================================
+
+/**
+ * 全員データビュー初期化: ユーザー一覧をプルダウンに投入しイベント設定
+ */
+function initAllMembersErgoView() {
+    const userSelect = document.getElementById('all-members-user-select');
+    const menuSelect = document.getElementById('all-members-menu-select');
+    if (!userSelect || !menuSelect) return;
+
+    // ユーザー一覧を構築（承認済みのみ）
+    const currentVal = userSelect.value;
+    userSelect.innerHTML = '<option value="">選手を選択…</option>';
+    state.users
+        .filter(u => u.approvalStatus === '承認済み' && !u.isDemo)
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+        .forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.id;
+            opt.textContent = u.name || u.id;
+            userSelect.appendChild(opt);
         });
-        document.querySelectorAll('.note-subtab-content').forEach(content => {
-            content.classList.toggle('hidden', content.id !== `subtab-${subtab}`);
+    if (currentVal) userSelect.value = currentVal;
+
+    // イベントリスナー（onchangeで重複防止）
+    userSelect.onchange = () => renderAllMembersErgo();
+    menuSelect.onchange = () => renderAllMembersErgo();
+
+    // 初期表示
+    renderAllMembersErgo();
+}
+
+/**
+ * 選択された選手のエルゴ記録を表示
+ */
+function renderAllMembersErgo() {
+    const listEl = document.getElementById('all-members-ergo-list');
+    const userSelect = document.getElementById('all-members-user-select');
+    const menuSelect = document.getElementById('all-members-menu-select');
+    if (!listEl || !userSelect) return;
+
+    const selectedUserId = userSelect.value;
+    const selectedMenu = menuSelect?.value || '';
+
+    if (!selectedUserId) {
+        listEl.innerHTML = '<div class="empty-state"><p>👆 上のプルダウンから選手を選択してください</p></div>';
+        return;
+    }
+
+    // 選択ユーザーの記録をフィルタ（JustRowとその他を除外）
+    let records = state.ergoRecords.filter(r => {
+        if (r.userId !== selectedUserId) return false;
+        if (r.menuKey === 'JustRow' || r.menuKey === 'その他') return false;
+        return true;
+    });
+
+    // メニューフィルタ
+    if (selectedMenu) {
+        records = records.filter(r => r.menuKey === selectedMenu);
+    }
+
+    // 日付で降順ソート
+    records.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+    if (records.length === 0) {
+        const userName = state.users.find(u => u.id === selectedUserId)?.name || '選手';
+        listEl.innerHTML = `<div class="empty-state"><p>${userName}のエルゴデータがありません</p></div>`;
+        return;
+    }
+
+    // 既存のrenderRecordCardを使って詳細付きカードを描画（クリックで詳細モーダルも開く）
+    listEl.innerHTML = records.slice(0, 50).map(r => renderRecordCard(r, true)).join('');
+}
+
+/**
+ * エルゴタイムのフォーマット補助
+ */
+function formatErgoTime(seconds) {
+    if (!seconds || isNaN(seconds)) return '--:--';
+    const totalSec = parseFloat(seconds);
+    const min = Math.floor(totalSec / 60);
+    const sec = (totalSec % 60).toFixed(1);
+    return `${min}:${sec.padStart(4, '0')}`;
+}
+
+// コーチ用エルゴビュー初期化
+function initCoachErgoView() {
+    const selector = document.getElementById('coach-player-selector');
+    const select = document.getElementById('coach-player-select');
+    if (!selector || !select) return;
+
+    const role = state.currentUser?.role;
+    const isCoachOrAdmin = role === ROLES.ADMIN || role === ROLES.COACH;
+
+    if (!isCoachOrAdmin) {
+        selector.classList.add('hidden');
+        return;
+    }
+
+    // 選手リスト作成
+    selector.classList.remove('hidden');
+    const currentVal = select.value;
+    select.innerHTML = '<option value="">自分のデータ</option>';
+    state.users
+        .filter(u => u.id !== state.currentUser.id)
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+        .forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.id;
+            opt.textContent = u.name || u.id;
+            select.appendChild(opt);
         });
+    // 前回の選択を復元
+    if (currentVal) select.value = currentVal;
 
-        if (subtab === 'practice') {
-            renderPracticeNotesList();
-            renderWeeklyPracticeSummary();
-        } else if (subtab === 'crew') {
-            renderCrewList();
-        }
-    }
-
-    // =========================================
-    // データ（記録）タブ
-    // =========================================
-
-    // ナビゲーション状態
-    let ergoNavState = {
-        level: 'all',        // 'all' | 'category' | 'menu' | 'records'
-        category: null,      // 'distance' | 'time' | 'interval'
-        menuKey: null,       // '2000m TT' | '10000m' など
-        period: 'all'
-    };
-
-    // コーチ用エルゴビュー：閲覧対象ユーザーID取得
-    function getErgoViewUserId() {
-        const select = document.getElementById('coach-player-select');
-        if (select && select.value && !select.closest('.hidden')) {
-            return select.value;
-        }
-        return state.currentUser?.id;
-    }
-
-    // =========================================
-    // 全員データビュー
-    // =========================================
-
-    /**
-     * 全員データビュー初期化: ユーザー一覧をプルダウンに投入しイベント設定
-     */
-    function initAllMembersErgoView() {
-        const userSelect = document.getElementById('all-members-user-select');
-        const menuSelect = document.getElementById('all-members-menu-select');
-        if (!userSelect || !menuSelect) return;
-
-        // ユーザー一覧を構築（承認済みのみ）
-        const currentVal = userSelect.value;
-        userSelect.innerHTML = '<option value="">選手を選択…</option>';
-        state.users
-            .filter(u => u.approvalStatus === '承認済み' && !u.isDemo)
-            .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-            .forEach(u => {
-                const opt = document.createElement('option');
-                opt.value = u.id;
-                opt.textContent = u.name || u.id;
-                userSelect.appendChild(opt);
-            });
-        if (currentVal) userSelect.value = currentVal;
-
-        // イベントリスナー（onchangeで重複防止）
-        userSelect.onchange = () => renderAllMembersErgo();
-        menuSelect.onchange = () => renderAllMembersErgo();
-
-        // 初期表示
-        renderAllMembersErgo();
-    }
-
-    /**
-     * 選択された選手のエルゴ記録を表示
-     */
-    function renderAllMembersErgo() {
-        const listEl = document.getElementById('all-members-ergo-list');
-        const userSelect = document.getElementById('all-members-user-select');
-        const menuSelect = document.getElementById('all-members-menu-select');
-        if (!listEl || !userSelect) return;
-
-        const selectedUserId = userSelect.value;
-        const selectedMenu = menuSelect?.value || '';
-
-        if (!selectedUserId) {
-            listEl.innerHTML = '<div class="empty-state"><p>👆 上のプルダウンから選手を選択してください</p></div>';
-            return;
-        }
-
-        // 選択ユーザーの記録をフィルタ（JustRowとその他を除外）
-        let records = state.ergoRecords.filter(r => {
-            if (r.userId !== selectedUserId) return false;
-            if (r.menuKey === 'JustRow' || r.menuKey === 'その他') return false;
-            return true;
-        });
-
-        // メニューフィルタ
-        if (selectedMenu) {
-            records = records.filter(r => r.menuKey === selectedMenu);
-        }
-
-        // 日付で降順ソート
-        records.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-
-        if (records.length === 0) {
-            const userName = state.users.find(u => u.id === selectedUserId)?.name || '選手';
-            listEl.innerHTML = `<div class="empty-state"><p>${userName}のエルゴデータがありません</p></div>`;
-            return;
-        }
-
-        // 既存のrenderRecordCardを使って詳細付きカードを描画（クリックで詳細モーダルも開く）
-        listEl.innerHTML = records.slice(0, 50).map(r => renderRecordCard(r, true)).join('');
-    }
-
-    /**
-     * エルゴタイムのフォーマット補助
-     */
-    function formatErgoTime(seconds) {
-        if (!seconds || isNaN(seconds)) return '--:--';
-        const totalSec = parseFloat(seconds);
-        const min = Math.floor(totalSec / 60);
-        const sec = (totalSec % 60).toFixed(1);
-        return `${min}:${sec.padStart(4, '0')}`;
-    }
-
-    // コーチ用エルゴビュー初期化
-    function initCoachErgoView() {
-        const selector = document.getElementById('coach-player-selector');
-        const select = document.getElementById('coach-player-select');
-        if (!selector || !select) return;
-
-        const role = state.currentUser?.role;
-        const isCoachOrAdmin = role === ROLES.ADMIN || role === ROLES.COACH;
-
-        if (!isCoachOrAdmin) {
-            selector.classList.add('hidden');
-            return;
-        }
-
-        // 選手リスト作成
-        selector.classList.remove('hidden');
-        const currentVal = select.value;
-        select.innerHTML = '<option value="">自分のデータ</option>';
-        state.users
-            .filter(u => u.id !== state.currentUser.id)
-            .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-            .forEach(u => {
-                const opt = document.createElement('option');
-                opt.value = u.id;
-                opt.textContent = u.name || u.id;
-                select.appendChild(opt);
-            });
-        // 前回の選択を復元
-        if (currentVal) select.value = currentVal;
-
-        // 変更イベント
-        select.onchange = () => {
-            renderErgoRecords();
-        };
-    }
-
-    function renderErgoRecords() {
-        const list = document.getElementById('ergo-records-list');
-        if (!list) return;
-
-        updateBreadcrumb();
-
-        // レベルに応じて表示を切り替え
-        if (ergoNavState.level === 'all') {
-            renderAllRecords();
-        } else if (ergoNavState.level === 'category') {
-            renderMenuSelection();
-        } else if (ergoNavState.level === 'menu') {
-            renderMenuRecords();
-        }
-    }
-
-    // パン屑ナビゲーションを更新
-    function updateBreadcrumb() {
-        const breadcrumb = document.getElementById('ergo-breadcrumb');
-        if (!breadcrumb) return;
-
-        let html = '<span class="breadcrumb-item" data-level="all" onclick="navigateErgo(\'all\')">すべて</span>';
-
-        if (ergoNavState.level !== 'all' && ergoNavState.category) {
-            const categoryNames = { distance: '距離', time: '時間', interval: 'インターバル' };
-            const isActive = ergoNavState.level === 'category';
-            html += `<span class="breadcrumb-item ${isActive ? 'active' : ''}" data-level="category" onclick="navigateErgo('category')">${categoryNames[ergoNavState.category]}</span>`;
-        }
-
-        if (ergoNavState.level === 'menu' && ergoNavState.menuKey) {
-            html += `<span class="breadcrumb-item active" data-level="menu">${ergoNavState.menuKey}</span>`;
-        }
-
-        breadcrumb.innerHTML = html;
-    }
-
-    // ナビゲーション
-    function navigateErgo(level, options = {}) {
-        if (level === 'all') {
-            ergoNavState = { level: 'all', category: null, menuKey: null, period: ergoNavState.period };
-            document.getElementById('category-tabs-container').classList.remove('hidden');
-            document.getElementById('menu-selection').classList.add('hidden');
-            // カテゴリタブをリセット
-            document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
-            document.querySelector('.category-tab[data-category="all"]')?.classList.add('active');
-        } else if (level === 'category') {
-            ergoNavState.level = 'category';
-            ergoNavState.menuKey = null;
-            if (options.category) ergoNavState.category = options.category;
-            document.getElementById('category-tabs-container').classList.add('hidden');
-            document.getElementById('menu-selection').classList.remove('hidden');
-        } else if (level === 'menu') {
-            ergoNavState.level = 'menu';
-            if (options.menuKey) ergoNavState.menuKey = options.menuKey;
-            document.getElementById('menu-selection').classList.add('hidden');
-        }
-
+    // 変更イベント
+    select.onchange = () => {
         renderErgoRecords();
+    };
+}
+
+function renderErgoRecords() {
+    const list = document.getElementById('ergo-records-list');
+    if (!list) return;
+
+    updateBreadcrumb();
+
+    // レベルに応じて表示を切り替え
+    if (ergoNavState.level === 'all') {
+        renderAllRecords();
+    } else if (ergoNavState.level === 'category') {
+        renderMenuSelection();
+    } else if (ergoNavState.level === 'menu') {
+        renderMenuRecords();
+    }
+}
+
+// パン屑ナビゲーションを更新
+function updateBreadcrumb() {
+    const breadcrumb = document.getElementById('ergo-breadcrumb');
+    if (!breadcrumb) return;
+
+    let html = '<span class="breadcrumb-item" data-level="all" onclick="navigateErgo(\'all\')">すべて</span>';
+
+    if (ergoNavState.level !== 'all' && ergoNavState.category) {
+        const categoryNames = { distance: '距離', time: '時間', interval: 'インターバル' };
+        const isActive = ergoNavState.level === 'category';
+        html += `<span class="breadcrumb-item ${isActive ? 'active' : ''}" data-level="category" onclick="navigateErgo('category')">${categoryNames[ergoNavState.category]}</span>`;
     }
 
-    // すべての記録を新しい順に表示
-    function renderAllRecords() {
-        const list = document.getElementById('ergo-records-list');
-
-        let records = state.ergoRecords.filter(r => {
-            if (r.userId !== getErgoViewUserId()) return false;
-            if (r.menuKey === 'JustRow' || r.menuKey === 'その他') return false;
-            return applyPeriodFilter(r);
-        }).sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        if (records.length === 0) {
-            list.innerHTML = '<div class="empty-state"><div class="icon">📊</div><p>記録がありません</p></div>';
-            return;
-        }
-
-        list.innerHTML = records.slice(0, 30).map(r => renderRecordCard(r, true)).join('');
+    if (ergoNavState.level === 'menu' && ergoNavState.menuKey) {
+        html += `<span class="breadcrumb-item active" data-level="menu">${ergoNavState.menuKey}</span>`;
     }
 
-    // メニュー選択グリッド
-    function renderMenuSelection() {
-        const grid = document.getElementById('menu-grid');
-        const list = document.getElementById('ergo-records-list');
-        if (!grid) return;
+    breadcrumb.innerHTML = html;
+}
 
-        // 選択されたカテゴリのメニューを集計
-        const records = state.ergoRecords.filter(r => {
-            if (r.userId !== getErgoViewUserId()) return false;
-            if (r.menuKey === 'JustRow' || r.menuKey === 'その他') return false;
-            if (r.category !== ergoNavState.category) return false;
-            return true;
-        });
+// ナビゲーション
+function navigateErgo(level, options = {}) {
+    if (level === 'all') {
+        ergoNavState = { level: 'all', category: null, menuKey: null, period: ergoNavState.period };
+        document.getElementById('category-tabs-container').classList.remove('hidden');
+        document.getElementById('menu-selection').classList.add('hidden');
+        // カテゴリタブをリセット
+        document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector('.category-tab[data-category="all"]')?.classList.add('active');
+    } else if (level === 'category') {
+        ergoNavState.level = 'category';
+        ergoNavState.menuKey = null;
+        if (options.category) ergoNavState.category = options.category;
+        document.getElementById('category-tabs-container').classList.add('hidden');
+        document.getElementById('menu-selection').classList.remove('hidden');
+    } else if (level === 'menu') {
+        ergoNavState.level = 'menu';
+        if (options.menuKey) ergoNavState.menuKey = options.menuKey;
+        document.getElementById('menu-selection').classList.add('hidden');
+    }
 
-        // メニューごとに集計（サブタイプ情報も保持）
-        const menuData = {};
-        records.forEach(r => {
-            const key = r.menuKey || 'その他';
-            if (!menuData[key]) {
-                menuData[key] = {
-                    count: 0,
-                    subtype: ergoNavState.category === 'interval' ? getIntervalSubtypeFromMenuKey(key, r) : null
-                };
-            }
-            menuData[key].count++;
-        });
+    renderErgoRecords();
+}
 
-        if (Object.keys(menuData).length === 0) {
-            grid.innerHTML = '<div class="empty-state"><p>このカテゴリの記録がありません</p></div>';
-            list.innerHTML = '';
-            return;
+// すべての記録を新しい順に表示
+function renderAllRecords() {
+    const list = document.getElementById('ergo-records-list');
+
+    let records = state.ergoRecords.filter(r => {
+        if (r.userId !== getErgoViewUserId()) return false;
+        if (r.menuKey === 'JustRow' || r.menuKey === 'その他') return false;
+        return applyPeriodFilter(r);
+    }).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    if (records.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="icon">📊</div><p>記録がありません</p></div>';
+        return;
+    }
+
+    list.innerHTML = records.slice(0, 30).map(r => renderRecordCard(r, true)).join('');
+}
+
+// メニュー選択グリッド
+function renderMenuSelection() {
+    const grid = document.getElementById('menu-grid');
+    const list = document.getElementById('ergo-records-list');
+    if (!grid) return;
+
+    // 選択されたカテゴリのメニューを集計
+    const records = state.ergoRecords.filter(r => {
+        if (r.userId !== getErgoViewUserId()) return false;
+        if (r.menuKey === 'JustRow' || r.menuKey === 'その他') return false;
+        if (r.category !== ergoNavState.category) return false;
+        return true;
+    });
+
+    // メニューごとに集計（サブタイプ情報も保持）
+    const menuData = {};
+    records.forEach(r => {
+        const key = r.menuKey || 'その他';
+        if (!menuData[key]) {
+            menuData[key] = {
+                count: 0,
+                subtype: ergoNavState.category === 'interval' ? getIntervalSubtypeFromMenuKey(key, r) : null
+            };
         }
+        menuData[key].count++;
+    });
 
-        // メニューカードを生成
-        grid.innerHTML = Object.entries(menuData)
-            .sort((a, b) => b[1].count - a[1].count)
-            .map(([menuKey, data]) => {
-                const subtypeLabel = data.subtype ? `<span class="menu-subtype ${data.subtype.class}">${data.subtype.label}</span>` : '';
-                return `
+    if (Object.keys(menuData).length === 0) {
+        grid.innerHTML = '<div class="empty-state"><p>このカテゴリの記録がありません</p></div>';
+        list.innerHTML = '';
+        return;
+    }
+
+    // メニューカードを生成
+    grid.innerHTML = Object.entries(menuData)
+        .sort((a, b) => b[1].count - a[1].count)
+        .map(([menuKey, data]) => {
+            const subtypeLabel = data.subtype ? `<span class="menu-subtype ${data.subtype.class}">${data.subtype.label}</span>` : '';
+            return `
             <div class="menu-card ${ergoNavState.category}" onclick="navigateErgo('menu', {menuKey: '${menuKey}'})">
                 <div class="menu-name">${menuKey}</div>
                 ${subtypeLabel}
                 <div class="menu-count">${data.count}件の記録</div>
             </div>
         `;
-            }).join('');
+        }).join('');
 
-        list.innerHTML = '';
+    list.innerHTML = '';
+}
+
+// メニューキーからインターバルサブタイプを判定
+function getIntervalSubtypeFromMenuKey(menuKey, sampleRecord) {
+    // まずメニューキーのパターンで判定
+    if (/\d+m×\d+/.test(menuKey)) {
+        return { label: '距離', class: 'distance-based' };
+    }
+    if (/\d+(分|min)×\d+/.test(menuKey) || /\d+sec×\d+/.test(menuKey)) {
+        return { label: '時間', class: 'time-based' };
     }
 
-    // メニューキーからインターバルサブタイプを判定
-    function getIntervalSubtypeFromMenuKey(menuKey, sampleRecord) {
-        // まずメニューキーのパターンで判定
-        if (/\d+m×\d+/.test(menuKey)) {
-            return { label: '距離', class: 'distance-based' };
-        }
-        if (/\d+(分|min)×\d+/.test(menuKey) || /\d+sec×\d+/.test(menuKey)) {
-            return { label: '時間', class: 'time-based' };
-        }
-
-        // サンプルレコードのworkoutTypeから判定
-        if (sampleRecord) {
-            const raw = state.ergoRaw.find(r => r.id === sampleRecord.rawId);
-            if (raw) {
-                if (raw.workoutType === 'FixedDistanceInterval') {
-                    return { label: '距離', class: 'distance-based' };
-                }
-                if (raw.workoutType === 'FixedTimeInterval') {
-                    return { label: '時間', class: 'time-based' };
-                }
-                if (raw.workoutType === 'VariableInterval') {
-                    return { label: '可変', class: 'variable' };
-                }
+    // サンプルレコードのworkoutTypeから判定
+    if (sampleRecord) {
+        const raw = state.ergoRaw.find(r => r.id === sampleRecord.rawId);
+        if (raw) {
+            if (raw.workoutType === 'FixedDistanceInterval') {
+                return { label: '距離', class: 'distance-based' };
+            }
+            if (raw.workoutType === 'FixedTimeInterval') {
+                return { label: '時間', class: 'time-based' };
+            }
+            if (raw.workoutType === 'VariableInterval') {
+                return { label: '可変', class: 'variable' };
             }
         }
-
-        return null;
     }
 
-    // 特定メニューの記録一覧
-    function renderMenuRecords() {
-        const list = document.getElementById('ergo-records-list');
+    return null;
+}
 
-        let records = state.ergoRecords.filter(r => {
-            if (r.userId !== getErgoViewUserId()) return false;
-            if (r.menuKey !== ergoNavState.menuKey) return false;
-            return applyPeriodFilter(r);
-        }).sort((a, b) => new Date(b.date) - new Date(a.date));
+// 特定メニューの記録一覧
+function renderMenuRecords() {
+    const list = document.getElementById('ergo-records-list');
 
-        if (records.length === 0) {
-            list.innerHTML = '<div class="empty-state"><p>記録がありません</p></div>';
-            return;
-        }
+    let records = state.ergoRecords.filter(r => {
+        if (r.userId !== getErgoViewUserId()) return false;
+        if (r.menuKey !== ergoNavState.menuKey) return false;
+        return applyPeriodFilter(r);
+    }).sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        list.innerHTML = records.map(r => renderRecordCard(r, true)).join('');
+    if (records.length === 0) {
+        list.innerHTML = '<div class="empty-state"><p>記録がありません</p></div>';
+        return;
     }
 
-    // 期間フィルタを適用
-    function applyPeriodFilter(record) {
-        if (ergoNavState.period === 'all') return true;
+    list.innerHTML = records.map(r => renderRecordCard(r, true)).join('');
+}
 
-        const recordDate = new Date(record.date);
-        const now = new Date();
+// 期間フィルタを適用
+function applyPeriodFilter(record) {
+    if (ergoNavState.period === 'all') return true;
 
-        if (ergoNavState.period === 'week') {
-            const weekAgo = new Date(now);
-            weekAgo.setDate(now.getDate() - 7);
-            return recordDate >= weekAgo;
-        } else if (ergoNavState.period === 'month') {
-            const monthAgo = new Date(now);
-            monthAgo.setMonth(now.getMonth() - 1);
-            return recordDate >= monthAgo;
-        }
-        return true;
+    const recordDate = new Date(record.date);
+    const now = new Date();
+
+    if (ergoNavState.period === 'week') {
+        const weekAgo = new Date(now);
+        weekAgo.setDate(now.getDate() - 7);
+        return recordDate >= weekAgo;
+    } else if (ergoNavState.period === 'month') {
+        const monthAgo = new Date(now);
+        monthAgo.setMonth(now.getMonth() - 1);
+        return recordDate >= monthAgo;
     }
+    return true;
+}
 
-    // 記録カードのレンダリング
-    function renderRecordCard(r, clickable = false) {
-        const display = formatDisplayDate(r.date);
-        const categoryClass = r.category || 'other';
-        const clickableClass = clickable ? 'clickable' : '';
-        const onclick = clickable ? `onclick="openErgoDetail('${r.id}')"` : '';
+// 記録カードのレンダリング
+function renderRecordCard(r, clickable = false) {
+    const display = formatDisplayDate(r.date);
+    const categoryClass = r.category || 'other';
+    const clickableClass = clickable ? 'clickable' : '';
+    const onclick = clickable ? `onclick="openErgoDetail('${r.id}')"` : '';
 
-        // インターバルのサブタイプを取得（距離ベース/タイムベース）
-        const intervalSubtype = getIntervalSubtype(r);
+    // インターバルのサブタイプを取得（距離ベース/タイムベース）
+    const intervalSubtype = getIntervalSubtype(r);
 
-        return `<div class="ergo-record-item ${categoryClass} ${clickableClass}" ${onclick}>
+    return `<div class="ergo-record-item ${categoryClass} ${clickableClass}" ${onclick}>
         <div class="header">
             <div class="menu-info">
                 <span class="menu-key">${r.menuKey || r.distance + 'm'}</span>
@@ -5305,153 +5306,153 @@ function openPracticeNoteModal(noteId) {
         </div>
         <div class="source">${r.source || ''}</div>
     </div>`;
+}
+
+// インターバルのサブタイプを判定（距離ベース/タイムベース）
+function getIntervalSubtype(record) {
+    if (record.category !== 'interval') return null;
+
+    const menuKey = record.menuKey || '';
+
+    // 距離ベース: 「500m×8」などのパターン
+    if (/\d+m×\d+/.test(menuKey)) {
+        return { label: '距離', class: 'distance-based' };
     }
 
-    // インターバルのサブタイプを判定（距離ベース/タイムベース）
-    function getIntervalSubtype(record) {
-        if (record.category !== 'interval') return null;
+    // タイムベース: 「1分×10」「1min×10」などのパターン
+    if (/\d+(分|min)×\d+/.test(menuKey) || /\d+sec×\d+/.test(menuKey)) {
+        return { label: '時間', class: 'time-based' };
+    }
 
-        const menuKey = record.menuKey || '';
-
-        // 距離ベース: 「500m×8」などのパターン
-        if (/\d+m×\d+/.test(menuKey)) {
+    // rawDataからworkoutTypeを確認
+    const raw = state.ergoRaw.find(r => r.id === record.rawId);
+    if (raw) {
+        if (raw.workoutType === 'FixedDistanceInterval') {
             return { label: '距離', class: 'distance-based' };
         }
-
-        // タイムベース: 「1分×10」「1min×10」などのパターン
-        if (/\d+(分|min)×\d+/.test(menuKey) || /\d+sec×\d+/.test(menuKey)) {
+        if (raw.workoutType === 'FixedTimeInterval') {
             return { label: '時間', class: 'time-based' };
         }
-
-        // rawDataからworkoutTypeを確認
-        const raw = state.ergoRaw.find(r => r.id === record.rawId);
-        if (raw) {
-            if (raw.workoutType === 'FixedDistanceInterval') {
-                return { label: '距離', class: 'distance-based' };
-            }
-            if (raw.workoutType === 'FixedTimeInterval') {
-                return { label: '時間', class: 'time-based' };
-            }
-            if (raw.workoutType === 'VariableInterval') {
-                return { label: '可変', class: 'variable' };
-            }
+        if (raw.workoutType === 'VariableInterval') {
+            return { label: '可変', class: 'variable' };
         }
-
-        return null;
     }
 
-    // エルゴ詳細モーダルを開く
-    function openErgoDetail(recordId) {
-        let record = state.ergoRecords.find(r => r.id === recordId);
-        // ergoSessionsにもフォールバック
-        if (!record) record = state.ergoSessions.find(s => s.id === recordId);
-        if (!record) return;
+    return null;
+}
 
-        // rawIdから直接rawデータを取得（フォールバック付き）
-        let raw = state.ergoRaw.find(r => r.id === record.rawId);
-        // rawIdで見つからない場合、concept2Idで検索
-        if (!raw && record.concept2Id) {
-            raw = state.ergoRaw.find(r => r.concept2Id === record.concept2Id);
-        }
+// エルゴ詳細モーダルを開く
+function openErgoDetail(recordId) {
+    let record = state.ergoRecords.find(r => r.id === recordId);
+    // ergoSessionsにもフォールバック
+    if (!record) record = state.ergoSessions.find(s => s.id === recordId);
+    if (!record) return;
 
-        const modal = document.getElementById('ergo-detail-modal');
-        const display = formatDisplayDate(record.date);
+    // rawIdから直接rawデータを取得（フォールバック付き）
+    let raw = state.ergoRaw.find(r => r.id === record.rawId);
+    // rawIdで見つからない場合、concept2Idで検索
+    if (!raw && record.concept2Id) {
+        raw = state.ergoRaw.find(r => r.concept2Id === record.concept2Id);
+    }
 
-        // 基本情報を設定
-        document.getElementById('ergo-detail-title').textContent = record.menuKey || '記録詳細';
-        document.getElementById('ergo-detail-date').textContent = `${display.year}/${display.month}/${display.day}`;
-        document.getElementById('ergo-detail-distance').textContent = record.distance ? `${record.distance}m` : '-';
-        document.getElementById('ergo-detail-time').textContent = record.timeDisplay || '-';
-        document.getElementById('ergo-detail-split').textContent = record.split || '-';
-        document.getElementById('ergo-detail-rate').textContent = record.strokeRate || '-';
+    const modal = document.getElementById('ergo-detail-modal');
+    const display = formatDisplayDate(record.date);
 
-        // ワット / カロリー / ドラッグファクタ表示
-        const rawData = record.rawData || raw || {};
-        const workout = rawData.workout || rawData;
-        const avgWatts = record.watts || workout.avg_watts || workout.watts || null;
-        const calories = record.calories || workout.calories || workout.cal_hr || null;
-        const dragFactor = record.dragFactor || workout.drag_factor || workout.dragFactor || null;
+    // 基本情報を設定
+    document.getElementById('ergo-detail-title').textContent = record.menuKey || '記録詳細';
+    document.getElementById('ergo-detail-date').textContent = `${display.year}/${display.month}/${display.day}`;
+    document.getElementById('ergo-detail-distance').textContent = record.distance ? `${record.distance}m` : '-';
+    document.getElementById('ergo-detail-time').textContent = record.timeDisplay || '-';
+    document.getElementById('ergo-detail-split').textContent = record.split || '-';
+    document.getElementById('ergo-detail-rate').textContent = record.strokeRate || '-';
 
-        const wattsRow = document.getElementById('ergo-detail-watts-row');
-        const calRow = document.getElementById('ergo-detail-cal-row');
-        const dfRow = document.getElementById('ergo-detail-df-row');
+    // ワット / カロリー / ドラッグファクタ表示
+    const rawData = record.rawData || raw || {};
+    const workout = rawData.workout || rawData;
+    const avgWatts = record.watts || workout.avg_watts || workout.watts || null;
+    const calories = record.calories || workout.calories || workout.cal_hr || null;
+    const dragFactor = record.dragFactor || workout.drag_factor || workout.dragFactor || null;
 
-        if (wattsRow) {
-            if (avgWatts) {
-                document.getElementById('ergo-detail-watts').textContent = `${avgWatts} W`;
-                wattsRow.style.display = '';
-            } else { wattsRow.style.display = 'none'; }
-        }
-        if (calRow) {
-            if (calories) {
-                document.getElementById('ergo-detail-cal').textContent = `${calories} kcal`;
-                calRow.style.display = '';
-            } else { calRow.style.display = 'none'; }
-        }
-        if (dfRow) {
-            if (dragFactor) {
-                document.getElementById('ergo-detail-df').textContent = dragFactor;
-                dfRow.style.display = '';
-            } else { dfRow.style.display = 'none'; }
-        }
+    const wattsRow = document.getElementById('ergo-detail-watts-row');
+    const calRow = document.getElementById('ergo-detail-cal-row');
+    const dfRow = document.getElementById('ergo-detail-df-row');
 
-        // IDT表示（2000m TTの場合）
-        const idtDiv = document.getElementById('ergo-detail-idt');
-        if (idtDiv) {
-            if (record.menuKey === '2000m TT') {
-                const weight = record.weight || getWeightForDate(record.userId, record.date);
-                const user = state.users.find(u => u.id === record.userId);
-                const gender = user?.gender || 'man';
-                const actualTime = record.time || parseTimeStr(record.timeDisplay);
+    if (wattsRow) {
+        if (avgWatts) {
+            document.getElementById('ergo-detail-watts').textContent = `${avgWatts} W`;
+            wattsRow.style.display = '';
+        } else { wattsRow.style.display = 'none'; }
+    }
+    if (calRow) {
+        if (calories) {
+            document.getElementById('ergo-detail-cal').textContent = `${calories} kcal`;
+            calRow.style.display = '';
+        } else { calRow.style.display = 'none'; }
+    }
+    if (dfRow) {
+        if (dragFactor) {
+            document.getElementById('ergo-detail-df').textContent = dragFactor;
+            dfRow.style.display = '';
+        } else { dfRow.style.display = 'none'; }
+    }
 
-                if (weight && actualTime) {
-                    const idtSeconds = calculateIDTSeconds(weight, gender);
-                    const idtValue = calculateIDTPercent(actualTime, idtSeconds);
+    // IDT表示（2000m TTの場合）
+    const idtDiv = document.getElementById('ergo-detail-idt');
+    if (idtDiv) {
+        if (record.menuKey === '2000m TT') {
+            const weight = record.weight || getWeightForDate(record.userId, record.date);
+            const user = state.users.find(u => u.id === record.userId);
+            const gender = user?.gender || 'man';
+            const actualTime = record.time || parseTimeStr(record.timeDisplay);
 
-                    let idtClass = 'idt-low';
-                    if (idtValue >= 100) idtClass = 'idt-high';
-                    else if (idtValue >= 95) idtClass = 'idt-mid';
+            if (weight && actualTime) {
+                const idtSeconds = calculateIDTSeconds(weight, gender);
+                const idtValue = calculateIDTPercent(actualTime, idtSeconds);
 
-                    idtDiv.innerHTML = `
+                let idtClass = 'idt-low';
+                if (idtValue >= 100) idtClass = 'idt-high';
+                else if (idtValue >= 95) idtClass = 'idt-mid';
+
+                idtDiv.innerHTML = `
                     <div class="idt-detail-label">⚖️ IDT（体重 ${weight}kg）</div>
                     <div style="display:flex;align-items:baseline;gap:12px;">
                         <span class="idt-detail-value ${idtClass}">${idtValue.toFixed(1)}</span>
                     </div>
                 `;
-                    idtDiv.classList.remove('hidden');
-                } else {
-                    idtDiv.innerHTML = '';
-                    idtDiv.classList.add('hidden');
-                }
+                idtDiv.classList.remove('hidden');
             } else {
                 idtDiv.innerHTML = '';
                 idtDiv.classList.add('hidden');
             }
+        } else {
+            idtDiv.innerHTML = '';
+            idtDiv.classList.add('hidden');
         }
-
-        // スプリット/インターバルを表示
-        // rawデータがない場合、record内のデータからフォールバック構築
-        let effectiveRaw = raw;
-        if (!effectiveRaw) {
-            const fallbackSplits = record.splits || record.rawData?.workout?.splits || [];
-            const fallbackIntervals = record.intervals || record.rawData?.workout?.intervals || [];
-            if (fallbackSplits.length > 0 || fallbackIntervals.length > 0) {
-                effectiveRaw = { splits: fallbackSplits, intervals: fallbackIntervals };
-            }
-        }
-        renderSplits(record, effectiveRaw);
-
-        modal.classList.remove('hidden');
     }
 
-    // 500mスプリットまたはインターバル表示
-    function renderSplits(record, raw) {
-        const container = document.getElementById('ergo-splits-list');
-        const section = container.closest('.splits-section');
-        const title = section?.querySelector('h4');
+    // スプリット/インターバルを表示
+    // rawデータがない場合、record内のデータからフォールバック構築
+    let effectiveRaw = raw;
+    if (!effectiveRaw) {
+        const fallbackSplits = record.splits || record.rawData?.workout?.splits || [];
+        const fallbackIntervals = record.intervals || record.rawData?.workout?.intervals || [];
+        if (fallbackSplits.length > 0 || fallbackIntervals.length > 0) {
+            effectiveRaw = { splits: fallbackSplits, intervals: fallbackIntervals };
+        }
+    }
+    renderSplits(record, effectiveRaw);
 
-        // テーブルヘッダー生成
-        const renderHeader = () => `
+    modal.classList.remove('hidden');
+}
+
+// 500mスプリットまたはインターバル表示
+function renderSplits(record, raw) {
+    const container = document.getElementById('ergo-splits-list');
+    const section = container.closest('.splits-section');
+    const title = section?.querySelector('h4');
+
+    // テーブルヘッダー生成
+    const renderHeader = () => `
         <div class="c2-table-row header">
             <span class="c2-col">時間</span>
             <span class="c2-col">距離</span>
@@ -5461,8 +5462,8 @@ function openPracticeNoteModal(noteId) {
             <span class="c2-col">SR</span>
         </div>`;
 
-        // 行生成
-        const renderRow = (time, dist, pace, watts, cal, sr, className = '') => `
+    // 行生成
+    const renderRow = (time, dist, pace, watts, cal, sr, className = '') => `
         <div class="c2-table-row ${className}">
             <span class="c2-col">${formatTime(time)}</span>
             <span class="c2-col">${dist}m</span>
@@ -5472,176 +5473,176 @@ function openPracticeNoteModal(noteId) {
             <span class="c2-col">${sr}</span>
         </div>`;
 
-        let html = '<div class="c2-table">' + renderHeader();
+    let html = '<div class="c2-table">' + renderHeader();
 
-        // インターバルデータがあればそれを表示
-        if (raw?.intervals && raw.intervals.length > 0) {
-            if (title) title.textContent = 'インターバル詳細';
+    // インターバルデータがあればそれを表示
+    if (raw?.intervals && raw.intervals.length > 0) {
+        if (title) title.textContent = 'インターバル詳細';
 
-            // 全体平均行 (Summary) - raw.intervals自体にはSummaryがない場合が多いが、
-            // record自体に全体のSummaryがあるはず。ここでは各インターバルを表示。
+        // 全体平均行 (Summary) - raw.intervals自体にはSummaryがない場合が多いが、
+        // record自体に全体のSummaryがあるはず。ここでは各インターバルを表示。
 
-            html += raw.intervals.map((interval, idx) => {
-                const time = interval.time ? interval.time / 10 : 0;
-                const dist = interval.distance || 0;
-                const sr = interval.stroke_rate || interval.spm || '-';
-                const watts = interval.watts || interval.avg_watts || '-';
-                const cal = interval.cal_hr || interval.calories || '-';
-                // ペース計算 (time / (dist/500))
-                let pace = 0;
-                if (dist > 0) pace = time / (dist / 500);
+        html += raw.intervals.map((interval, idx) => {
+            const time = interval.time ? interval.time / 10 : 0;
+            const dist = interval.distance || 0;
+            const sr = interval.stroke_rate || interval.spm || '-';
+            const watts = interval.watts || interval.avg_watts || '-';
+            const cal = interval.cal_hr || interval.calories || '-';
+            // ペース計算 (time / (dist/500))
+            let pace = 0;
+            if (dist > 0) pace = time / (dist / 500);
 
-                return renderRow(time, dist, pace, watts, cal, sr);
-            }).join('');
+            return renderRow(time, dist, pace, watts, cal, sr);
+        }).join('');
 
-        } else if (raw?.splits && raw.splits.length > 0) {
-            // スプリット表示
-            if (title) title.textContent = '500mスプリット';
+    } else if (raw?.splits && raw.splits.length > 0) {
+        // スプリット表示
+        if (title) title.textContent = '500mスプリット';
 
-            html += raw.splits.map((split, idx) => {
-                const time = (split.time || split.split || 0) / 10;
-                const dist = split.distance || 500; // 通常スプリット記録は500m区切りだが、最後は端数かも
-                const sr = split.stroke_rate || split.spm || '-';
-                const watts = split.watts || split.avg_watts || '-';
-                const cal = split.cal_hr || split.calories || '-';
-                // ペースはその区間のタイムそのもの(500mなら)
-                let pace = time / (dist / 500);
-                if (dist === 0) pace = 0;
+        html += raw.splits.map((split, idx) => {
+            const time = (split.time || split.split || 0) / 10;
+            const dist = split.distance || 500; // 通常スプリット記録は500m区切りだが、最後は端数かも
+            const sr = split.stroke_rate || split.spm || '-';
+            const watts = split.watts || split.avg_watts || '-';
+            const cal = split.cal_hr || split.calories || '-';
+            // ペースはその区間のタイムそのもの(500mなら)
+            let pace = time / (dist / 500);
+            if (dist === 0) pace = 0;
 
-                return renderRow(time, dist, pace, watts, cal, sr);
-            }).join('');
-        } else {
-            html += '<div class="c2-table-row"><span class="c2-col" style="flex:1; text-align:center;">データなし</span></div>';
-        }
-
-        html += '</div>';
-        container.innerHTML = html;
+            return renderRow(time, dist, pace, watts, cal, sr);
+        }).join('');
+    } else {
+        html += '<div class="c2-table-row"><span class="c2-col" style="flex:1; text-align:center;">データなし</span></div>';
     }
 
-    // 詳細モーダルを閉じる
-    function closeErgoDetailModal() {
-        document.getElementById('ergo-detail-modal').classList.add('hidden');
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// 詳細モーダルを閉じる
+function closeErgoDetailModal() {
+    document.getElementById('ergo-detail-modal').classList.add('hidden');
+}
+
+// 週間ランキング
+let weeklyRankingSortMode = 'time'; // 'time' or 'idt'
+
+function renderWeeklyRanking() {
+    const container = document.getElementById('weekly-ranking');
+    if (!container) return;
+
+    const menuSelect = document.getElementById('ranking-menu');
+    const selectedMenu = menuSelect?.value || '2000m TT';
+    const genderBtn = document.querySelector('#weekly-ranking-section .gender-btn.active');
+    const selectedGender = genderBtn?.dataset.gender || (state.currentUser?.gender || 'man');
+    const includeInactive = document.getElementById('ranking-include-inactive')?.checked || false;
+
+    // UIのトグル状態を初期化時に合わせる
+    if (!genderBtn && state.currentUser) {
+        const btn = document.querySelector(`#weekly-ranking-section .gender-btn[data-gender="${selectedGender}"]`);
+        if (btn) {
+            document.querySelectorAll('#weekly-ranking-section .gender-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
     }
 
-    // 週間ランキング
-    let weeklyRankingSortMode = 'time'; // 'time' or 'idt'
+    // 今週の開始日を計算（月曜日）
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + mondayOffset);
+    monday.setHours(0, 0, 0, 0);
 
-    function renderWeeklyRanking() {
-        const container = document.getElementById('weekly-ranking');
-        if (!container) return;
+    const isTimeMenu = selectedMenu.includes('分');
+    const is2000m = selectedMenu === '2000m TT';
 
-        const menuSelect = document.getElementById('ranking-menu');
-        const selectedMenu = menuSelect?.value || '2000m TT';
-        const genderBtn = document.querySelector('#weekly-ranking-section .gender-btn.active');
-        const selectedGender = genderBtn?.dataset.gender || (state.currentUser?.gender || 'man');
-        const includeInactive = document.getElementById('ranking-include-inactive')?.checked || false;
+    // ergoRecords + ergoSessions を統合・重複排除してユーザーごとのベストを取得
+    const userBestMap = {}; // userId -> bestRecord
+    const seenRawIds = new Set();
 
-        // UIのトグル状態を初期化時に合わせる
-        if (!genderBtn && state.currentUser) {
-            const btn = document.querySelector(`#weekly-ranking-section .gender-btn[data-gender="${selectedGender}"]`);
-            if (btn) {
-                document.querySelectorAll('#weekly-ranking-section .gender-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-            }
+    // ergoSessionsから今週のデータ収集
+    state.ergoSessions.forEach(session => {
+        const user = state.users.find(u => u.id === session.userId);
+        if (!user || user.gender !== selectedGender) return;
+        if (!includeInactive && user.status === '非在籍') return;
+        const sessionDate = new Date(session.date);
+        if (sessionDate < monday || session.menuKey !== selectedMenu) return;
+        if (session.rawId) seenRawIds.add(session.rawId);
+        // 体重フォールバック
+        if (!session.weight) session.weight = getWeightForDate(session.userId, session.date);
+
+        const existing = userBestMap[session.userId];
+        if (!existing || _isBetterRecord(session, existing, isTimeMenu)) {
+            userBestMap[session.userId] = session;
         }
+    });
 
-        // 今週の開始日を計算（月曜日）
-        const now = new Date();
-        const dayOfWeek = now.getDay();
-        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-        const monday = new Date(now);
-        monday.setDate(now.getDate() + mondayOffset);
-        monday.setHours(0, 0, 0, 0);
+    // ergoRecordsから今週のデータ収集（重複排除）
+    state.ergoRecords.forEach(record => {
+        const user = state.users.find(u => u.id === record.userId);
+        if (!user || user.gender !== selectedGender) return;
+        if (!includeInactive && user.status === '非在籍') return;
+        const recordDate = new Date(record.date);
+        if (recordDate < monday || record.menuKey !== selectedMenu) return;
+        if (record.rawId && seenRawIds.has(record.rawId)) return; // 重複スキップ
+        if (!record.weight) record.weight = getWeightForDate(record.userId, record.date);
+        // timeDisplayしかない場合はtime(秒)をパース
+        if (!record.time && record.timeDisplay) record.time = parseTimeStr(record.timeDisplay);
 
-        const isTimeMenu = selectedMenu.includes('分');
-        const is2000m = selectedMenu === '2000m TT';
+        const existing = userBestMap[record.userId];
+        if (!existing || _isBetterRecord(record, existing, isTimeMenu)) {
+            userBestMap[record.userId] = record;
+        }
+    });
 
-        // ergoRecords + ergoSessions を統合・重複排除してユーザーごとのベストを取得
-        const userBestMap = {}; // userId -> bestRecord
-        const seenRawIds = new Set();
+    const weeklyBests = Object.values(userBestMap);
 
-        // ergoSessionsから今週のデータ収集
-        state.ergoSessions.forEach(session => {
-            const user = state.users.find(u => u.id === session.userId);
-            if (!user || user.gender !== selectedGender) return;
-            if (!includeInactive && user.status === '非在籍') return;
-            const sessionDate = new Date(session.date);
-            if (sessionDate < monday || session.menuKey !== selectedMenu) return;
-            if (session.rawId) seenRawIds.add(session.rawId);
-            // 体重フォールバック
-            if (!session.weight) session.weight = getWeightForDate(session.userId, session.date);
-
-            const existing = userBestMap[session.userId];
-            if (!existing || _isBetterRecord(session, existing, isTimeMenu)) {
-                userBestMap[session.userId] = session;
-            }
+    // ソート
+    if (is2000m && weeklyRankingSortMode === 'idt') {
+        // IDT順：IDT%が高い順（体重なしは末尾）
+        weeklyBests.sort((a, b) => {
+            const userA = state.users.find(u => u.id === a.userId);
+            const userB = state.users.find(u => u.id === b.userId);
+            const idtA = _getIDTPercent(a, userA);
+            const idtB = _getIDTPercent(b, userB);
+            if (idtA === null && idtB === null) return (a.time || Infinity) - (b.time || Infinity);
+            if (idtA === null) return 1;
+            if (idtB === null) return -1;
+            return idtB - idtA;
         });
-
-        // ergoRecordsから今週のデータ収集（重複排除）
-        state.ergoRecords.forEach(record => {
-            const user = state.users.find(u => u.id === record.userId);
-            if (!user || user.gender !== selectedGender) return;
-            if (!includeInactive && user.status === '非在籍') return;
-            const recordDate = new Date(record.date);
-            if (recordDate < monday || record.menuKey !== selectedMenu) return;
-            if (record.rawId && seenRawIds.has(record.rawId)) return; // 重複スキップ
-            if (!record.weight) record.weight = getWeightForDate(record.userId, record.date);
-            // timeDisplayしかない場合はtime(秒)をパース
-            if (!record.time && record.timeDisplay) record.time = parseTimeStr(record.timeDisplay);
-
-            const existing = userBestMap[record.userId];
-            if (!existing || _isBetterRecord(record, existing, isTimeMenu)) {
-                userBestMap[record.userId] = record;
-            }
+    } else {
+        weeklyBests.sort((a, b) => {
+            if (isTimeMenu) return (b.distance || 0) - (a.distance || 0);
+            return (a.time || Infinity) - (b.time || Infinity);
         });
+    }
 
-        const weeklyBests = Object.values(userBestMap);
+    if (weeklyBests.length === 0) {
+        let toggleHtml = '';
+        if (is2000m) toggleHtml = _renderSortToggle('weekly');
+        container.innerHTML = toggleHtml + '<div class="empty-state"><p>今週のデータがありません</p></div>';
+        return;
+    }
 
-        // ソート
-        if (is2000m && weeklyRankingSortMode === 'idt') {
-            // IDT順：IDT%が高い順（体重なしは末尾）
-            weeklyBests.sort((a, b) => {
-                const userA = state.users.find(u => u.id === a.userId);
-                const userB = state.users.find(u => u.id === b.userId);
-                const idtA = _getIDTPercent(a, userA);
-                const idtB = _getIDTPercent(b, userB);
-                if (idtA === null && idtB === null) return (a.time || Infinity) - (b.time || Infinity);
-                if (idtA === null) return 1;
-                if (idtB === null) return -1;
-                return idtB - idtA;
-            });
-        } else {
-            weeklyBests.sort((a, b) => {
-                if (isTimeMenu) return (b.distance || 0) - (a.distance || 0);
-                return (a.time || Infinity) - (b.time || Infinity);
-            });
-        }
+    const rankMedals = ['🥇', '🥈', '🥉'];
 
-        if (weeklyBests.length === 0) {
-            let toggleHtml = '';
-            if (is2000m) toggleHtml = _renderSortToggle('weekly');
-            container.innerHTML = toggleHtml + '<div class="empty-state"><p>今週のデータがありません</p></div>';
-            return;
-        }
+    // 自分のベスト
+    const myBest = userBestMap[state.currentUser?.id] || null;
 
-        const rankMedals = ['🥇', '🥈', '🥉'];
+    let html = '';
 
-        // 自分のベスト
-        const myBest = userBestMap[state.currentUser?.id] || null;
+    // 2000m用ソートトグル
+    if (is2000m) {
+        html += _renderSortToggle('weekly');
+    }
 
-        let html = '';
-
-        // 2000m用ソートトグル
-        if (is2000m) {
-            html += _renderSortToggle('weekly');
-        }
-
-        // 自己ベスト表示エリア
-        if (state.currentUser && state.currentUser.gender === selectedGender) {
-            if (myBest) {
-                const display = formatDisplayDate(myBest.date);
-                const idtHtml = is2000m ? renderIDTBadge(myBest.weight, selectedGender, myBest.time) : '';
-                html += `<div class="my-best-section">
+    // 自己ベスト表示エリア
+    if (state.currentUser && state.currentUser.gender === selectedGender) {
+        if (myBest) {
+            const display = formatDisplayDate(myBest.date);
+            const idtHtml = is2000m ? renderIDTBadge(myBest.weight, selectedGender, myBest.time) : '';
+            html += `<div class="my-best-section">
     <div class="ranking-item my-best">
         <div class="rank">YOU</div>
         <div class="user-info">
@@ -5655,24 +5656,24 @@ function openPracticeNoteModal(noteId) {
         </div>
     </div>
             </div>`;
-            } else {
-                html += `<div class="my-best-section">
+        } else {
+            html += `<div class="my-best-section">
     <div class="ranking-item my-best empty">
         <div class="rank">YOU</div>
         <div class="user-info"><div class="name">今週の記録なし</div></div>
     </div>
             </div>`;
-            }
         }
+    }
 
-        html += weeklyBests.slice(0, 20).map((record, idx) => {
-            const user = state.users.find(u => u.id === record.userId);
-            const display = formatDisplayDate(record.date);
-            const rankSymbol = idx < 3 ? rankMedals[idx] : `${idx + 1}`;
-            const isMe = user && user.id === state.currentUser?.id;
-            const idtHtml = is2000m ? renderIDTBadge(record.weight, selectedGender, record.time) : '';
+    html += weeklyBests.slice(0, 20).map((record, idx) => {
+        const user = state.users.find(u => u.id === record.userId);
+        const display = formatDisplayDate(record.date);
+        const rankSymbol = idx < 3 ? rankMedals[idx] : `${idx + 1}`;
+        const isMe = user && user.id === state.currentUser?.id;
+        const idtHtml = is2000m ? renderIDTBadge(record.weight, selectedGender, record.time) : '';
 
-            return `<div class="ranking-item ${isMe ? 'highlight' : ''}">
+        return `<div class="ranking-item ${isMe ? 'highlight' : ''}">
             <div class="rank">${rankSymbol}</div>
             <div class="user-info">
                 <div class="name">${user?.name || '不明'}</div>
@@ -5684,81 +5685,81 @@ function openPracticeNoteModal(noteId) {
                 ${idtHtml}
             </div>
         </div>`;
-        }).join('');
+    }).join('');
 
-        container.innerHTML = html;
+    container.innerHTML = html;
+}
+
+// 内部ヘルパー：記録比較
+function _isBetterRecord(newRec, existingRec, isTimeMenu) {
+    if (isTimeMenu) {
+        return (newRec.distance || 0) > (existingRec.distance || 0);
     }
+    const newTime = newRec.time || parseTimeStr(newRec.timeDisplay) || Infinity;
+    const existTime = existingRec.time || parseTimeStr(existingRec.timeDisplay) || Infinity;
+    return newTime < existTime;
+}
 
-    // 内部ヘルパー：記録比較
-    function _isBetterRecord(newRec, existingRec, isTimeMenu) {
-        if (isTimeMenu) {
-            return (newRec.distance || 0) > (existingRec.distance || 0);
-        }
-        const newTime = newRec.time || parseTimeStr(newRec.timeDisplay) || Infinity;
-        const existTime = existingRec.time || parseTimeStr(existingRec.timeDisplay) || Infinity;
-        return newTime < existTime;
-    }
+// 内部ヘルパー：IDT%取得
+function _getIDTPercent(record, user) {
+    if (!record.weight || !record.time) return null;
+    const gender = user?.gender || 'man';
+    const idt = calculateIDTSeconds(record.weight, gender);
+    if (!idt) return null;
+    return calculateIDTPercent(record.time, idt);
+}
 
-    // 内部ヘルパー：IDT%取得
-    function _getIDTPercent(record, user) {
-        if (!record.weight || !record.time) return null;
-        const gender = user?.gender || 'man';
-        const idt = calculateIDTSeconds(record.weight, gender);
-        if (!idt) return null;
-        return calculateIDTPercent(record.time, idt);
-    }
-
-    // ソートトグルHTML
-    function _renderSortToggle(rankingType) {
-        const mode = rankingType === 'weekly' ? weeklyRankingSortMode : allTimeRankingSortMode;
-        return `<div style="display:flex;align-items:center;margin-bottom:8px;">
+// ソートトグルHTML
+function _renderSortToggle(rankingType) {
+    const mode = rankingType === 'weekly' ? weeklyRankingSortMode : allTimeRankingSortMode;
+    return `<div style="display:flex;align-items:center;margin-bottom:8px;">
         <span style="font-size:12px;color:#888;">並び替え:</span>
         <div class="sort-toggle">
             <button class="sort-toggle-btn ${mode === 'time' ? 'active' : ''}" onclick="set${rankingType === 'weekly' ? 'Weekly' : 'AllTime'}RankingSort('time')">⏱ タイム順</button>
             <button class="sort-toggle-btn ${mode === 'idt' ? 'active' : ''}" onclick="set${rankingType === 'weekly' ? 'Weekly' : 'AllTime'}RankingSort('idt')">📊 IDT順</button>
         </div>
     </div>`;
+}
+
+function setWeeklyRankingSort(mode) {
+    weeklyRankingSortMode = mode;
+    renderWeeklyRanking();
+}
+
+function setAllTimeRankingSort(mode) {
+    allTimeRankingSortMode = mode;
+    renderAllTimeRanking();
+}
+
+// チーム練習記録
+function renderTeamRecords() {
+    const container = document.getElementById('team-records-list');
+    if (!container) return;
+
+    // 直近7日間の全員の記録を取得
+    const now = new Date();
+    const weekAgo = new Date(now);
+    weekAgo.setDate(now.getDate() - 7);
+
+    const recentRecords = state.ergoSessions
+        .filter(s => {
+            const sessionDate = new Date(s.date);
+            return sessionDate >= weekAgo && s.menuKey !== 'JustRow' && s.menuKey !== 'その他';
+        })
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .slice(0, 20);
+
+    if (recentRecords.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>最近の記録がありません</p></div>';
+        return;
     }
 
-    function setWeeklyRankingSort(mode) {
-        weeklyRankingSortMode = mode;
-        renderWeeklyRanking();
-    }
+    container.innerHTML = recentRecords.map(record => {
+        const user = state.users.find(u => u.id === record.userId);
+        const display = formatDisplayDate(record.date);
+        const initials = user?.name?.slice(0, 2) || '??';
 
-    function setAllTimeRankingSort(mode) {
-        allTimeRankingSortMode = mode;
-        renderAllTimeRanking();
-    }
-
-    // チーム練習記録
-    function renderTeamRecords() {
-        const container = document.getElementById('team-records-list');
-        if (!container) return;
-
-        // 直近7日間の全員の記録を取得
-        const now = new Date();
-        const weekAgo = new Date(now);
-        weekAgo.setDate(now.getDate() - 7);
-
-        const recentRecords = state.ergoSessions
-            .filter(s => {
-                const sessionDate = new Date(s.date);
-                return sessionDate >= weekAgo && s.menuKey !== 'JustRow' && s.menuKey !== 'その他';
-            })
-            .sort((a, b) => new Date(b.date) - new Date(a.date))
-            .slice(0, 20);
-
-        if (recentRecords.length === 0) {
-            container.innerHTML = '<div class="empty-state"><p>最近の記録がありません</p></div>';
-            return;
-        }
-
-        container.innerHTML = recentRecords.map(record => {
-            const user = state.users.find(u => u.id === record.userId);
-            const display = formatDisplayDate(record.date);
-            const initials = user?.name?.slice(0, 2) || '??';
-
-            return `< div class="team-record-item" >
+        return `< div class="team-record-item" >
             <div class="avatar">${initials}</div>
             <div class="user-info">
                 <div class="name">${user?.name || '不明'}</div>
@@ -5770,191 +5771,191 @@ function openPracticeNoteModal(noteId) {
                 <div class="date-display">${display.month}/${display.day}</div>
             </div>
         </div > `;
-        }).join('');
-    }
+    }).join('');
+}
 
-    // データビュー切り替え
-    function initDataViewToggle() {
-        document.querySelectorAll('.view-toggle-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const view = btn.dataset.view;
+// データビュー切り替え
+function initDataViewToggle() {
+    document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const view = btn.dataset.view;
 
-                // ボタンのアクティブ状態を切り替え
-                document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
+            // ボタンのアクティブ状態を切り替え
+            document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
 
-                // ビューを切り替え
-                document.getElementById('personal-data-view').classList.toggle('hidden', view !== 'personal');
-                document.getElementById('team-data-view').classList.toggle('hidden', view !== 'team');
-                document.getElementById('all-time-data-view').classList.toggle('hidden', view !== 'all-time');
-                const allMembersView = document.getElementById('all-members-data-view');
-                if (allMembersView) allMembersView.classList.toggle('hidden', view !== 'all-members');
+            // ビューを切り替え
+            document.getElementById('personal-data-view').classList.toggle('hidden', view !== 'personal');
+            document.getElementById('team-data-view').classList.toggle('hidden', view !== 'team');
+            document.getElementById('all-time-data-view').classList.toggle('hidden', view !== 'all-time');
+            const allMembersView = document.getElementById('all-members-data-view');
+            if (allMembersView) allMembersView.classList.toggle('hidden', view !== 'all-members');
 
-                if (view === 'team') {
-                    renderWeeklyRanking();
-                    renderTeamRecords();
-                } else if (view === 'all-time') {
-                    renderAllTimeRanking();
-                } else if (view === 'all-members') {
-                    initAllMembersErgoView();
-                } else {
-                    // マイデータに戻る時はナビをリセット
-                    navigateErgo('all');
-                }
-            });
-        });
-
-        // カテゴリタブ
-        document.querySelectorAll('.category-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-
-                const category = tab.dataset.category;
-
-                if (category === 'all') {
-                    // すべて：全記録を新しい順に表示
-                    navigateErgo('all');
-                } else {
-                    // カテゴリ選択：メニュー選択グリッドを表示
-                    navigateErgo('category', { category: category });
-                }
-            });
-        });
-
-        // 期間フィルタ
-        const periodSelect = document.getElementById('data-period');
-        if (periodSelect) {
-            periodSelect.addEventListener('change', () => {
-                ergoNavState.period = periodSelect.value;
-                renderErgoRecords();
-            });
-        }
-
-        // ランキングメニュー選択
-        const rankingMenu = document.getElementById('ranking-menu');
-        if (rankingMenu) {
-            rankingMenu.addEventListener('change', () => {
+            if (view === 'team') {
                 renderWeeklyRanking();
-            });
-        }
-
-        // 歴代ランキングメニュー選択
-        const allTimeRankingMenu = document.getElementById('all-time-ranking-menu');
-        if (allTimeRankingMenu) {
-            allTimeRankingMenu.addEventListener('change', () => {
+                renderTeamRecords();
+            } else if (view === 'all-time') {
                 renderAllTimeRanking();
-            });
+            } else if (view === 'all-members') {
+                initAllMembersErgoView();
+            } else {
+                // マイデータに戻る時はナビをリセット
+                navigateErgo('all');
+            }
+        });
+    });
+
+    // カテゴリタブ
+    document.querySelectorAll('.category-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            const category = tab.dataset.category;
+
+            if (category === 'all') {
+                // すべて：全記録を新しい順に表示
+                navigateErgo('all');
+            } else {
+                // カテゴリ選択：メニュー選択グリッドを表示
+                navigateErgo('category', { category: category });
+            }
+        });
+    });
+
+    // 期間フィルタ
+    const periodSelect = document.getElementById('data-period');
+    if (periodSelect) {
+        periodSelect.addEventListener('change', () => {
+            ergoNavState.period = periodSelect.value;
+            renderErgoRecords();
+        });
+    }
+
+    // ランキングメニュー選択
+    const rankingMenu = document.getElementById('ranking-menu');
+    if (rankingMenu) {
+        rankingMenu.addEventListener('change', () => {
+            renderWeeklyRanking();
+        });
+    }
+
+    // 歴代ランキングメニュー選択
+    const allTimeRankingMenu = document.getElementById('all-time-ranking-menu');
+    if (allTimeRankingMenu) {
+        allTimeRankingMenu.addEventListener('change', () => {
+            renderAllTimeRanking();
+        });
+    }
+}
+
+// 歴代ランキング (Personal Best)
+let allTimeRankingSortMode = 'time'; // 'time' or 'idt'
+
+function renderAllTimeRanking() {
+    const container = document.getElementById('all-time-ranking-list');
+    if (!container) return;
+
+    const menuSelect = document.getElementById('all-time-ranking-menu');
+    const selectedMenu = menuSelect?.value || '2000m TT';
+    const isTimeMenu = selectedMenu.includes('分');
+    const is2000m = selectedMenu === '2000m TT';
+
+    // 性別トグルをDOMから取得
+    const genderBtn = document.querySelector('#all-time-data-view .gender-btn.active');
+    const selectedGender = genderBtn?.dataset.gender || (state.currentUser?.gender || 'man');
+
+    // 初回にアクティブ設定
+    if (!genderBtn && state.currentUser) {
+        const btn = document.querySelector(`#all-time-data-view .gender-btn[data-gender="${selectedGender}"]`);
+        if (btn) {
+            document.querySelectorAll('#all-time-data-view .gender-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
         }
     }
 
-    // 歴代ランキング (Personal Best)
-    let allTimeRankingSortMode = 'time'; // 'time' or 'idt'
+    // ユーザーごとにベストを収集
+    const allTimeBests = [];
+    const includeInactive = document.getElementById('alltime-ranking-include-inactive')?.checked || false;
+    state.users.forEach(user => {
+        if (user.gender !== selectedGender) return; // 性別フィルタ
+        if (!includeInactive && user.status === '非在籍') return; // 非在籍フィルタ
 
-    function renderAllTimeRanking() {
-        const container = document.getElementById('all-time-ranking-list');
-        if (!container) return;
+        const seenRawIds = new Set();
+        const allRecords = [];
 
-        const menuSelect = document.getElementById('all-time-ranking-menu');
-        const selectedMenu = menuSelect?.value || '2000m TT';
-        const isTimeMenu = selectedMenu.includes('分');
-        const is2000m = selectedMenu === '2000m TT';
-
-        // 性別トグルをDOMから取得
-        const genderBtn = document.querySelector('#all-time-data-view .gender-btn.active');
-        const selectedGender = genderBtn?.dataset.gender || (state.currentUser?.gender || 'man');
-
-        // 初回にアクティブ設定
-        if (!genderBtn && state.currentUser) {
-            const btn = document.querySelector(`#all-time-data-view .gender-btn[data-gender="${selectedGender}"]`);
-            if (btn) {
-                document.querySelectorAll('#all-time-data-view .gender-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-            }
-        }
-
-        // ユーザーごとにベストを収集
-        const allTimeBests = [];
-        const includeInactive = document.getElementById('alltime-ranking-include-inactive')?.checked || false;
-        state.users.forEach(user => {
-            if (user.gender !== selectedGender) return; // 性別フィルタ
-            if (!includeInactive && user.status === '非在籍') return; // 非在籍フィルタ
-
-            const seenRawIds = new Set();
-            const allRecords = [];
-
-            // ergoSessions優先
-            state.ergoSessions.filter(s => s.userId === user.id && s.menuKey === selectedMenu).forEach(r => {
-                if (r.rawId) seenRawIds.add(r.rawId);
-                if (!r.weight) r.weight = getWeightForDate(r.userId, r.date);
-                allRecords.push(r);
-            });
-
-            // ergoRecords（重複排除）
-            state.ergoRecords.filter(r => r.userId === user.id && r.menuKey === selectedMenu).forEach(r => {
-                if (r.rawId && seenRawIds.has(r.rawId)) return;
-                if (!r.weight) r.weight = getWeightForDate(r.userId, r.date);
-                if (!r.time && r.timeDisplay) r.time = parseTimeStr(r.timeDisplay);
-                allRecords.push(r);
-            });
-
-            if (allRecords.length === 0) return;
-
-            // ベスト記録を特定
-            let bestRecord = allRecords[0];
-            for (let i = 1; i < allRecords.length; i++) {
-                if (_isBetterRecord(allRecords[i], bestRecord, isTimeMenu)) {
-                    bestRecord = allRecords[i];
-                }
-            }
-            allTimeBests.push(bestRecord);
+        // ergoSessions優先
+        state.ergoSessions.filter(s => s.userId === user.id && s.menuKey === selectedMenu).forEach(r => {
+            if (r.rawId) seenRawIds.add(r.rawId);
+            if (!r.weight) r.weight = getWeightForDate(r.userId, r.date);
+            allRecords.push(r);
         });
 
-        // ソート
-        if (is2000m && allTimeRankingSortMode === 'idt') {
-            allTimeBests.sort((a, b) => {
-                const userA = state.users.find(u => u.id === a.userId);
-                const userB = state.users.find(u => u.id === b.userId);
-                const idtA = _getIDTPercent(a, userA);
-                const idtB = _getIDTPercent(b, userB);
-                if (idtA === null && idtB === null) return (a.time || Infinity) - (b.time || Infinity);
-                if (idtA === null) return 1;
-                if (idtB === null) return -1;
-                return idtB - idtA;
-            });
-        } else {
-            allTimeBests.sort((a, b) => {
-                if (isTimeMenu) return (b.distance || 0) - (a.distance || 0);
-                const timeA = a.time || parseTimeStr(a.timeDisplay) || Infinity;
-                const timeB = b.time || parseTimeStr(b.timeDisplay) || Infinity;
-                return timeA - timeB;
-            });
+        // ergoRecords（重複排除）
+        state.ergoRecords.filter(r => r.userId === user.id && r.menuKey === selectedMenu).forEach(r => {
+            if (r.rawId && seenRawIds.has(r.rawId)) return;
+            if (!r.weight) r.weight = getWeightForDate(r.userId, r.date);
+            if (!r.time && r.timeDisplay) r.time = parseTimeStr(r.timeDisplay);
+            allRecords.push(r);
+        });
+
+        if (allRecords.length === 0) return;
+
+        // ベスト記録を特定
+        let bestRecord = allRecords[0];
+        for (let i = 1; i < allRecords.length; i++) {
+            if (_isBetterRecord(allRecords[i], bestRecord, isTimeMenu)) {
+                bestRecord = allRecords[i];
+            }
         }
+        allTimeBests.push(bestRecord);
+    });
 
-        if (allTimeBests.length === 0) {
-            let toggleHtml = is2000m ? _renderSortToggle('allTime') : '';
-            container.innerHTML = toggleHtml + '<div class="empty-state"><p>データがありません</p></div>';
-            return;
-        }
+    // ソート
+    if (is2000m && allTimeRankingSortMode === 'idt') {
+        allTimeBests.sort((a, b) => {
+            const userA = state.users.find(u => u.id === a.userId);
+            const userB = state.users.find(u => u.id === b.userId);
+            const idtA = _getIDTPercent(a, userA);
+            const idtB = _getIDTPercent(b, userB);
+            if (idtA === null && idtB === null) return (a.time || Infinity) - (b.time || Infinity);
+            if (idtA === null) return 1;
+            if (idtB === null) return -1;
+            return idtB - idtA;
+        });
+    } else {
+        allTimeBests.sort((a, b) => {
+            if (isTimeMenu) return (b.distance || 0) - (a.distance || 0);
+            const timeA = a.time || parseTimeStr(a.timeDisplay) || Infinity;
+            const timeB = b.time || parseTimeStr(b.timeDisplay) || Infinity;
+            return timeA - timeB;
+        });
+    }
 
-        const rankMedals = ['🥇', '🥈', '🥉'];
+    if (allTimeBests.length === 0) {
+        let toggleHtml = is2000m ? _renderSortToggle('allTime') : '';
+        container.innerHTML = toggleHtml + '<div class="empty-state"><p>データがありません</p></div>';
+        return;
+    }
 
-        // 自己ベスト
-        const myRecord = allTimeBests.find(r => r.userId === state.currentUser?.id);
+    const rankMedals = ['🥇', '🥈', '🥉'];
 
-        let html = '';
+    // 自己ベスト
+    const myRecord = allTimeBests.find(r => r.userId === state.currentUser?.id);
 
-        // 2000m用ソートトグル
-        if (is2000m) {
-            html += _renderSortToggle('allTime');
-        }
+    let html = '';
 
-        // 自己ベスト表示
-        if (state.currentUser && state.currentUser.gender === selectedGender) {
-            if (myRecord) {
-                const display = formatDisplayDate(myRecord.date);
-                const idtHtml = is2000m ? renderIDTBadge(myRecord.weight, selectedGender, myRecord.time) : '';
-                html += `<div class="my-best-section">
+    // 2000m用ソートトグル
+    if (is2000m) {
+        html += _renderSortToggle('allTime');
+    }
+
+    // 自己ベスト表示
+    if (state.currentUser && state.currentUser.gender === selectedGender) {
+        if (myRecord) {
+            const display = formatDisplayDate(myRecord.date);
+            const idtHtml = is2000m ? renderIDTBadge(myRecord.weight, selectedGender, myRecord.time) : '';
+            html += `<div class="my-best-section">
     <div class="ranking-item my-best">
         <div class="rank">YOU</div>
         <div class="user-info">
@@ -5968,38 +5969,38 @@ function openPracticeNoteModal(noteId) {
         </div>
     </div>
             </div>`;
-            } else {
-                html += `<div class="my-best-section">
+        } else {
+            html += `<div class="my-best-section">
     <div class="ranking-item my-best empty">
         <div class="rank">YOU</div>
         <div class="user-info"><div class="name">記録なし</div></div>
     </div>
             </div>`;
+        }
+    }
+
+    html += allTimeBests.map((record, idx) => {
+        const user = state.users.find(u => u.id === record.userId);
+        const display = formatDisplayDate(record.date);
+        const rankSymbol = idx < 3 ? rankMedals[idx] : `${idx + 1}`;
+        const isMe = user && user.id === state.currentUser?.id;
+        const idtHtml = is2000m ? renderIDTBadge(record.weight, selectedGender, record.time) : '';
+
+        // 体重表示（女子プライバシー対応）
+        let weightInfo = '';
+        if (record.weight) {
+            if (user?.gender === 'woman') {
+                if (state.currentUser?.id === user.id || state.currentUser?.role === ROLES.ADMIN) {
+                    weightInfo = `<span class="weight-info"> (${record.weight}kg)</span>`;
+                } else {
+                    weightInfo = `<span class="weight-info private"> (記録済)</span>`;
+                }
+            } else {
+                weightInfo = `<span class="weight-info"> (${record.weight}kg)</span>`;
             }
         }
 
-        html += allTimeBests.map((record, idx) => {
-            const user = state.users.find(u => u.id === record.userId);
-            const display = formatDisplayDate(record.date);
-            const rankSymbol = idx < 3 ? rankMedals[idx] : `${idx + 1}`;
-            const isMe = user && user.id === state.currentUser?.id;
-            const idtHtml = is2000m ? renderIDTBadge(record.weight, selectedGender, record.time) : '';
-
-            // 体重表示（女子プライバシー対応）
-            let weightInfo = '';
-            if (record.weight) {
-                if (user?.gender === 'woman') {
-                    if (state.currentUser?.id === user.id || state.currentUser?.role === ROLES.ADMIN) {
-                        weightInfo = `<span class="weight-info"> (${record.weight}kg)</span>`;
-                    } else {
-                        weightInfo = `<span class="weight-info private"> (記録済)</span>`;
-                    }
-                } else {
-                    weightInfo = `<span class="weight-info"> (${record.weight}kg)</span>`;
-                }
-            }
-
-            return `<div class="ranking-item ${isMe ? 'highlight' : ''}">
+        return `<div class="ranking-item ${isMe ? 'highlight' : ''}">
             <div class="rank">${rankSymbol}</div>
             <div class="user-info">
                 <div class="name">${user?.name || '不明'} ${weightInfo}</div>
@@ -6011,197 +6012,197 @@ function openPracticeNoteModal(noteId) {
                 ${idtHtml}
             </div>
         </div>`;
-        }).join('');
+    }).join('');
 
-        container.innerHTML = html;
+    container.innerHTML = html;
+}
+
+function parseTimeStr(timeStr) {
+    if (!timeStr) return Infinity;
+    const parts = timeStr.split(':');
+    if (parts.length === 2) {
+        return parseInt(parts[0]) * 60 + parseFloat(parts[1]);
     }
+    return parseFloat(timeStr);
+}
 
-    function parseTimeStr(timeStr) {
-        if (!timeStr) return Infinity;
-        const parts = timeStr.split(':');
-        if (parts.length === 2) {
-            return parseInt(parts[0]) * 60 + parseFloat(parts[1]);
+
+// =========================================
+// マスタ管理
+// =========================================
+let currentMasterType = null;
+let currentMasterItem = null;
+
+// コンバーチブル艇の定義（リギングで使い分ける艇種ペア）
+const CONVERTIBLE_PAIRS = {
+    '2x': '2-',   // ダブル ⇔ ペア
+    '2-': '2x',
+    '4x': '4-',   // クォード ⇔ なしフォア
+    '4-': '4x'
+};
+
+const CONVERTIBLE_LABELS = {
+    '2x': 'ダブル',
+    '2-': 'ペア',
+    '4x': 'クォード',
+    '4-': 'なしフォア'
+};
+
+// オール長さ基準値テーブル
+const OAR_SPEC_TABLE = [
+    { type: 'ペア (2-)', length: 372, inboard: 116, span: 86, category: 'sweep' },
+    { type: '付きフォア (4+)', length: 375, inboard: 115, span: 85, category: 'sweep' },
+    { type: 'エイト (8+) / なしフォア (4-)', length: 375, inboard: 114, span: 84, category: 'sweep' },
+    { type: 'スカルオール', length: 287, inboard: 88, span: 159, category: 'scull' },
+    { type: 'スカルオール (Fat)', length: 282, inboard: 88, span: 159, category: 'scull' }
+];
+
+function isConvertibleBoat(type) {
+    return type in CONVERTIBLE_PAIRS;
+}
+
+function getBoatRiggingMode(boat) {
+    if (!isConvertibleBoat(boat.type)) return null;
+    return boat.currentRiggingMode || boat.type;
+}
+
+function getLastUsedBoatForOar(oarId) {
+    // スケジュールから最後にこのオールを使った練習を探す
+    const schedules = state.schedules || [];
+    let lastSchedule = null;
+    for (let i = schedules.length - 1; i >= 0; i--) {
+        const s = schedules[i];
+        // oarIds配列またはoarId単体で検索
+        const matchesOarIds = s.oarIds && Array.isArray(s.oarIds) && s.oarIds.includes(oarId);
+        const matchesOarId = s.oarId === oarId || s.oar === oarId;
+        if (matchesOarIds || matchesOarId) {
+            lastSchedule = s;
+            break;
         }
-        return parseFloat(timeStr);
     }
+    if (!lastSchedule) return null;
 
+    const boatId = lastSchedule.boatId || lastSchedule.boat;
+    if (!boatId) return null;
 
-    // =========================================
-    // マスタ管理
-    // =========================================
-    let currentMasterType = null;
-    let currentMasterItem = null;
+    const boat = (state.boats || []).find(b => b.id === boatId);
+    if (!boat) return null;
 
-    // コンバーチブル艇の定義（リギングで使い分ける艇種ペア）
-    const CONVERTIBLE_PAIRS = {
-        '2x': '2-',   // ダブル ⇔ ペア
-        '2-': '2x',
-        '4x': '4-',   // クォード ⇔ なしフォア
-        '4-': '4x'
+    return { name: boat.name, type: boat.type, date: lastSchedule.date };
+}
+
+function openMasterModal(type) {
+    currentMasterType = type;
+    const modal = document.getElementById('master-modal');
+    const title = document.getElementById('master-modal-title');
+
+    const titles = {
+        boats: '🚣 艇マスタ',
+        oars: '🏋️ オールマスタ',
+        ergos: '💪 エルゴマスタ'
     };
+    title.textContent = titles[type];
 
-    const CONVERTIBLE_LABELS = {
-        '2x': 'ダブル',
-        '2-': 'ペア',
-        '4x': 'クォード',
-        '4-': 'なしフォア'
-    };
+    renderMasterList();
+    modal.classList.remove('hidden');
+}
 
-    // オール長さ基準値テーブル
-    const OAR_SPEC_TABLE = [
-        { type: 'ペア (2-)', length: 372, inboard: 116, span: 86, category: 'sweep' },
-        { type: '付きフォア (4+)', length: 375, inboard: 115, span: 85, category: 'sweep' },
-        { type: 'エイト (8+) / なしフォア (4-)', length: 375, inboard: 114, span: 84, category: 'sweep' },
-        { type: 'スカルオール', length: 287, inboard: 88, span: 159, category: 'scull' },
-        { type: 'スカルオール (Fat)', length: 282, inboard: 88, span: 159, category: 'scull' }
-    ];
+function closeMasterModal() {
+    document.getElementById('master-modal').classList.add('hidden');
+    currentMasterType = null;
+}
 
-    function isConvertibleBoat(type) {
-        return type in CONVERTIBLE_PAIRS;
+
+function translateStatus(status) {
+    if (status === 'available' || status === '使用可能') return '使用可能';
+    if (status === 'broken' || status === '使用不可') return '故障';
+    if (status === 'repair') return '修理中';
+    return status;
+}
+
+function getStatusClass(status) {
+    if (status === 'available' || status === '使用可能') return 'available';
+    if (status === 'repair') return 'repair';
+    return 'unavailable';
+}
+
+function toggleBoatRiggingMode(boatId, e) {
+    e.stopPropagation();
+    const boat = state.boats.find(b => b.id === boatId);
+    if (!boat || !isConvertibleBoat(boat.type)) return;
+
+    const currentMode = getBoatRiggingMode(boat);
+    const newMode = CONVERTIBLE_PAIRS[currentMode];
+    boat.currentRiggingMode = newMode;
+
+    DB.save('boats', state.boats);
+    DB.addAuditLog('boats', boat.id, 'リギング切替', { from: currentMode, to: newMode });
+
+    // Supabaseにも同期（変更した艇のみ）
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.saveMasterItem('boats', boat).catch(err => {
+            console.warn('Boat rigging mode sync failed:', err);
+        });
     }
 
-    function getBoatRiggingMode(boat) {
-        if (!isConvertibleBoat(boat.type)) return null;
-        return boat.currentRiggingMode || boat.type;
-    }
+    renderMasterList();
+    renderEquipmentStatus();
+    showToast(`${boat.name}: ${CONVERTIBLE_LABELS[newMode]}モードに切替`, 'success');
+}
 
-    function getLastUsedBoatForOar(oarId) {
-        // スケジュールから最後にこのオールを使った練習を探す
-        const schedules = state.schedules || [];
-        let lastSchedule = null;
-        for (let i = schedules.length - 1; i >= 0; i--) {
-            const s = schedules[i];
-            // oarIds配列またはoarId単体で検索
-            const matchesOarIds = s.oarIds && Array.isArray(s.oarIds) && s.oarIds.includes(oarId);
-            const matchesOarId = s.oarId === oarId || s.oar === oarId;
-            if (matchesOarIds || matchesOarId) {
-                lastSchedule = s;
-                break;
-            }
-        }
-        if (!lastSchedule) return null;
+function confirmDeleteMaster(id, e) {
+    e.stopPropagation();
+    const item = state[currentMasterType].find(d => d.id === id);
+    if (!item) return;
 
-        const boatId = lastSchedule.boatId || lastSchedule.boat;
-        if (!boatId) return null;
+    showConfirmModal(`「${item.name}」を削除しますか？`, () => {
+        state[currentMasterType] = state[currentMasterType].filter(d => d.id !== id);
+        DB.save(currentMasterType, state[currentMasterType]);
+        DB.addAuditLog(currentMasterType, id, '削除', {});
 
-        const boat = (state.boats || []).find(b => b.id === boatId);
-        if (!boat) return null;
-
-        return { name: boat.name, type: boat.type, date: lastSchedule.date };
-    }
-
-    function openMasterModal(type) {
-        currentMasterType = type;
-        const modal = document.getElementById('master-modal');
-        const title = document.getElementById('master-modal-title');
-
-        const titles = {
-            boats: '🚣 艇マスタ',
-            oars: '🏋️ オールマスタ',
-            ergos: '💪 エルゴマスタ'
-        };
-        title.textContent = titles[type];
-
-        renderMasterList();
-        modal.classList.remove('hidden');
-    }
-
-    function closeMasterModal() {
-        document.getElementById('master-modal').classList.add('hidden');
-        currentMasterType = null;
-    }
-
-
-    function translateStatus(status) {
-        if (status === 'available' || status === '使用可能') return '使用可能';
-        if (status === 'broken' || status === '使用不可') return '故障';
-        if (status === 'repair') return '修理中';
-        return status;
-    }
-
-    function getStatusClass(status) {
-        if (status === 'available' || status === '使用可能') return 'available';
-        if (status === 'repair') return 'repair';
-        return 'unavailable';
-    }
-
-    function toggleBoatRiggingMode(boatId, e) {
-        e.stopPropagation();
-        const boat = state.boats.find(b => b.id === boatId);
-        if (!boat || !isConvertibleBoat(boat.type)) return;
-
-        const currentMode = getBoatRiggingMode(boat);
-        const newMode = CONVERTIBLE_PAIRS[currentMode];
-        boat.currentRiggingMode = newMode;
-
-        DB.save('boats', state.boats);
-        DB.addAuditLog('boats', boat.id, 'リギング切替', { from: currentMode, to: newMode });
-
-        // Supabaseにも同期（変更した艇のみ）
+        // Supabaseからも削除
         if (DB.useSupabase && window.SupabaseConfig?.db) {
-            window.SupabaseConfig.db.saveMasterItem('boats', boat).catch(err => {
-                console.warn('Boat rigging mode sync failed:', err);
+            window.SupabaseConfig.db.deleteMasterItem(currentMasterType, id).catch(err => {
+                console.error('Master item Supabase delete failed:', err);
             });
         }
 
         renderMasterList();
-        renderEquipmentStatus();
-        showToast(`${boat.name}: ${CONVERTIBLE_LABELS[newMode]}モードに切替`, 'success');
-    }
+        populateBoatOarSelects();
+        showToast('削除しました', 'success');
+    }, null, '削除する');
+}
 
-    function confirmDeleteMaster(id, e) {
-        e.stopPropagation();
-        const item = state[currentMasterType].find(d => d.id === id);
-        if (!item) return;
+function renderMasterList() {
+    const list = document.getElementById('master-list');
+    const data = state[currentMasterType] || [];
 
-        showConfirmModal(`「${item.name}」を削除しますか？`, () => {
-            state[currentMasterType] = state[currentMasterType].filter(d => d.id !== id);
-            DB.save(currentMasterType, state[currentMasterType]);
-            DB.addAuditLog(currentMasterType, id, '削除', {});
+    if (currentMasterType === 'boats') {
+        list.innerHTML = data.map(item => {
+            const status = item.status || (item.availability === '使用不可' ? 'broken' : 'available');
+            const isConvertible = isConvertibleBoat(item.type);
+            const riggingMode = getBoatRiggingMode(item);
 
-            // Supabaseからも削除
-            if (DB.useSupabase && window.SupabaseConfig?.db) {
-                window.SupabaseConfig.db.deleteMasterItem(currentMasterType, id).catch(err => {
-                    console.error('Master item Supabase delete failed:', err);
-                });
-            }
-
-            renderMasterList();
-            populateBoatOarSelects();
-            showToast('削除しました', 'success');
-        }, null, '削除する');
-    }
-
-    function renderMasterList() {
-        const list = document.getElementById('master-list');
-        const data = state[currentMasterType] || [];
-
-        if (currentMasterType === 'boats') {
-            list.innerHTML = data.map(item => {
-                const status = item.status || (item.availability === '使用不可' ? 'broken' : 'available');
-                const isConvertible = isConvertibleBoat(item.type);
-                const riggingMode = getBoatRiggingMode(item);
-
-                let riggingBadgeHtml = '';
-                if (isConvertible) {
-                    const label = CONVERTIBLE_LABELS[riggingMode] || riggingMode;
-                    riggingBadgeHtml = `
+            let riggingBadgeHtml = '';
+            if (isConvertible) {
+                const label = CONVERTIBLE_LABELS[riggingMode] || riggingMode;
+                riggingBadgeHtml = `
                     <div class="rigging-mode-row">
                         <span class="rigging-mode-badge">${label}モード</span>
                         <button class="rigging-toggle-btn" onclick="toggleBoatRiggingMode('${item.id}', event)" title="切替">🔄</button>
                     </div>`;
-                }
+            }
 
-                // 使用団体バッジ
-                const orgColors = { '男子部': '#3b82f6', '女子部': '#ec4899', '医学部': '#10b981', 'OB': '#f59e0b' };
-                const orgLabel = item.organization || '';
-                const orgBadge = orgLabel ? `<span class="org-badge" style="background:${orgColors[orgLabel] || '#6b7280'};color:#fff;padding:2px 6px;border-radius:4px;font-size:0.7em;margin-left:4px;">${orgLabel}</span>` : '';
+            // 使用団体バッジ
+            const orgColors = { '男子部': '#3b82f6', '女子部': '#ec4899', '医学部': '#10b981', 'OB': '#f59e0b' };
+            const orgLabel = item.organization || '';
+            const orgBadge = orgLabel ? `<span class="org-badge" style="background:${orgColors[orgLabel] || '#6b7280'};color:#fff;padding:2px 6px;border-radius:4px;font-size:0.7em;margin-left:4px;">${orgLabel}</span>` : '';
 
-                // 艇種別バッジ色
-                const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
-                const btColor = boatTypeColors[item.type] || '#6b7280';
+            // 艇種別バッジ色
+            const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
+            const btColor = boatTypeColors[item.type] || '#6b7280';
 
-                return `
+            return `
             <div class="master-item" data-id="${item.id}">
                 <div class="info">
                     <div class="name">${item.name} <span class="badge" style="font-size:0.8em;background:${btColor};color:#fff;padding:2px 6px;border-radius:4px;">${item.type}</span>${orgBadge}</div>
@@ -6216,10 +6217,10 @@ function openPracticeNoteModal(noteId) {
                     </div>
                 </div>
             </div>`;
-            }).join('') || '<div class="empty-state"><p>登録がありません</p></div>';
-        } else if (currentMasterType === 'oars') {
-            // オール基準値テーブルを先頭に追加
-            let specTableHtml = `
+        }).join('') || '<div class="empty-state"><p>登録がありません</p></div>';
+    } else if (currentMasterType === 'oars') {
+        // オール基準値テーブルを先頭に追加
+        let specTableHtml = `
             <div class="oar-spec-section">
                 <div class="oar-spec-header" onclick="this.parentElement.classList.toggle('open')">
                     📏 オール長さ基準値 <span class="oar-spec-toggle">▼</span>
@@ -6242,15 +6243,15 @@ function openPracticeNoteModal(noteId) {
                 </div>
             </div>`;
 
-            const oarListHtml = data.map(item => {
-                const status = item.status || (item.availability === '使用不可' ? 'broken' : 'available');
-                const lastBoat = getLastUsedBoatForOar(item.id);
-                let lastBoatHtml = '';
-                if (lastBoat) {
-                    lastBoatHtml = `<div class="last-boat-info">🚣 最終: ${lastBoat.name} (${lastBoat.type})</div>`;
-                }
+        const oarListHtml = data.map(item => {
+            const status = item.status || (item.availability === '使用不可' ? 'broken' : 'available');
+            const lastBoat = getLastUsedBoatForOar(item.id);
+            let lastBoatHtml = '';
+            if (lastBoat) {
+                lastBoatHtml = `<div class="last-boat-info">🚣 最終: ${lastBoat.name} (${lastBoat.type})</div>`;
+            }
 
-                return `
+            return `
             <div class="master-item" data-id="${item.id}">
                 <div class="info">
                     <div class="name">${item.name} <span class="badge" style="font-size:0.8em">${item.type}</span></div>
@@ -6266,13 +6267,13 @@ function openPracticeNoteModal(noteId) {
                     </div>
                 </div>
             </div>`;
-            }).join('') || '<div class="empty-state"><p>登録がありません</p></div>';
+        }).join('') || '<div class="empty-state"><p>登録がありません</p></div>';
 
-            list.innerHTML = specTableHtml + oarListHtml;
-        } else if (currentMasterType === 'ergos') {
-            list.innerHTML = data.map(item => {
-                const status = item.status || (item.availability === '使用不可' ? 'broken' : 'available');
-                return `
+        list.innerHTML = specTableHtml + oarListHtml;
+    } else if (currentMasterType === 'ergos') {
+        list.innerHTML = data.map(item => {
+            const status = item.status || (item.availability === '使用不可' ? 'broken' : 'available');
+            return `
             <div class="master-item" data-id="${item.id}">
                 <div class="info">
                     <div class="name">${item.name} (${item.type})</div>
@@ -6286,38 +6287,38 @@ function openPracticeNoteModal(noteId) {
                     </div>
                 </div>
             </div>`;
-            }).join('') || '<div class="empty-state"><p>登録がありません</p></div>';
-        }
-
-        list.querySelectorAll('.master-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const id = item.dataset.id;
-                const data = state[currentMasterType].find(d => d.id === id);
-                if (data) openMasterEditModal(data);
-            });
-        });
+        }).join('') || '<div class="empty-state"><p>登録がありません</p></div>';
     }
 
-    function openMasterEditModal(item = null) {
-        currentMasterItem = item;
-        const modal = document.getElementById('master-edit-modal');
-        const title = document.getElementById('master-edit-title');
-        const form = document.getElementById('master-edit-form');
+    list.querySelectorAll('.master-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const id = item.dataset.id;
+            const data = state[currentMasterType].find(d => d.id === id);
+            if (data) openMasterEditModal(data);
+        });
+    });
+}
 
-        const deleteBtn = document.getElementById('delete-master-btn');
+function openMasterEditModal(item = null) {
+    currentMasterItem = item;
+    const modal = document.getElementById('master-edit-modal');
+    const title = document.getElementById('master-edit-title');
+    const form = document.getElementById('master-edit-form');
 
-        title.textContent = item ? '編集' : '新規追加';
-        if (deleteBtn) deleteBtn.classList.toggle('hidden', !item);
+    const deleteBtn = document.getElementById('delete-master-btn');
 
-        if (currentMasterType === 'boats') {
-            const status = item?.status || (item?.availability === '使用不可' ? 'broken' : 'available');
-            const isConv = item ? isConvertibleBoat(item.type) : false;
-            const riggingMode = item ? getBoatRiggingMode(item) : null;
+    title.textContent = item ? '編集' : '新規追加';
+    if (deleteBtn) deleteBtn.classList.toggle('hidden', !item);
 
-            let riggingModeHtml = '';
-            if (isConv && item) {
-                const altType = CONVERTIBLE_PAIRS[item.type];
-                riggingModeHtml = `
+    if (currentMasterType === 'boats') {
+        const status = item?.status || (item?.availability === '使用不可' ? 'broken' : 'available');
+        const isConv = item ? isConvertibleBoat(item.type) : false;
+        const riggingMode = item ? getBoatRiggingMode(item) : null;
+
+        let riggingModeHtml = '';
+        if (isConv && item) {
+            const altType = CONVERTIBLE_PAIRS[item.type];
+            riggingModeHtml = `
             <div class="form-group">
                 <label>現在のリギング状態</label>
                 <div class="toggle-group rigging-mode-group">
@@ -6326,9 +6327,9 @@ function openPracticeNoteModal(noteId) {
                 </div>
                 <p class="help-text" style="font-size:11px; color:#888; margin-top:4px;">この艇は${CONVERTIBLE_LABELS[item.type]}と${CONVERTIBLE_LABELS[altType]}を兼用できます</p>
             </div>`;
-            }
+        }
 
-            form.innerHTML = `
+        form.innerHTML = `
             <div class="form-group">
                 <label>艇名</label>
                 <input type="text" id="master-name" value="${item?.name || ''}" placeholder="例: 慶應丸">
@@ -6369,9 +6370,9 @@ function openPracticeNoteModal(noteId) {
                 <textarea id="master-memo" rows="2" placeholder="備考など">${item?.memo || ''}</textarea>
             </div>
 `;
-        } else if (currentMasterType === 'oars') {
-            const status = item?.status || (item?.availability === '使用不可' ? 'broken' : 'available');
-            form.innerHTML = `
+    } else if (currentMasterType === 'oars') {
+        const status = item?.status || (item?.availability === '使用不可' ? 'broken' : 'available');
+        form.innerHTML = `
     < div class="form-group" >
                 <label>オール名</label>
                 <input type="text" id="master-name" value="${item?.name || ''}" placeholder="例: スカル1号">
@@ -6404,8 +6405,8 @@ function openPracticeNoteModal(noteId) {
                 <textarea id="master-memo" rows="2" placeholder="備考など">${item?.memo || ''}</textarea>
             </div>
 `;
-        } else if (currentMasterType === 'ergos') {
-            form.innerHTML = `
+    } else if (currentMasterType === 'ergos') {
+        form.innerHTML = `
     < div class="form-group" >
                 <label>エルゴ名</label>
                 <input type="text" id="master-name" value="${item?.name || ''}" placeholder="例: ダイナミック1">
@@ -6430,820 +6431,820 @@ function openPracticeNoteModal(noteId) {
                 </div>
             </div>
 `;
-        }
-
-        // トグルボタンイベント
-        form.querySelectorAll('.status-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                // フォーム全体の status-btn を一度非アクティブにする (今回は toggle-group でラップされているので、兄弟要素のみにした方が安全だが、実装上 form.innerHTML 全書き換えなのでこれでOK)
-                // ですが、ボート・オール・エルゴでボタン構造が違うため、安全に親の .status-group 内のみ制御します。
-                const group = btn.closest('.status-group');
-                if (group) {
-                    group.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
-                } else {
-                    // フォールバック
-                    form.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
-                }
-                btn.classList.add('active');
-            });
-        });
-
-        form.querySelectorAll('.availability-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                form.querySelectorAll('.availability-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-            });
-        });
-        form.querySelectorAll('.oar-type-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                form.querySelectorAll('.oar-type-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-            });
-        });
-        form.querySelectorAll('.rigging-mode-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                form.querySelectorAll('.rigging-mode-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-            });
-        });
-        form.querySelectorAll('.ergo-master-type-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                form.querySelectorAll('.ergo-master-type-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-            });
-        });
-
-        modal.classList.remove('hidden');
     }
 
-    function closeMasterEditModal() {
-        document.getElementById('master-edit-modal').classList.add('hidden');
-        currentMasterItem = null;
+    // トグルボタンイベント
+    form.querySelectorAll('.status-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            // フォーム全体の status-btn を一度非アクティブにする (今回は toggle-group でラップされているので、兄弟要素のみにした方が安全だが、実装上 form.innerHTML 全書き換えなのでこれでOK)
+            // ですが、ボート・オール・エルゴでボタン構造が違うため、安全に親の .status-group 内のみ制御します。
+            const group = btn.closest('.status-group');
+            if (group) {
+                group.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+            } else {
+                // フォールバック
+                form.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+            }
+            btn.classList.add('active');
+        });
+    });
+
+    form.querySelectorAll('.availability-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            form.querySelectorAll('.availability-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    });
+    form.querySelectorAll('.oar-type-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            form.querySelectorAll('.oar-type-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    });
+    form.querySelectorAll('.rigging-mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            form.querySelectorAll('.rigging-mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    });
+    form.querySelectorAll('.ergo-master-type-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            form.querySelectorAll('.ergo-master-type-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    });
+
+    modal.classList.remove('hidden');
+}
+
+function closeMasterEditModal() {
+    document.getElementById('master-edit-modal').classList.add('hidden');
+    currentMasterItem = null;
+}
+
+function saveMasterItem() {
+    const name = document.getElementById('master-name')?.value?.trim();
+    if (!name) {
+        showToast('名前を入力してください', 'error');
+        return;
     }
 
-    function saveMasterItem() {
-        const name = document.getElementById('master-name')?.value?.trim();
-        if (!name) {
-            showToast('名前を入力してください', 'error');
-            return;
+    const status = document.querySelector('.status-btn.active')?.dataset.value || 'available';
+    // Backwards compatibility
+    const availability = status === 'available' ? '使用可能' : '使用不可';
+
+    let newItem;
+    if (currentMasterType === 'boats') {
+        const boatType = document.getElementById('master-boat-type').value;
+        const riggingModeBtn = document.querySelector('.rigging-mode-btn.active');
+        const riggingMode = riggingModeBtn ? riggingModeBtn.dataset.value : (currentMasterItem?.currentRiggingMode || null);
+        newItem = {
+            id: currentMasterItem?.id || generateId(),
+            name: document.getElementById('master-name').value,
+            type: boatType,
+            organization: document.getElementById('master-boat-org')?.value || '',
+            currentRiggingMode: isConvertibleBoat(boatType) ? (riggingMode || boatType) : null,
+            status: status,
+            availability: availability,
+            memo: document.getElementById('master-memo').value
+        };
+    } else if (currentMasterType === 'oars') {
+        const oarType = document.querySelector('.oar-type-btn.active')?.dataset.value || 'スカル';
+        newItem = {
+            id: currentMasterItem?.id || generateId(),
+            name: name,
+            type: oarType,
+            length: document.getElementById('master-length')?.value || '',
+            sealNumber: document.getElementById('master-seal')?.value || '',
+            status: status,
+            availability: availability,
+            memo: document.getElementById('master-memo')?.value || ''
+        };
+    } else if (currentMasterType === 'ergos') {
+        const ergoType = document.querySelector('.ergo-master-type-btn.active')?.dataset.value || 'ダイナミック';
+        newItem = {
+            id: currentMasterItem?.id || generateId(),
+            name: name,
+            type: ergoType,
+            sealNumber: document.getElementById('master-seal')?.value || '',
+            status: status,
+            availability: availability
+        };
+    }
+
+    if (currentMasterItem) {
+        const idx = state[currentMasterType].findIndex(d => d.id === currentMasterItem.id);
+        if (idx !== -1) state[currentMasterType][idx] = newItem;
+    } else {
+        state[currentMasterType].push(newItem);
+    }
+
+    DB.save(currentMasterType, state[currentMasterType]);
+
+    // Supabaseにも個別保存
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.saveMasterItem(currentMasterType, newItem).then(result => {
+            if (!result) {
+                showToast('⚠️ Supabase同期に失敗しました（ローカルには保存済み）', 'error');
+            }
+        }).catch(e => {
+            console.error('Master item Supabase save failed:', e);
+            showToast('⚠️ Supabase同期エラー: ' + (e?.message || e), 'error');
+        });
+    }
+
+    DB.addAuditLog(currentMasterType, newItem.id, currentMasterItem ? '更新' : '作成', { after: newItem });
+
+    closeMasterEditModal();
+    renderMasterList();
+    // populateBoatOarSelects exists? If not creating it or using renderBoatSelect
+    if (typeof populateBoatOarSelects === 'function') {
+        populateBoatOarSelects();
+    } else {
+        // Fallback to refresh active modals logic if cleaner
+        // Re-render select inputs if they exist in DOM
+        // Specifically for filters or input modal
+    }
+    showToast('保存しました', 'success');
+}
+
+// Function to populate/update boat and oar selects in input modal
+// 艇種ごとのオール必要本数
+const OAR_COUNT_BY_BOAT_TYPE = {
+    '1x': 1,  // シングル: スカル1セット
+    '2x': 2,  // ダブル: スカル2セット
+    '2-': 2,  // ペア: スイープ2本
+    '4x': 4,  // クォード: スカル4セット
+    '4+': 4,  // 付きフォア: スイープ4本
+    '4-': 4,  // なしフォア: スイープ4本
+    '8+': 8,  // エイト: スイープ8本
+};
+
+function populateBoatOarSelects() {
+    // Boats（艇種フィルタ適用）
+    const boatSelect = document.getElementById('input-boat');
+    if (boatSelect) {
+        const currentVal = boatSelect.value;
+        const activeBoatTypeBtn = document.querySelector('.boat-type-btn.active');
+        const selectedBoatType = activeBoatTypeBtn ? activeBoatTypeBtn.dataset.value : '';
+
+        let filteredBoats = (state.boats || []);
+        if (selectedBoatType) {
+            filteredBoats = filteredBoats.filter(b => {
+                if (b.type) return b.type === selectedBoatType;
+                if (b.name.includes(selectedBoatType)) return true;
+                if (selectedBoatType === '4+' && b.name.includes('付きフォア')) return true;
+                if (selectedBoatType === '4x' && b.name.includes('クォドルプル')) return true;
+                if (selectedBoatType === '2x' && b.name.includes('ダブル')) return true;
+                if (selectedBoatType === '2-' && b.name.includes('ペア')) return true;
+                if (selectedBoatType === '1x' && b.name.includes('シングル')) return true;
+                if (selectedBoatType === '8+' && b.name.includes('エイト')) return true;
+                return false;
+            });
+            if (filteredBoats.length === 0) filteredBoats = (state.boats || []);
         }
 
-        const status = document.querySelector('.status-btn.active')?.dataset.value || 'available';
-        // Backwards compatibility
-        const availability = status === 'available' ? '使用可能' : '使用不可';
+        boatSelect.innerHTML = '<option value="">選択してください</option>';
+        filteredBoats.forEach(b => {
+            const status = b.status || (b.availability === '使用不可' ? 'broken' : 'available');
+            const isUnavailable = status !== 'available';
+            const statusLabel = isUnavailable ? ` (${translateStatus(status)})` : '';
+            const statusEmoji = isUnavailable ? '🔴 ' : '🟢 ';
+            const option = document.createElement('option');
+            option.value = b.id;
+            option.textContent = `${statusEmoji}${b.name}${statusLabel}`;
+            if (isUnavailable) {
+                option.disabled = true;
+                option.style.color = '#999';
+            }
+            boatSelect.appendChild(option);
+        });
+        boatSelect.value = currentVal;
+    }
 
-        let newItem;
-        if (currentMasterType === 'boats') {
-            const boatType = document.getElementById('master-boat-type').value;
-            const riggingModeBtn = document.querySelector('.rigging-mode-btn.active');
-            const riggingMode = riggingModeBtn ? riggingModeBtn.dataset.value : (currentMasterItem?.currentRiggingMode || null);
-            newItem = {
-                id: currentMasterItem?.id || generateId(),
-                name: document.getElementById('master-name').value,
-                type: boatType,
-                organization: document.getElementById('master-boat-org')?.value || '',
-                currentRiggingMode: isConvertibleBoat(boatType) ? (riggingMode || boatType) : null,
-                status: status,
-                availability: availability,
-                memo: document.getElementById('master-memo').value
-            };
-        } else if (currentMasterType === 'oars') {
-            const oarType = document.querySelector('.oar-type-btn.active')?.dataset.value || 'スカル';
-            newItem = {
-                id: currentMasterItem?.id || generateId(),
-                name: name,
-                type: oarType,
-                length: document.getElementById('master-length')?.value || '',
-                sealNumber: document.getElementById('master-seal')?.value || '',
-                status: status,
-                availability: availability,
-                memo: document.getElementById('master-memo')?.value || ''
-            };
-        } else if (currentMasterType === 'ergos') {
-            const ergoType = document.querySelector('.ergo-master-type-btn.active')?.dataset.value || 'ダイナミック';
-            newItem = {
-                id: currentMasterItem?.id || generateId(),
-                name: name,
-                type: ergoType,
-                sealNumber: document.getElementById('master-seal')?.value || '',
-                status: status,
-                availability: availability
-            };
-        }
+    // Oars - 艇種に応じた本数分のselect生成
+    populateOarSelects();
+}
 
-        if (currentMasterItem) {
-            const idx = state[currentMasterType].findIndex(d => d.id === currentMasterItem.id);
-            if (idx !== -1) state[currentMasterType][idx] = newItem;
-        } else {
-            state[currentMasterType].push(newItem);
-        }
+function populateOarSelects() {
+    const container = document.getElementById('oar-selects-container');
+    if (!container) return;
 
+    const activeBoatTypeBtn = document.querySelector('.boat-type-btn.active');
+    const boatType = activeBoatTypeBtn ? activeBoatTypeBtn.dataset.value : '';
+    const oarCount = OAR_COUNT_BY_BOAT_TYPE[boatType] || 1;
+    const isSweep = ['2-', '4+', '4-', '8+'].includes(boatType);
+    const isScull = ['1x', '2x', '4x'].includes(boatType);
+
+    // ラベル更新
+    const countLabel = document.getElementById('oar-count-label');
+    if (countLabel) {
+        const typeLabel = isScull ? 'スカル' : isSweep ? 'スイープ' : '';
+        const unitLabel = isScull ? 'セット' : '本';
+        countLabel.textContent = boatType ? `(${typeLabel} ${oarCount}${unitLabel})` : '';
+    }
+
+    // 既存の選択値を保持
+    const existingSelects = container.querySelectorAll('.input-oar-select');
+    const existingValues = Array.from(existingSelects).map(s => s.value);
+
+    // フィルタ＆ソート済みオールリスト
+    let filteredOars = (state.oars || []);
+    if (boatType && (isSweep || isScull)) {
+        filteredOars = filteredOars.filter(o => {
+            const oarType = (o.type || '').toLowerCase();
+            if (isSweep) return oarType.includes('sweep') || oarType.includes('スイープ');
+            if (isScull) return oarType.includes('scull') || oarType.includes('スカル');
+            return true;
+        });
+    }
+    filteredOars = sortOars(filteredOars);
+
+    // 本数分のselectを生成
+    let html = '';
+    for (let i = 0; i < oarCount; i++) {
+        const savedVal = existingValues[i] || '';
+        html += `<select class="input-oar-select" data-oar-index="${i}" style="margin-bottom:6px;">
+            <option value="">オール ${i + 1} を選択</option>
+            ${filteredOars.map(o => {
+            const status = o.status || (o.availability === '使用不可' ? 'broken' : 'available');
+            const isUnavailable = status !== 'available';
+            const statusEmoji = isUnavailable ? '🔴 ' : '🟢 ';
+            const statusLabel = isUnavailable ? ` (${translateStatus(status)})` : '';
+            return `<option value="${o.id}" ${isUnavailable ? 'disabled style="color:#999"' : ''} ${savedVal === o.id ? 'selected' : ''}>${statusEmoji}${o.name}${statusLabel}</option>`;
+        }).join('')}
+        </select>`;
+    }
+    container.innerHTML = html;
+}
+
+function deleteMasterItem(e) {
+    if (e) { e.stopPropagation(); e.preventDefault(); }
+    if (!currentMasterItem) return;
+
+    const itemName = currentMasterItem.name || currentMasterItem.id;
+    showConfirmModal(`「${itemName}」を削除しますか？`, () => {
+        state[currentMasterType] = state[currentMasterType].filter(d => d.id !== currentMasterItem.id);
         DB.save(currentMasterType, state[currentMasterType]);
+        DB.addAuditLog(currentMasterType, currentMasterItem.id, '削除', {});
 
-        // Supabaseにも個別保存
+        // Supabaseからも削除
         if (DB.useSupabase && window.SupabaseConfig?.db) {
-            window.SupabaseConfig.db.saveMasterItem(currentMasterType, newItem).then(result => {
-                if (!result) {
-                    showToast('⚠️ Supabase同期に失敗しました（ローカルには保存済み）', 'error');
-                }
-            }).catch(e => {
-                console.error('Master item Supabase save failed:', e);
-                showToast('⚠️ Supabase同期エラー: ' + (e?.message || e), 'error');
+            window.SupabaseConfig.db.deleteMasterItem(currentMasterType, currentMasterItem.id).catch(err => {
+                console.error('Master item Supabase delete failed:', err);
             });
         }
-
-        DB.addAuditLog(currentMasterType, newItem.id, currentMasterItem ? '更新' : '作成', { after: newItem });
 
         closeMasterEditModal();
         renderMasterList();
-        // populateBoatOarSelects exists? If not creating it or using renderBoatSelect
-        if (typeof populateBoatOarSelects === 'function') {
-            populateBoatOarSelects();
-        } else {
-            // Fallback to refresh active modals logic if cleaner
-            // Re-render select inputs if they exist in DOM
-            // Specifically for filters or input modal
-        }
-        showToast('保存しました', 'success');
-    }
+        populateBoatOarSelects();
+        showToast('削除しました', 'success');
+    }, null, '削除する');
+}
 
-    // Function to populate/update boat and oar selects in input modal
-    // 艇種ごとのオール必要本数
-    const OAR_COUNT_BY_BOAT_TYPE = {
-        '1x': 1,  // シングル: スカル1セット
-        '2x': 2,  // ダブル: スカル2セット
-        '2-': 2,  // ペア: スイープ2本
-        '4x': 4,  // クォード: スカル4セット
-        '4+': 4,  // 付きフォア: スイープ4本
-        '4-': 4,  // なしフォア: スイープ4本
-        '8+': 8,  // エイト: スイープ8本
-    };
+// =========================================
+// イベントリスナー
+// =========================================
+const initializeApp = async () => {
+    try {
 
-    function populateBoatOarSelects() {
-        // Boats（艇種フィルタ適用）
-        const boatSelect = document.getElementById('input-boat');
-        if (boatSelect) {
-            const currentVal = boatSelect.value;
-            const activeBoatTypeBtn = document.querySelector('.boat-type-btn.active');
-            const selectedBoatType = activeBoatTypeBtn ? activeBoatTypeBtn.dataset.value : '';
+        // デモモード判定 (?demo=true)
+        const urlParams = new URLSearchParams(window.location.search);
+        const isDemoMode = urlParams.get('demo') === 'true';
+        state.isDemoMode = isDemoMode;
 
-            let filteredBoats = (state.boats || []);
-            if (selectedBoatType) {
-                filteredBoats = filteredBoats.filter(b => {
-                    if (b.type) return b.type === selectedBoatType;
-                    if (b.name.includes(selectedBoatType)) return true;
-                    if (selectedBoatType === '4+' && b.name.includes('付きフォア')) return true;
-                    if (selectedBoatType === '4x' && b.name.includes('クォドルプル')) return true;
-                    if (selectedBoatType === '2x' && b.name.includes('ダブル')) return true;
-                    if (selectedBoatType === '2-' && b.name.includes('ペア')) return true;
-                    if (selectedBoatType === '1x' && b.name.includes('シングル')) return true;
-                    if (selectedBoatType === '8+' && b.name.includes('エイト')) return true;
-                    return false;
-                });
-                if (filteredBoats.length === 0) filteredBoats = (state.boats || []);
-            }
-
-            boatSelect.innerHTML = '<option value="">選択してください</option>';
-            filteredBoats.forEach(b => {
-                const status = b.status || (b.availability === '使用不可' ? 'broken' : 'available');
-                const isUnavailable = status !== 'available';
-                const statusLabel = isUnavailable ? ` (${translateStatus(status)})` : '';
-                const statusEmoji = isUnavailable ? '🔴 ' : '🟢 ';
-                const option = document.createElement('option');
-                option.value = b.id;
-                option.textContent = `${statusEmoji}${b.name}${statusLabel}`;
-                if (isUnavailable) {
-                    option.disabled = true;
-                    option.style.color = '#999';
-                }
-                boatSelect.appendChild(option);
-            });
-            boatSelect.value = currentVal;
+        if (isDemoMode) {
+            DB.setDemoMode(true);
+            // デモモード時のみリセットボタンを表示
+            const resetBtn = document.getElementById('reset-data-btn');
+            if (resetBtn) resetBtn.classList.remove('hidden');
         }
 
-        // Oars - 艇種に応じた本数分のselect生成
-        populateOarSelects();
-    }
-
-    function populateOarSelects() {
-        const container = document.getElementById('oar-selects-container');
-        if (!container) return;
-
-        const activeBoatTypeBtn = document.querySelector('.boat-type-btn.active');
-        const boatType = activeBoatTypeBtn ? activeBoatTypeBtn.dataset.value : '';
-        const oarCount = OAR_COUNT_BY_BOAT_TYPE[boatType] || 1;
-        const isSweep = ['2-', '4+', '4-', '8+'].includes(boatType);
-        const isScull = ['1x', '2x', '4x'].includes(boatType);
-
-        // ラベル更新
-        const countLabel = document.getElementById('oar-count-label');
-        if (countLabel) {
-            const typeLabel = isScull ? 'スカル' : isSweep ? 'スイープ' : '';
-            const unitLabel = isScull ? 'セット' : '本';
-            countLabel.textContent = boatType ? `(${typeLabel} ${oarCount}${unitLabel})` : '';
+        // Supabaseクライアントの初期化
+        let supabaseReady = false;
+        if (window.SupabaseConfig) {
+            supabaseReady = window.SupabaseConfig.init();
         }
 
-        // 既存の選択値を保持
-        const existingSelects = container.querySelectorAll('.input-oar-select');
-        const existingValues = Array.from(existingSelects).map(s => s.value);
-
-        // フィルタ＆ソート済みオールリスト
-        let filteredOars = (state.oars || []);
-        if (boatType && (isSweep || isScull)) {
-            filteredOars = filteredOars.filter(o => {
-                const oarType = (o.type || '').toLowerCase();
-                if (isSweep) return oarType.includes('sweep') || oarType.includes('スイープ');
-                if (isScull) return oarType.includes('scull') || oarType.includes('スカル');
-                return true;
-            });
+        // デモモード時のみデモデータを作成
+        if (isDemoMode && !DB.loadLocal('users')) {
+            DB.createDemoData();
         }
-        filteredOars = sortOars(filteredOars);
 
-        // 本数分のselectを生成
-        let html = '';
-        for (let i = 0; i < oarCount; i++) {
-            const savedVal = existingValues[i] || '';
-            html += `<select class="input-oar-select" data-oar-index="${i}" style="margin-bottom:6px;">
-            <option value="">オール ${i + 1} を選択</option>
-            ${filteredOars.map(o => {
-                const status = o.status || (o.availability === '使用不可' ? 'broken' : 'available');
-                const isUnavailable = status !== 'available';
-                const statusEmoji = isUnavailable ? '🔴 ' : '🟢 ';
-                const statusLabel = isUnavailable ? ` (${translateStatus(status)})` : '';
-                return `<option value="${o.id}" ${isUnavailable ? 'disabled style="color:#999"' : ''} ${savedVal === o.id ? 'selected' : ''}>${statusEmoji}${o.name}${statusLabel}</option>`;
-            }).join('')}
-        </select>`;
-        }
-        container.innerHTML = html;
-    }
+        await DB.init();
 
-    function deleteMasterItem(e) {
-        if (e) { e.stopPropagation(); e.preventDefault(); }
-        if (!currentMasterItem) return;
-
-        const itemName = currentMasterItem.name || currentMasterItem.id;
-        showConfirmModal(`「${itemName}」を削除しますか？`, () => {
-            state[currentMasterType] = state[currentMasterType].filter(d => d.id !== currentMasterItem.id);
-            DB.save(currentMasterType, state[currentMasterType]);
-            DB.addAuditLog(currentMasterType, currentMasterItem.id, '削除', {});
-
-            // Supabaseからも削除
-            if (DB.useSupabase && window.SupabaseConfig?.db) {
-                window.SupabaseConfig.db.deleteMasterItem(currentMasterType, currentMasterItem.id).catch(err => {
-                    console.error('Master item Supabase delete failed:', err);
-                });
-            }
-
-            closeMasterEditModal();
-            renderMasterList();
-            populateBoatOarSelects();
-            showToast('削除しました', 'success');
-        }, null, '削除する');
-    }
-
-    // =========================================
-    // イベントリスナー
-    // =========================================
-    const initializeApp = async () => {
-        try {
-
-            // デモモード判定 (?demo=true)
-            const urlParams = new URLSearchParams(window.location.search);
-            const isDemoMode = urlParams.get('demo') === 'true';
-            state.isDemoMode = isDemoMode;
-
-            if (isDemoMode) {
-                DB.setDemoMode(true);
-                // デモモード時のみリセットボタンを表示
-                const resetBtn = document.getElementById('reset-data-btn');
-                if (resetBtn) resetBtn.classList.remove('hidden');
-            }
-
-            // Supabaseクライアントの初期化
-            let supabaseReady = false;
-            if (window.SupabaseConfig) {
-                supabaseReady = window.SupabaseConfig.init();
-            }
-
-            // デモモード時のみデモデータを作成
-            if (isDemoMode && !DB.loadLocal('users')) {
-                DB.createDemoData();
-            }
-
-            await DB.init();
-
-            // Supabase認証セッションのチェック
-            let loggedIn = false;
-            if (supabaseReady) {
-                const session = await window.SupabaseConfig.getSession();
-                if (session) {
-                    const authSuccess = await handleAuthSession(session);
-                    if (authSuccess) {
-                        loggedIn = true;
-                        // Supabaseからプロフィール一覧をロード
-                        try {
-                            const profiles = await window.SupabaseConfig.db.loadProfiles();
-                            if (profiles.length > 0) {
-                                state.users = profiles.map(p => ({
-                                    id: p.id,
-                                    authId: p.auth_id,
-                                    name: p.name,
-                                    grade: p.grade,
-                                    gender: p.gender || 'man',
-                                    role: migrateRole(p.role || '漕手'),
-                                    status: p.status || '在籍',
-                                    approvalStatus: p.approval_status || '承認済み',
-                                    concept2Connected: p.concept2_connected || false,
-                                    concept2Token: p.concept2_access_token || null,
-                                    concept2LastSync: p.concept2_last_sync || null,
-                                    side: p.side || null,
-                                    weight: p.weight || null
-                                }));
-                                DB.saveLocal('users', state.users);
-                            }
-                        } catch (e) {
-                            console.warn('Failed to load profiles from Supabase:', e);
-                        }
-                    }
-                }
-
-                // 認証状態変更の監視（ログイン/ログアウト時に自動反映）
-                window.SupabaseConfig.onAuthStateChange(async (event, session) => {
-                    if (event === 'SIGNED_IN' && session) {
-                        const authSuccess = await handleAuthSession(session);
-                        if (authSuccess && state.currentUser?.approvalStatus === '承認済み') {
-                            // Supabaseから最新データを同期してからUI初期化
-                            try {
-                                await DB.syncFromSupabase();
-                            } catch (e) {
-                                console.warn('Post-login sync failed:', e);
-                            }
-                            initMainScreen();
-                            updateConcept2UI();
-                            showScreen('main-screen');
-                        }
-                    } else if (event === 'SIGNED_OUT') {
-                        state.currentUser = null;
-                        DB.save('current_user', null);
-                        showScreen('login-screen');
-                    }
-                });
-            }
-
-            // デモモードからの前回ログイン状態復帰
-            if (!loggedIn && state.currentUser?.approvalStatus === '承認済み') {
-                // Supabase認証なしのデモユーザーの場合
-                if (isDemoMode || state.currentUser.id?.startsWith('u')) {
+        // Supabase認証セッションのチェック
+        let loggedIn = false;
+        if (supabaseReady) {
+            const session = await window.SupabaseConfig.getSession();
+            if (session) {
+                const authSuccess = await handleAuthSession(session);
+                if (authSuccess) {
                     loggedIn = true;
-                }
-            }
-
-            // Concept2認証コールバックからの戻り処理
-            if (urlParams.get('concept2_auth') === 'success') {
-                const authResultJson = localStorage.getItem('concept2_auth_result');
-                if (authResultJson) {
+                    // Supabaseからプロフィール一覧をロード
                     try {
-                        const authResult = JSON.parse(authResultJson);
-                        if (authResult.success && authResult.user_id) {
-                            const userIndex = state.users.findIndex(u => u.id === authResult.user_id);
-                            if (userIndex !== -1) {
-                                state.users[userIndex].concept2Connected = true;
-                                DB.save('users', state.users);
-                                if (state.currentUser && state.currentUser.id === authResult.user_id) {
-                                    state.currentUser.concept2Connected = true;
-                                    DB.save('current_user', state.currentUser);
-                                }
-                                showToast('Concept2と連携しました！', 'success');
-                            }
+                        const profiles = await window.SupabaseConfig.db.loadProfiles();
+                        if (profiles.length > 0) {
+                            state.users = profiles.map(p => ({
+                                id: p.id,
+                                authId: p.auth_id,
+                                name: p.name,
+                                grade: p.grade,
+                                gender: p.gender || 'man',
+                                role: migrateRole(p.role || '漕手'),
+                                status: p.status || '在籍',
+                                approvalStatus: p.approval_status || '承認済み',
+                                concept2Connected: p.concept2_connected || false,
+                                concept2Token: p.concept2_access_token || null,
+                                concept2LastSync: p.concept2_last_sync || null,
+                                side: p.side || null,
+                                weight: p.weight || null
+                            }));
+                            DB.saveLocal('users', state.users);
                         }
-                        localStorage.removeItem('concept2_auth_result');
                     } catch (e) {
-                        console.error('Failed to parse auth result:', e);
+                        console.warn('Failed to load profiles from Supabase:', e);
                     }
                 }
-                window.history.replaceState({}, document.title, window.location.pathname);
             }
 
-            // 画面表示
-            if (loggedIn) {
-                initMainScreen();
-                updateConcept2UI();
-                showScreen('main-screen');
-            } else {
-                // デモモードの場合のみデモユーザー選択を表示
-                if (isDemoMode) {
-                    const demoContainer = document.getElementById('user-select-container');
-                    if (demoContainer) demoContainer.classList.remove('hidden');
-                    renderUserSelectList();
+            // 認証状態変更の監視（ログイン/ログアウト時に自動反映）
+            window.SupabaseConfig.onAuthStateChange(async (event, session) => {
+                if (event === 'SIGNED_IN' && session) {
+                    const authSuccess = await handleAuthSession(session);
+                    if (authSuccess && state.currentUser?.approvalStatus === '承認済み') {
+                        // Supabaseから最新データを同期してからUI初期化
+                        try {
+                            await DB.syncFromSupabase();
+                        } catch (e) {
+                            console.warn('Post-login sync failed:', e);
+                        }
+                        initMainScreen();
+                        updateConcept2UI();
+                        showScreen('main-screen');
+                    }
+                } else if (event === 'SIGNED_OUT') {
+                    state.currentUser = null;
+                    DB.save('current_user', null);
+                    showScreen('login-screen');
                 }
-                showScreen('login-screen');
-            }
-
-            // ログイン関連
-            document.getElementById('skip-concept2-btn').addEventListener('click', skipConcept2);
-            document.getElementById('connect-concept2-btn').addEventListener('click', connectConcept2);
-            document.getElementById('logout-btn').addEventListener('click', handleLogout);
-            document.getElementById('reset-data-btn')?.addEventListener('click', () => {
-                showConfirmModal('⚠️ 全てのローカルデータを削除します。この操作は取り消せません。よろしいですか？', () => {
-                    showConfirmModal('本当に全データを削除しますか？（最終確認）', () => {
-                        DB.resetAllData();
-                        showToast('データをリセットしました', 'success');
-                        setTimeout(() => location.reload(), 500);
-                    }, null, '全削除する');
-                }, null, '次へ');
             });
-            document.getElementById('logout-pending-btn')?.addEventListener('click', handleLogout);
-
-            // 設定画面のConcept2
-            document.getElementById('toggle-concept2-btn')?.addEventListener('click', toggleConcept2);
-            document.getElementById('sync-concept2-btn')?.addEventListener('click', syncConcept2);
-
-            // タブ
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.addEventListener('click', () => switchTab(item.dataset.tab));
-            });
-
-            // 週ナビ
-            document.getElementById('prev-week-btn').addEventListener('click', () => {
-                state.currentWeekStart.setDate(state.currentWeekStart.getDate() - 7);
-                renderWeekCalendar();
-            });
-            document.getElementById('next-week-btn').addEventListener('click', () => {
-                state.currentWeekStart.setDate(state.currentWeekStart.getDate() + 7);
-                renderWeekCalendar();
-            });
-
-            // 入力モーダル
-            document.getElementById('input-modal-close').addEventListener('click', closeInputModal);
-            document.querySelector('#input-modal .modal-overlay').addEventListener('click', closeInputModal);
-            document.getElementById('save-schedule-btn').addEventListener('click', saveSchedule);
-            document.getElementById('delete-schedule-btn').addEventListener('click', deleteSchedule);
-
-            // 予定種別切替
-            document.querySelectorAll('.schedule-type-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.schedule-type-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    handleScheduleTypeChange(btn.dataset.value);
-                });
-            });
-
-            // トグルボタン（単一選択）
-            ['reason-btn', 'ergo-type-btn', 'video-duration-btn'].forEach(cls => {
-                document.querySelectorAll(`.${cls} `).forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        document.querySelectorAll(`.${cls} `).forEach(b => b.classList.remove('active'));
-                        btn.classList.add('active');
-                    });
-                });
-            });
-
-            // 艇種ボタン（単一選択）
-            document.querySelectorAll('.boat-type-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.boat-type-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    filterBoatSelect(btn.dataset.value);
-                    if (typeof populateBoatOarSelects === 'function') populateBoatOarSelects();
-                    // シート入力UI更新
-                    if (typeof renderSeatInputs === 'function') renderSeatInputs(btn.dataset.value);
-                });
-            });
-
-            // 炊事ボタン（複数選択可―トグル）
-            document.querySelectorAll('.meal-type-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    btn.classList.toggle('active');
-                });
-            });
-
-            // クルー検索
-            document.getElementById('crew-search').addEventListener('input', (e) => filterCrew(e.target.value));
-
-            // サブタブ切替（ノートタブ内）
-            document.querySelectorAll('.note-subtab-btn').forEach(btn => {
-                btn.addEventListener('click', () => switchNoteSubtab(btn.dataset.subtab));
-            });
-
-            // 練習ノートモーダル
-            document.getElementById('practice-note-close')?.addEventListener('click', () => {
-                document.getElementById('practice-note-modal').classList.add('hidden');
-            });
-            document.querySelector('#practice-note-modal .modal-overlay')?.addEventListener('click', () => {
-                document.getElementById('practice-note-modal').classList.add('hidden');
-            });
-            document.getElementById('save-practice-note-btn')?.addEventListener('click', savePracticeNote);
-            document.getElementById('link-ergo-btn')?.addEventListener('click', () => {
-                const modal = document.getElementById('practice-note-modal');
-                showErgoSelectList(modal.dataset.noteId);
-            });
-
-            // 全体タブ
-            document.getElementById('overview-date').addEventListener('change', renderOverview);
-
-            // マイレージ期間切替
-            document.querySelectorAll('.period-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    renderMileageRanking(btn.dataset.period);
-                });
-            });
-
-            // Concept2バナー
-            document.getElementById('connect-from-data-btn')?.addEventListener('click', connectConcept2);
-            document.getElementById('manual-sync-btn')?.addEventListener('click', syncConcept2);
-
-            // マスタ管理ボタン
-            document.getElementById('manage-boats-btn')?.addEventListener('click', () => openMasterModal('boats'));
-            document.getElementById('manage-oars-btn')?.addEventListener('click', () => openMasterModal('oars'));
-            document.getElementById('manage-ergos-btn')?.addEventListener('click', () => openMasterModal('ergos'));
-
-            // マスタ管理モーダル
-            document.getElementById('master-modal-close')?.addEventListener('click', closeMasterModal);
-            document.querySelector('#master-modal .modal-overlay')?.addEventListener('click', closeMasterModal);
-            document.getElementById('add-master-btn')?.addEventListener('click', () => openMasterEditModal());
-
-            // マスタ編集モーダル
-            document.getElementById('master-edit-close')?.addEventListener('click', closeMasterEditModal);
-            document.querySelector('#master-edit-modal .modal-overlay')?.addEventListener('click', (e) => {
-                if (e.target === e.currentTarget) closeMasterEditModal();
-            });
-            document.getElementById('save-master-btn')?.addEventListener('click', saveMasterItem);
-            document.getElementById('delete-master-btn')?.addEventListener('click', (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                deleteMasterItem(e);
-            });
-
-        } catch (e) {
-            console.error('App init error:', e);
-            // showToast('アプリの初期化に失敗しました: ' + e.message, 'error');
-            // fallback
-            const container = document.getElementById('user-select-list');
-            if (container) container.innerHTML = `< div style = "color:red" > Error: ${e.message}</div > `;
         }
-    };
 
-    window.initializeApp = initializeApp;
-
-    // Initialize App with error catching
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            try {
-                initializeApp();
-            } catch (e) {
-                console.error('Fatal init error:', e);
-                alert('Initialization Failed: ' + e.message);
+        // デモモードからの前回ログイン状態復帰
+        if (!loggedIn && state.currentUser?.approvalStatus === '承認済み') {
+            // Supabase認証なしのデモユーザーの場合
+            if (isDemoMode || state.currentUser.id?.startsWith('u')) {
+                loggedIn = true;
             }
+        }
+
+        // Concept2認証コールバックからの戻り処理
+        if (urlParams.get('concept2_auth') === 'success') {
+            const authResultJson = localStorage.getItem('concept2_auth_result');
+            if (authResultJson) {
+                try {
+                    const authResult = JSON.parse(authResultJson);
+                    if (authResult.success && authResult.user_id) {
+                        const userIndex = state.users.findIndex(u => u.id === authResult.user_id);
+                        if (userIndex !== -1) {
+                            state.users[userIndex].concept2Connected = true;
+                            DB.save('users', state.users);
+                            if (state.currentUser && state.currentUser.id === authResult.user_id) {
+                                state.currentUser.concept2Connected = true;
+                                DB.save('current_user', state.currentUser);
+                            }
+                            showToast('Concept2と連携しました！', 'success');
+                        }
+                    }
+                    localStorage.removeItem('concept2_auth_result');
+                } catch (e) {
+                    console.error('Failed to parse auth result:', e);
+                }
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        // 画面表示
+        if (loggedIn) {
+            initMainScreen();
+            updateConcept2UI();
+            showScreen('main-screen');
+        } else {
+            // デモモードの場合のみデモユーザー選択を表示
+            if (isDemoMode) {
+                const demoContainer = document.getElementById('user-select-container');
+                if (demoContainer) demoContainer.classList.remove('hidden');
+                renderUserSelectList();
+            }
+            showScreen('login-screen');
+        }
+
+        // ログイン関連
+        document.getElementById('skip-concept2-btn').addEventListener('click', skipConcept2);
+        document.getElementById('connect-concept2-btn').addEventListener('click', connectConcept2);
+        document.getElementById('logout-btn').addEventListener('click', handleLogout);
+        document.getElementById('reset-data-btn')?.addEventListener('click', () => {
+            showConfirmModal('⚠️ 全てのローカルデータを削除します。この操作は取り消せません。よろしいですか？', () => {
+                showConfirmModal('本当に全データを削除しますか？（最終確認）', () => {
+                    DB.resetAllData();
+                    showToast('データをリセットしました', 'success');
+                    setTimeout(() => location.reload(), 500);
+                }, null, '全削除する');
+            }, null, '次へ');
         });
-    } else {
+        document.getElementById('logout-pending-btn')?.addEventListener('click', handleLogout);
+
+        // 設定画面のConcept2
+        document.getElementById('toggle-concept2-btn')?.addEventListener('click', toggleConcept2);
+        document.getElementById('sync-concept2-btn')?.addEventListener('click', syncConcept2);
+
+        // タブ
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => switchTab(item.dataset.tab));
+        });
+
+        // 週ナビ
+        document.getElementById('prev-week-btn').addEventListener('click', () => {
+            state.currentWeekStart.setDate(state.currentWeekStart.getDate() - 7);
+            renderWeekCalendar();
+        });
+        document.getElementById('next-week-btn').addEventListener('click', () => {
+            state.currentWeekStart.setDate(state.currentWeekStart.getDate() + 7);
+            renderWeekCalendar();
+        });
+
+        // 入力モーダル
+        document.getElementById('input-modal-close').addEventListener('click', closeInputModal);
+        document.querySelector('#input-modal .modal-overlay').addEventListener('click', closeInputModal);
+        document.getElementById('save-schedule-btn').addEventListener('click', saveSchedule);
+        document.getElementById('delete-schedule-btn').addEventListener('click', deleteSchedule);
+
+        // 予定種別切替
+        document.querySelectorAll('.schedule-type-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.schedule-type-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                handleScheduleTypeChange(btn.dataset.value);
+            });
+        });
+
+        // トグルボタン（単一選択）
+        ['reason-btn', 'ergo-type-btn', 'video-duration-btn'].forEach(cls => {
+            document.querySelectorAll(`.${cls} `).forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll(`.${cls} `).forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                });
+            });
+        });
+
+        // 艇種ボタン（単一選択）
+        document.querySelectorAll('.boat-type-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.boat-type-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                filterBoatSelect(btn.dataset.value);
+                if (typeof populateBoatOarSelects === 'function') populateBoatOarSelects();
+                // シート入力UI更新
+                if (typeof renderSeatInputs === 'function') renderSeatInputs(btn.dataset.value);
+            });
+        });
+
+        // 炊事ボタン（複数選択可―トグル）
+        document.querySelectorAll('.meal-type-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.classList.toggle('active');
+            });
+        });
+
+        // クルー検索
+        document.getElementById('crew-search').addEventListener('input', (e) => filterCrew(e.target.value));
+
+        // サブタブ切替（ノートタブ内）
+        document.querySelectorAll('.note-subtab-btn').forEach(btn => {
+            btn.addEventListener('click', () => switchNoteSubtab(btn.dataset.subtab));
+        });
+
+        // 練習ノートモーダル
+        document.getElementById('practice-note-close')?.addEventListener('click', () => {
+            document.getElementById('practice-note-modal').classList.add('hidden');
+        });
+        document.querySelector('#practice-note-modal .modal-overlay')?.addEventListener('click', () => {
+            document.getElementById('practice-note-modal').classList.add('hidden');
+        });
+        document.getElementById('save-practice-note-btn')?.addEventListener('click', savePracticeNote);
+        document.getElementById('link-ergo-btn')?.addEventListener('click', () => {
+            const modal = document.getElementById('practice-note-modal');
+            showErgoSelectList(modal.dataset.noteId);
+        });
+
+        // 全体タブ
+        document.getElementById('overview-date').addEventListener('change', renderOverview);
+
+        // マイレージ期間切替
+        document.querySelectorAll('.period-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                renderMileageRanking(btn.dataset.period);
+            });
+        });
+
+        // Concept2バナー
+        document.getElementById('connect-from-data-btn')?.addEventListener('click', connectConcept2);
+        document.getElementById('manual-sync-btn')?.addEventListener('click', syncConcept2);
+
+        // マスタ管理ボタン
+        document.getElementById('manage-boats-btn')?.addEventListener('click', () => openMasterModal('boats'));
+        document.getElementById('manage-oars-btn')?.addEventListener('click', () => openMasterModal('oars'));
+        document.getElementById('manage-ergos-btn')?.addEventListener('click', () => openMasterModal('ergos'));
+
+        // マスタ管理モーダル
+        document.getElementById('master-modal-close')?.addEventListener('click', closeMasterModal);
+        document.querySelector('#master-modal .modal-overlay')?.addEventListener('click', closeMasterModal);
+        document.getElementById('add-master-btn')?.addEventListener('click', () => openMasterEditModal());
+
+        // マスタ編集モーダル
+        document.getElementById('master-edit-close')?.addEventListener('click', closeMasterEditModal);
+        document.querySelector('#master-edit-modal .modal-overlay')?.addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeMasterEditModal();
+        });
+        document.getElementById('save-master-btn')?.addEventListener('click', saveMasterItem);
+        document.getElementById('delete-master-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            deleteMasterItem(e);
+        });
+
+    } catch (e) {
+        console.error('App init error:', e);
+        // showToast('アプリの初期化に失敗しました: ' + e.message, 'error');
+        // fallback
+        const container = document.getElementById('user-select-list');
+        if (container) container.innerHTML = `< div style = "color:red" > Error: ${e.message}</div > `;
+    }
+};
+
+window.initializeApp = initializeApp;
+
+// Initialize App with error catching
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
         try {
             initializeApp();
         } catch (e) {
             console.error('Fatal init error:', e);
             alert('Initialization Failed: ' + e.message);
         }
+    });
+} else {
+    try {
+        initializeApp();
+    } catch (e) {
+        console.error('Fatal init error:', e);
+        alert('Initialization Failed: ' + e.message);
     }
-    // ワークアウト情報からインターバル詳細を計算
-    function calculateIntervalDetails(workout, defaultType = 'unknown') {
-        let display = '';
-        let type = defaultType;
+}
+// ワークアウト情報からインターバル詳細を計算
+function calculateIntervalDetails(workout, defaultType = 'unknown') {
+    let display = '';
+    let type = defaultType;
 
-        if (workout && workout.intervals && workout.intervals.length > 0) {
-            const count = workout.intervals.length;
-            const firstDist = workout.intervals[0].distance;
-            const firstTime = workout.intervals[0].time;
+    if (workout && workout.intervals && workout.intervals.length > 0) {
+        const count = workout.intervals.length;
+        const firstDist = workout.intervals[0].distance;
+        const firstTime = workout.intervals[0].time;
 
-            // 全セットで距離が一定か確認
-            const isFixedDistance = workout.intervals.every(i => i.distance === firstDist);
-            // 全セットで時間が一定か確認
-            const isFixedTime = workout.intervals.every(i => i.time === firstTime);
+        // 全セットで距離が一定か確認
+        const isFixedDistance = workout.intervals.every(i => i.distance === firstDist);
+        // 全セットで時間が一定か確認
+        const isFixedTime = workout.intervals.every(i => i.time === firstTime);
 
-            // Concept2のworkout_typeを優先して判定
-            const isC2TimeWorkout = defaultType === 'FixedTimeSplits' || defaultType === 'FixedTimeInterval';
-            const isC2DistWorkout = defaultType === 'FixedDistanceSplits' || defaultType === 'FixedDistanceInterval';
+        // Concept2のworkout_typeを優先して判定
+        const isC2TimeWorkout = defaultType === 'FixedTimeSplits' || defaultType === 'FixedTimeInterval';
+        const isC2DistWorkout = defaultType === 'FixedDistanceSplits' || defaultType === 'FixedDistanceInterval';
 
-            if (isC2TimeWorkout || (isFixedTime && !isC2DistWorkout && !isFixedDistance)) {
-                // 時間ベースインターバル
-                const timeVal = firstTime || 0;
-                const mins = Math.round(timeVal / 600); // 1/10秒 -> 分
-                if (timeVal % 600 === 0 && mins > 0) {
-                    display = `${mins}min×${count}`;
-                } else {
-                    const secs = Math.round(timeVal / 10);
-                    display = `${secs}sec×${count}`;
-                }
-                type = 'FixedTimeInterval';
-            } else if (isFixedDistance && firstDist > 0) {
-                // 距離ベースインターバル
-                display = `${firstDist}m×${count}`;
-                type = 'FixedDistanceInterval';
-            } else if (isFixedTime && firstTime > 0) {
-                // フォールバック: 時間が一定なら時間ベース
-                const mins = Math.round(firstTime / 600);
-                if (firstTime % 600 === 0 && mins > 0) {
-                    display = `${mins}min×${count}`;
-                } else {
-                    const secs = Math.round(firstTime / 10);
-                    display = `${secs}sec×${count}`;
-                }
-                type = 'FixedTimeInterval';
+        if (isC2TimeWorkout || (isFixedTime && !isC2DistWorkout && !isFixedDistance)) {
+            // 時間ベースインターバル
+            const timeVal = firstTime || 0;
+            const mins = Math.round(timeVal / 600); // 1/10秒 -> 分
+            if (timeVal % 600 === 0 && mins > 0) {
+                display = `${mins}min×${count}`;
             } else {
-                // 変則
-                display = `Variable×${count}`;
-                type = 'VariableInterval';
+                const secs = Math.round(timeVal / 10);
+                display = `${secs}sec×${count}`;
             }
+            type = 'FixedTimeInterval';
+        } else if (isFixedDistance && firstDist > 0) {
+            // 距離ベースインターバル
+            display = `${firstDist}m×${count}`;
+            type = 'FixedDistanceInterval';
+        } else if (isFixedTime && firstTime > 0) {
+            // フォールバック: 時間が一定なら時間ベース
+            const mins = Math.round(firstTime / 600);
+            if (firstTime % 600 === 0 && mins > 0) {
+                display = `${mins}min×${count}`;
+            } else {
+                const secs = Math.round(firstTime / 10);
+                display = `${secs}sec×${count}`;
+            }
+            type = 'FixedTimeInterval';
+        } else {
+            // 変則
+            display = `Variable×${count}`;
+            type = 'VariableInterval';
         }
-
-        return { display, type };
     }
 
-    // =========================================
-    // リギング管理
-    // =========================================
+    return { display, type };
+}
 
-    /**
-     * リギング管理の初期化（ロール分岐あり）
-     */
-    async function initRigging() {
-        const role = state.currentUser?.role;
-        const isViewer = [ROLES.COX, ROLES.COACH].includes(role);
+// =========================================
+// リギング管理
+// =========================================
 
-        // ビュー切替
-        const rowerView = document.getElementById('rower-rigging-view');
-        const crewView = document.getElementById('crew-rigging-view');
+/**
+ * リギング管理の初期化（ロール分岐あり）
+ */
+async function initRigging() {
+    const role = state.currentUser?.role;
+    const isViewer = [ROLES.COX, ROLES.COACH].includes(role);
 
-        if (isViewer) {
-            if (rowerView) rowerView.classList.add('hidden');
-            if (crewView) crewView.classList.remove('hidden');
-            initCrewRiggingView();
-            return;
-        }
+    // ビュー切替
+    const rowerView = document.getElementById('rower-rigging-view');
+    const crewView = document.getElementById('crew-rigging-view');
 
-        // 漕手/管理者: 通常のリギングフォーム
-        if (rowerView) rowerView.classList.remove('hidden');
-        if (crewView) crewView.classList.add('hidden');
+    if (isViewer) {
+        if (rowerView) rowerView.classList.add('hidden');
+        if (crewView) crewView.classList.remove('hidden');
+        initCrewRiggingView();
+        return;
+    }
 
-        const boatSelect = document.getElementById('rigging-boat-select');
-        if (!boatSelect) return;
+    // 漕手/管理者: 通常のリギングフォーム
+    if (rowerView) rowerView.classList.remove('hidden');
+    if (crewView) crewView.classList.add('hidden');
 
-        // 艇リストの取得（マスタから）
-        let boats = state.boats || [];
+    const boatSelect = document.getElementById('rigging-boat-select');
+    if (!boatSelect) return;
 
-        // Supabaseが有効なら取得試行（state.boatsはすでにsyncされているはずだが念のため）
-        if (DB.useSupabase && window.SupabaseConfig?.db) {
-            // state.boatsが空なら取得
-            if (boats.length === 0) {
-                try {
-                    const supaBoats = await window.SupabaseConfig.db.loadMasterData('boats');
-                    if (supaBoats && supaBoats.length) {
-                        boats = supaBoats;
-                        state.boats = boats;
-                        DB.saveLocal('boats', boats);
-                    }
-                } catch (e) {
-                    console.error('Failed to fetch boats', e);
+    // 艇リストの取得（マスタから）
+    let boats = state.boats || [];
+
+    // Supabaseが有効なら取得試行（state.boatsはすでにsyncされているはずだが念のため）
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        // state.boatsが空なら取得
+        if (boats.length === 0) {
+            try {
+                const supaBoats = await window.SupabaseConfig.db.loadMasterData('boats');
+                if (supaBoats && supaBoats.length) {
+                    boats = supaBoats;
+                    state.boats = boats;
+                    DB.saveLocal('boats', boats);
                 }
+            } catch (e) {
+                console.error('Failed to fetch boats', e);
             }
         }
-
-        // デモデータ生成（もし空なら）
-        if (boats.length === 0) {
-            boats = [
-                { id: 'b1', name: 'Empacher 8+ (2020)', availability: '使用可能' },
-                { id: 'b2', name: 'Filippi 4- (2019)', availability: '使用可能' },
-                { id: 'b3', name: 'WinTech 2x (2021)', availability: '使用可能' },
-                { id: 'b4', name: 'Empacher 1x (2018)', availability: '使用可能' }
-            ];
-            state.boats = boats;
-            saveLocal('boats', boats);
-        }
-
-        // セレクトボックス更新
-        boatSelect.innerHTML = '<option value="">選択してください</option>';
-        boats.forEach(boat => {
-            const option = document.createElement('option');
-            option.value = boat.id;
-            option.textContent = boat.name;
-            boatSelect.appendChild(option);
-        });
-
-        // 非表示/表示のリセット
-        document.getElementById('rigging-form').classList.add('hidden');
-        document.getElementById('rigging-empty-state').classList.remove('hidden');
-
-        // イベントリスナー
-        boatSelect.onchange = (e) => loadRigging(e.target.value);
-
-        // 保存ボタンイベント (一度だけ登録)
-        const saveBtn = document.getElementById('save-rigging-btn');
-        if (saveBtn) {
-            // 既存のリスナーを削除するためにクローンして置換
-            const newBtn = saveBtn.cloneNode(true);
-            saveBtn.parentNode.replaceChild(newBtn, saveBtn);
-            newBtn.onclick = () => saveRigging(document.getElementById('rigging-boat-select').value);
-        }
-
-        // 設備状態一覧をレンダリング
-        renderEquipmentStatus();
     }
 
-    // =========================================
-    // 設備状態一覧
-    // =========================================
-
-    function switchEquipView(view) {
-        document.querySelectorAll('[data-equip-view]').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.equipView === view);
-        });
-        const boatsList = document.getElementById('equip-boats-list');
-        const oarsList = document.getElementById('equip-oars-list');
-        if (boatsList) boatsList.classList.toggle('hidden', view !== 'boats');
-        if (oarsList) oarsList.classList.toggle('hidden', view !== 'oars');
+    // デモデータ生成（もし空なら）
+    if (boats.length === 0) {
+        boats = [
+            { id: 'b1', name: 'Empacher 8+ (2020)', availability: '使用可能' },
+            { id: 'b2', name: 'Filippi 4- (2019)', availability: '使用可能' },
+            { id: 'b3', name: 'WinTech 2x (2021)', availability: '使用可能' },
+            { id: 'b4', name: 'Empacher 1x (2018)', availability: '使用可能' }
+        ];
+        state.boats = boats;
+        saveLocal('boats', boats);
     }
 
-    function renderEquipmentStatus() {
-        renderBoatsList();
-        renderOarsList();
+    // セレクトボックス更新
+    boatSelect.innerHTML = '<option value="">選択してください</option>';
+    boats.forEach(boat => {
+        const option = document.createElement('option');
+        option.value = boat.id;
+        option.textContent = boat.name;
+        boatSelect.appendChild(option);
+    });
+
+    // 非表示/表示のリセット
+    document.getElementById('rigging-form').classList.add('hidden');
+    document.getElementById('rigging-empty-state').classList.remove('hidden');
+
+    // イベントリスナー
+    boatSelect.onchange = (e) => loadRigging(e.target.value);
+
+    // 保存ボタンイベント (一度だけ登録)
+    const saveBtn = document.getElementById('save-rigging-btn');
+    if (saveBtn) {
+        // 既存のリスナーを削除するためにクローンして置換
+        const newBtn = saveBtn.cloneNode(true);
+        saveBtn.parentNode.replaceChild(newBtn, saveBtn);
+        newBtn.onclick = () => saveRigging(document.getElementById('rigging-boat-select').value);
     }
 
-    function renderBoatsList() {
-        const container = document.getElementById('equip-boats-list');
-        if (!container) return;
-        const boats = state.boats || [];
-        if (boats.length === 0) {
-            container.innerHTML = '<div class="empty-state"><p>艇データがありません</p></div>';
-            return;
-        }
+    // 設備状態一覧をレンダリング
+    renderEquipmentStatus();
+}
 
-        const orgColors = { '男子部': '#3b82f6', '女子部': '#ec4899', '医学部': '#10b981', 'OB': '#f59e0b' };
-        const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
-        const boatTypeLabels = { '1x': 'シングル', '2x': 'ダブル', '2-': 'ペア', '4x': 'クォード', '4+': '付きフォア', '4-': 'なしフォア', '8+': 'エイト' };
-        const typeOrder = ['8+', '4+', '4-/4x', '2-/2x', '1x'];
-        const groupLabels = {
-            '8+': 'エイト',
-            '4+': '付きフォア',
-            '4-/4x': 'なしフォア / クォード',
-            '2-/2x': 'ペア / ダブル',
-            '1x': 'シングル'
-        };
-        const groupColors = {
-            '8+': '#dc2626',
-            '4+': '#0284c7',
-            '4-/4x': '#0ea5e9',
-            '2-/2x': '#8b5cf6',
-            '1x': '#6366f1'
-        };
-        // 艇種→グループキーのマッピング
-        const typeToGroup = {
-            '8+': '8+', '4+': '4+', '4-': '4-/4x', '4x': '4-/4x',
-            '2-': '2-/2x', '2x': '2-/2x', '1x': '1x'
-        };
+// =========================================
+// 設備状態一覧
+// =========================================
 
-        // グループ別にまとめる
-        const grouped = {};
-        boats.forEach(b => {
-            const type = b.type || 'その他';
-            const groupKey = typeToGroup[type] || 'その他';
-            if (!grouped[groupKey]) grouped[groupKey] = [];
-            grouped[groupKey].push(b);
-        });
+function switchEquipView(view) {
+    document.querySelectorAll('[data-equip-view]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.equipView === view);
+    });
+    const boatsList = document.getElementById('equip-boats-list');
+    const oarsList = document.getElementById('equip-oars-list');
+    if (boatsList) boatsList.classList.toggle('hidden', view !== 'boats');
+    if (oarsList) oarsList.classList.toggle('hidden', view !== 'oars');
+}
 
-        // 順序通りにレンダリング
-        const sortedTypes = typeOrder.filter(t => grouped[t]);
-        // typeOrderにない種類も末尾に追加
-        Object.keys(grouped).forEach(t => { if (!sortedTypes.includes(t)) sortedTypes.push(t); });
+function renderEquipmentStatus() {
+    renderBoatsList();
+    renderOarsList();
+}
 
-        const renderCard = (b) => {
-            const status = b.status || (b.availability === '使用不可' ? 'broken' : 'available');
-            const statusText = translateStatus(status);
-            const statusIcon = statusText === '使用可能' ? '🟢' : statusText === '故障' ? '🔴' : statusText === '修理中' ? '🟠' : '🟡';
-            const orgLabel = b.organization || '';
-            const orgBadge = orgLabel ? `<span style="background:${orgColors[orgLabel] || '#6b7280'};color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">${orgLabel}</span>` : '';
+function renderBoatsList() {
+    const container = document.getElementById('equip-boats-list');
+    if (!container) return;
+    const boats = state.boats || [];
+    if (boats.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>艇データがありません</p></div>';
+        return;
+    }
 
-            // 個別の艇種バッジ（グループ内で区別するため）
-            const btColor = boatTypeColors[b.type] || '#6b7280';
-            const btLabel = boatTypeLabels[b.type] || b.type || '';
-            const typeBadge = b.type ? `<span style="background:${btColor};color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">${b.type}</span>` : '';
+    const orgColors = { '男子部': '#3b82f6', '女子部': '#ec4899', '医学部': '#10b981', 'OB': '#f59e0b' };
+    const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
+    const boatTypeLabels = { '1x': 'シングル', '2x': 'ダブル', '2-': 'ペア', '4x': 'クォード', '4+': '付きフォア', '4-': 'なしフォア', '8+': 'エイト' };
+    const typeOrder = ['8+', '4+', '4-/4x', '2-/2x', '1x'];
+    const groupLabels = {
+        '8+': 'エイト',
+        '4+': '付きフォア',
+        '4-/4x': 'なしフォア / クォード',
+        '2-/2x': 'ペア / ダブル',
+        '1x': 'シングル'
+    };
+    const groupColors = {
+        '8+': '#dc2626',
+        '4+': '#0284c7',
+        '4-/4x': '#0ea5e9',
+        '2-/2x': '#8b5cf6',
+        '1x': '#6366f1'
+    };
+    // 艇種→グループキーのマッピング
+    const typeToGroup = {
+        '8+': '8+', '4+': '4+', '4-': '4-/4x', '4x': '4-/4x',
+        '2-': '2-/2x', '2x': '2-/2x', '1x': '1x'
+    };
 
-            const isConvertible = isConvertibleBoat(b.type);
-            const riggingMode = getBoatRiggingMode(b);
-            let convertBtnHtml = '';
-            if (isConvertible) {
-                const modeLabel = CONVERTIBLE_LABELS[riggingMode] || riggingMode;
-                convertBtnHtml = `
+    // グループ別にまとめる
+    const grouped = {};
+    boats.forEach(b => {
+        const type = b.type || 'その他';
+        const groupKey = typeToGroup[type] || 'その他';
+        if (!grouped[groupKey]) grouped[groupKey] = [];
+        grouped[groupKey].push(b);
+    });
+
+    // 順序通りにレンダリング
+    const sortedTypes = typeOrder.filter(t => grouped[t]);
+    // typeOrderにない種類も末尾に追加
+    Object.keys(grouped).forEach(t => { if (!sortedTypes.includes(t)) sortedTypes.push(t); });
+
+    const renderCard = (b) => {
+        const status = b.status || (b.availability === '使用不可' ? 'broken' : 'available');
+        const statusText = translateStatus(status);
+        const statusIcon = statusText === '使用可能' ? '🟢' : statusText === '故障' ? '🔴' : statusText === '修理中' ? '🟠' : '🟡';
+        const orgLabel = b.organization || '';
+        const orgBadge = orgLabel ? `<span style="background:${orgColors[orgLabel] || '#6b7280'};color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">${orgLabel}</span>` : '';
+
+        // 個別の艇種バッジ（グループ内で区別するため）
+        const btColor = boatTypeColors[b.type] || '#6b7280';
+        const btLabel = boatTypeLabels[b.type] || b.type || '';
+        const typeBadge = b.type ? `<span style="background:${btColor};color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">${b.type}</span>` : '';
+
+        const isConvertible = isConvertibleBoat(b.type);
+        const riggingMode = getBoatRiggingMode(b);
+        let convertBtnHtml = '';
+        if (isConvertible) {
+            const modeLabel = CONVERTIBLE_LABELS[riggingMode] || riggingMode;
+            convertBtnHtml = `
                 <div style="display:flex;align-items:center;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border-color);">
                     <span style="font-size:12px;color:var(--text-muted);">現在:</span>
                     <span style="background:#7c3aed;color:#fff;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:600;">${modeLabel}モード</span>
                     <button onclick="toggleBoatRiggingMode('${b.id}', event)" style="background:var(--accent-color);color:#fff;border:none;padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">🔄 切替</button>
                 </div>`;
-            }
+        }
 
-            const memo = b.memo || b.notes || '';
-            const details = b.details || '';
+        const memo = b.memo || b.notes || '';
+        const details = b.details || '';
 
-            return `
+        return `
             <div style="padding:12px 14px;margin-bottom:6px;background:var(--bg-white);border-radius:10px;border:1px solid var(--border-color);">
                 <div style="display:flex;justify-content:space-between;align-items:center;">
                     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1;">
@@ -7257,13 +7258,13 @@ function openPracticeNoteModal(noteId) {
                 ${details ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;padding:5px 8px;background:var(--bg-light);border-radius:6px;">📋 ${details}</div>` : ''}
                 ${convertBtnHtml}
             </div>`;
-        };
+    };
 
-        container.innerHTML = sortedTypes.map(groupKey => {
-            const gColor = groupColors[groupKey] || '#6b7280';
-            const gLabel = groupLabels[groupKey] || groupKey;
-            const count = grouped[groupKey].length;
-            return `
+    container.innerHTML = sortedTypes.map(groupKey => {
+        const gColor = groupColors[groupKey] || '#6b7280';
+        const gLabel = groupLabels[groupKey] || groupKey;
+        const count = grouped[groupKey].length;
+        return `
             <div style="margin-bottom:16px;">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid ${gColor};">
                     <span style="background:${gColor};color:#fff;padding:3px 10px;border-radius:8px;font-size:13px;font-weight:700;">${groupKey}</span>
@@ -7272,102 +7273,102 @@ function openPracticeNoteModal(noteId) {
                 </div>
                 ${grouped[groupKey].map(renderCard).join('')}
             </div>`;
-        }).join('');
+    }).join('');
+}
+
+// オール名からプレフィックス(pe,co,ft,vo,so)を抽出
+function getOarPrefix(name) {
+    const n = (name || '').toLowerCase();
+    const prefixes = ['pe', 'co', 'ft', 'vo', 'sk'];
+    for (const p of prefixes) {
+        if (n.startsWith(p) || n.includes(' ' + p) || n.includes('-' + p) || n.includes('_' + p)) return p;
+    }
+    // 名前中に部分一致
+    for (const p of prefixes) {
+        if (n.includes(p)) return p;
+    }
+    return 'zz'; // 不明は末尾
+}
+
+// オール名から数字を抽出
+function getOarNumber(name) {
+    const match = (name || '').match(/(\d+)/);
+    return match ? parseInt(match[1]) : 99999;
+}
+
+// オールのソート: プレフィックス順 → 数字順
+function sortOars(oars) {
+    const prefixOrder = { 'pe': 0, 'co': 1, 'ft': 2, 'vo': 3, 'sk': 4, 'zz': 5 };
+    return [...oars].sort((a, b) => {
+        const pa = prefixOrder[getOarPrefix(a.name)] ?? 5;
+        const pb = prefixOrder[getOarPrefix(b.name)] ?? 5;
+        if (pa !== pb) return pa - pb;
+        const na = getOarNumber(a.name);
+        const nb = getOarNumber(b.name);
+        if (na !== nb) return na - nb;
+        return (a.name || '').localeCompare(b.name || '');
+    });
+}
+
+// オールがスイープかスカルか判定
+function isOarSweep(oar) {
+    const t = (oar.type || '').toLowerCase();
+    return t.includes('sweep') || t.includes('スイープ');
+}
+function isOarScull(oar) {
+    const t = (oar.type || '').toLowerCase();
+    return t.includes('scull') || t.includes('スカル');
+}
+
+function renderOarsList() {
+    const container = document.getElementById('equip-oars-list');
+    if (!container) return;
+    const oars = state.oars || [];
+    if (oars.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>オールデータがありません</p></div>';
+        return;
     }
 
-    // オール名からプレフィックス(pe,co,ft,vo,so)を抽出
-    function getOarPrefix(name) {
-        const n = (name || '').toLowerCase();
-        const prefixes = ['pe', 'co', 'ft', 'vo', 'sk'];
-        for (const p of prefixes) {
-            if (n.startsWith(p) || n.includes(' ' + p) || n.includes('-' + p) || n.includes('_' + p)) return p;
+    const orgColors = { '男子部': '#3b82f6', '女子部': '#ec4899', '医学部': '#10b981', 'OB': '#f59e0b' };
+    const boatTypeLabels = { '1x': 'シングル', '2x': 'ダブル', '2-': 'ペア', '4x': 'クォード', '4+': '付きフォア', '4-': 'なしフォア', '8+': 'エイト' };
+    const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
+
+    // スイープ / スカル / その他 に分類
+    const sweepOars = sortOars(oars.filter(o => isOarSweep(o)));
+    const scullOars = sortOars(oars.filter(o => isOarScull(o)));
+    const otherOars = sortOars(oars.filter(o => !isOarSweep(o) && !isOarScull(o)));
+
+    const groups = [];
+    if (scullOars.length > 0) groups.push({ label: 'スカル (Scull)', color: '#6366f1', icon: '🔵', oars: scullOars });
+    if (sweepOars.length > 0) groups.push({ label: 'スイープ (Sweep)', color: '#dc2626', icon: '🔴', oars: sweepOars });
+    if (otherOars.length > 0) groups.push({ label: 'その他', color: '#6b7280', icon: '⚪', oars: otherOars });
+
+    const renderOarCard = (o) => {
+        const status = o.status || (o.availability === '使用不可' ? 'broken' : 'available');
+        const statusText = translateStatus(status);
+        const statusIcon = statusText === '使用可能' ? '🟢' : statusText === '故障' ? '🔴' : statusText === '修理中' ? '🟠' : '🟡';
+        const side = o.side || '';
+        const orgLabel = o.organization || '';
+        const orgBadge = orgLabel ? `<span style="background:${orgColors[orgLabel] || '#6b7280'};color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">${orgLabel}</span>` : '';
+        const memo = o.memo || o.notes || '';
+        const details = o.details || '';
+
+        // 最後に使った船の情報
+        const lastBoat = getLastUsedBoatForOar(o.id);
+        let lastBoatBadge = '';
+        if (lastBoat) {
+            const btLabel = boatTypeLabels[lastBoat.type] || lastBoat.type || '';
+            const btColor = boatTypeColors[lastBoat.type] || '#6b7280';
+            lastBoatBadge = `<span style="background:${btColor};color:#fff;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;" title="最後に使用: ${lastBoat.name} (${lastBoat.date})">${btLabel}${lastBoat.type ? ' ' + lastBoat.type : ''}</span>`;
         }
-        // 名前中に部分一致
-        for (const p of prefixes) {
-            if (n.includes(p)) return p;
-        }
-        return 'zz'; // 不明は末尾
-    }
 
-    // オール名から数字を抽出
-    function getOarNumber(name) {
-        const match = (name || '').match(/(\d+)/);
-        return match ? parseInt(match[1]) : 99999;
-    }
-
-    // オールのソート: プレフィックス順 → 数字順
-    function sortOars(oars) {
-        const prefixOrder = { 'pe': 0, 'co': 1, 'ft': 2, 'vo': 3, 'sk': 4, 'zz': 5 };
-        return [...oars].sort((a, b) => {
-            const pa = prefixOrder[getOarPrefix(a.name)] ?? 5;
-            const pb = prefixOrder[getOarPrefix(b.name)] ?? 5;
-            if (pa !== pb) return pa - pb;
-            const na = getOarNumber(a.name);
-            const nb = getOarNumber(b.name);
-            if (na !== nb) return na - nb;
-            return (a.name || '').localeCompare(b.name || '');
-        });
-    }
-
-    // オールがスイープかスカルか判定
-    function isOarSweep(oar) {
-        const t = (oar.type || '').toLowerCase();
-        return t.includes('sweep') || t.includes('スイープ');
-    }
-    function isOarScull(oar) {
-        const t = (oar.type || '').toLowerCase();
-        return t.includes('scull') || t.includes('スカル');
-    }
-
-    function renderOarsList() {
-        const container = document.getElementById('equip-oars-list');
-        if (!container) return;
-        const oars = state.oars || [];
-        if (oars.length === 0) {
-            container.innerHTML = '<div class="empty-state"><p>オールデータがありません</p></div>';
-            return;
+        // オール長のモード表示（スイープならペア/フォア/エイト、スカルならシングル/ダブル/クォード）
+        let lengthBadge = '';
+        if (o.length) {
+            lengthBadge = `<span style="background:#059669;color:#fff;padding:2px 6px;border-radius:6px;font-size:10px;font-weight:600;">${o.length}cm</span>`;
         }
 
-        const orgColors = { '男子部': '#3b82f6', '女子部': '#ec4899', '医学部': '#10b981', 'OB': '#f59e0b' };
-        const boatTypeLabels = { '1x': 'シングル', '2x': 'ダブル', '2-': 'ペア', '4x': 'クォード', '4+': '付きフォア', '4-': 'なしフォア', '8+': 'エイト' };
-        const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
-
-        // スイープ / スカル / その他 に分類
-        const sweepOars = sortOars(oars.filter(o => isOarSweep(o)));
-        const scullOars = sortOars(oars.filter(o => isOarScull(o)));
-        const otherOars = sortOars(oars.filter(o => !isOarSweep(o) && !isOarScull(o)));
-
-        const groups = [];
-        if (scullOars.length > 0) groups.push({ label: 'スカル (Scull)', color: '#6366f1', icon: '🔵', oars: scullOars });
-        if (sweepOars.length > 0) groups.push({ label: 'スイープ (Sweep)', color: '#dc2626', icon: '🔴', oars: sweepOars });
-        if (otherOars.length > 0) groups.push({ label: 'その他', color: '#6b7280', icon: '⚪', oars: otherOars });
-
-        const renderOarCard = (o) => {
-            const status = o.status || (o.availability === '使用不可' ? 'broken' : 'available');
-            const statusText = translateStatus(status);
-            const statusIcon = statusText === '使用可能' ? '🟢' : statusText === '故障' ? '🔴' : statusText === '修理中' ? '🟠' : '🟡';
-            const side = o.side || '';
-            const orgLabel = o.organization || '';
-            const orgBadge = orgLabel ? `<span style="background:${orgColors[orgLabel] || '#6b7280'};color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">${orgLabel}</span>` : '';
-            const memo = o.memo || o.notes || '';
-            const details = o.details || '';
-
-            // 最後に使った船の情報
-            const lastBoat = getLastUsedBoatForOar(o.id);
-            let lastBoatBadge = '';
-            if (lastBoat) {
-                const btLabel = boatTypeLabels[lastBoat.type] || lastBoat.type || '';
-                const btColor = boatTypeColors[lastBoat.type] || '#6b7280';
-                lastBoatBadge = `<span style="background:${btColor};color:#fff;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;" title="最後に使用: ${lastBoat.name} (${lastBoat.date})">${btLabel}${lastBoat.type ? ' ' + lastBoat.type : ''}</span>`;
-            }
-
-            // オール長のモード表示（スイープならペア/フォア/エイト、スカルならシングル/ダブル/クォード）
-            let lengthBadge = '';
-            if (o.length) {
-                lengthBadge = `<span style="background:#059669;color:#fff;padding:2px 6px;border-radius:6px;font-size:10px;font-weight:600;">${o.length}cm</span>`;
-            }
-
-            return `
+        return `
             <div style="padding:10px 14px;margin-bottom:6px;background:var(--bg-white);border-radius:10px;border:1px solid var(--border-color);${status !== 'available' ? 'opacity:0.6;' : ''}">
                 <div style="display:flex;justify-content:space-between;align-items:center;">
                     <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;flex:1;">
@@ -7382,10 +7383,10 @@ function openPracticeNoteModal(noteId) {
                 ${memo ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${memo}</div>` : ''}
                 ${details ? `<div style="font-size:11px;color:var(--text-secondary);margin-top:3px;padding:4px 8px;background:var(--bg-light);border-radius:6px;">📋 ${details}</div>` : ''}
             </div>`;
-        };
+    };
 
-        container.innerHTML = groups.map(g => {
-            return `
+    container.innerHTML = groups.map(g => {
+        return `
             <div style="margin-bottom:16px;">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid ${g.color};">
                     <span style="font-size:16px;">${g.icon}</span>
@@ -7394,137 +7395,137 @@ function openPracticeNoteModal(noteId) {
                 </div>
                 ${g.oars.map(renderOarCard).join('')}
             </div>`;
-        }).join('');
-    }
-    // =========================================
-    // クルーリギング閲覧（コックス/コーチ用）
-    // =========================================
+    }).join('');
+}
+// =========================================
+// クルーリギング閲覧（コックス/コーチ用）
+// =========================================
 
-    /**
-     * クルーリギング閲覧の初期化
-     */
-    function initCrewRiggingView() {
-        // 日付を今日に設定
-        const dateInput = document.getElementById('crew-rigging-date');
-        if (dateInput) {
-            dateInput.value = formatDate(new Date());
-            dateInput.onchange = () => loadCrewRiggingByDate(dateInput.value);
-            loadCrewRiggingByDate(dateInput.value);
-        }
-
-        // 選手セレクトにメンバーを追加
-        const memberSelect = document.getElementById('crew-rigging-member-select');
-        if (memberSelect) {
-            memberSelect.innerHTML = '<option value="">選択してください</option>';
-            const rowers = (state.users || []).filter(u => u.role === ROLES.ROWER || u.role === '漕手' || u.role === '部員');
-            rowers.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-            rowers.forEach(u => {
-                const opt = document.createElement('option');
-                opt.value = u.id;
-                opt.textContent = `${u.name}（${u.grade || '?'}年）`;
-                memberSelect.appendChild(opt);
-            });
-            memberSelect.onchange = () => loadMemberRigging(memberSelect.value);
-        }
+/**
+ * クルーリギング閲覧の初期化
+ */
+function initCrewRiggingView() {
+    // 日付を今日に設定
+    const dateInput = document.getElementById('crew-rigging-date');
+    if (dateInput) {
+        dateInput.value = formatDate(new Date());
+        dateInput.onchange = () => loadCrewRiggingByDate(dateInput.value);
+        loadCrewRiggingByDate(dateInput.value);
     }
 
-    /**
-     * クルーリギング閲覧モード切替
-     */
-    function switchCrewRiggingView(mode) {
-        const scheduleView = document.getElementById('crew-rigging-schedule-view');
-        const memberView = document.getElementById('crew-rigging-member-view');
+    // 選手セレクトにメンバーを追加
+    const memberSelect = document.getElementById('crew-rigging-member-select');
+    if (memberSelect) {
+        memberSelect.innerHTML = '<option value="">選択してください</option>';
+        const rowers = (state.users || []).filter(u => u.role === ROLES.ROWER || u.role === '漕手' || u.role === '部員');
+        rowers.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        rowers.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.id;
+            opt.textContent = `${u.name}（${u.grade || '?'}年）`;
+            memberSelect.appendChild(opt);
+        });
+        memberSelect.onchange = () => loadMemberRigging(memberSelect.value);
+    }
+}
 
-        if (mode === 'schedule') {
-            scheduleView.classList.remove('hidden');
-            memberView.classList.add('hidden');
-        } else {
-            scheduleView.classList.add('hidden');
-            memberView.classList.remove('hidden');
-        }
+/**
+ * クルーリギング閲覧モード切替
+ */
+function switchCrewRiggingView(mode) {
+    const scheduleView = document.getElementById('crew-rigging-schedule-view');
+    const memberView = document.getElementById('crew-rigging-member-view');
 
-        // ボタンのactive状態切替
-        document.querySelectorAll('[data-crew-view]').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.crewView === mode);
+    if (mode === 'schedule') {
+        scheduleView.classList.remove('hidden');
+        memberView.classList.add('hidden');
+    } else {
+        scheduleView.classList.add('hidden');
+        memberView.classList.remove('hidden');
+    }
+
+    // ボタンのactive状態切替
+    document.querySelectorAll('[data-crew-view]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.crewView === mode);
+    });
+}
+
+/**
+ * 日付ベースでクルーリギング情報を読み込み
+ */
+function loadCrewRiggingByDate(dateStr) {
+    const container = document.getElementById('crew-rigging-schedule-list');
+    if (!container) return;
+
+    // その日の乗艇スケジュールを検索
+    const boatSchedules = (state.schedules || []).filter(s =>
+        s.date === dateStr && (s.type === '乗艇' || s.type === SCHEDULE_TYPES.BOAT)
+    );
+
+    if (boatSchedules.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>この日の乗艇スケジュールはありません</p></div>';
+        return;
+    }
+
+    // 艇ごとにグループ化
+    const boatGroups = {};
+    boatSchedules.forEach(s => {
+        const boatId = s.boatId || s.boat_id;
+        if (!boatId) return;
+        if (!boatGroups[boatId]) boatGroups[boatId] = [];
+        boatGroups[boatId].push(s);
+    });
+
+    let html = '';
+    const boats = state.boats || [];
+    const allHistory = DB.loadLocal('rigging_history') || [];
+    const allRiggings = DB.loadLocal('riggings') || [];
+
+    // 艇が見つからない場合は全ユーザーのリギングをまとめて表示
+    if (Object.keys(boatGroups).length === 0) {
+        // スケジュールにboatIdが無い場合、ユーザーごとにまとめて表示
+        const userIds = [...new Set(boatSchedules.map(s => s.userId))];
+        html += renderCrewBoatRigging(null, userIds, allHistory, allRiggings);
+    } else {
+        Object.keys(boatGroups).forEach(boatId => {
+            const userIds = boatGroups[boatId].map(s => s.userId);
+            html += renderCrewBoatRigging(boatId, userIds, allHistory, allRiggings);
         });
     }
 
-    /**
-     * 日付ベースでクルーリギング情報を読み込み
-     */
-    function loadCrewRiggingByDate(dateStr) {
-        const container = document.getElementById('crew-rigging-schedule-list');
-        if (!container) return;
+    container.innerHTML = html || '<div class="empty-state"><p>リギングデータがありません</p></div>';
+}
 
-        // その日の乗艇スケジュールを検索
-        const boatSchedules = (state.schedules || []).filter(s =>
-            s.date === dateStr && (s.type === '乗艇' || s.type === SCHEDULE_TYPES.BOAT)
-        );
+/**
+ * 特定の艇のクルーリギングテーブルをレンダリング
+ */
+function renderCrewBoatRigging(boatId, userIds, allHistory, allRiggings) {
+    const boat = boatId ? (state.boats || []).find(b => b.id === boatId) : null;
+    const boatName = boat ? boat.name : '不明な艇';
 
-        if (boatSchedules.length === 0) {
-            container.innerHTML = '<div class="empty-state"><p>この日の乗艇スケジュールはありません</p></div>';
-            return;
-        }
+    let rows = '';
+    const uniqueUserIds = [...new Set(userIds)];
 
-        // 艇ごとにグループ化
-        const boatGroups = {};
-        boatSchedules.forEach(s => {
-            const boatId = s.boatId || s.boat_id;
-            if (!boatId) return;
-            if (!boatGroups[boatId]) boatGroups[boatId] = [];
-            boatGroups[boatId].push(s);
-        });
+    uniqueUserIds.forEach(userId => {
+        const user = (state.users || []).find(u => u.id === userId);
+        if (!user) return;
 
-        let html = '';
-        const boats = state.boats || [];
-        const allHistory = DB.loadLocal('rigging_history') || [];
-        const allRiggings = DB.loadLocal('riggings') || [];
+        // まず履歴から最新を取得
+        let rigging = null;
+        if (boatId) {
+            const userHistory = allHistory
+                .filter(r => r.boat_id === boatId && r.user_id === userId)
+                .sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at));
+            rigging = userHistory[0] || null;
 
-        // 艇が見つからない場合は全ユーザーのリギングをまとめて表示
-        if (Object.keys(boatGroups).length === 0) {
-            // スケジュールにboatIdが無い場合、ユーザーごとにまとめて表示
-            const userIds = [...new Set(boatSchedules.map(s => s.userId))];
-            html += renderCrewBoatRigging(null, userIds, allHistory, allRiggings);
-        } else {
-            Object.keys(boatGroups).forEach(boatId => {
-                const userIds = boatGroups[boatId].map(s => s.userId);
-                html += renderCrewBoatRigging(boatId, userIds, allHistory, allRiggings);
-            });
-        }
-
-        container.innerHTML = html || '<div class="empty-state"><p>リギングデータがありません</p></div>';
-    }
-
-    /**
-     * 特定の艇のクルーリギングテーブルをレンダリング
-     */
-    function renderCrewBoatRigging(boatId, userIds, allHistory, allRiggings) {
-        const boat = boatId ? (state.boats || []).find(b => b.id === boatId) : null;
-        const boatName = boat ? boat.name : '不明な艇';
-
-        let rows = '';
-        const uniqueUserIds = [...new Set(userIds)];
-
-        uniqueUserIds.forEach(userId => {
-            const user = (state.users || []).find(u => u.id === userId);
-            if (!user) return;
-
-            // まず履歴から最新を取得
-            let rigging = null;
-            if (boatId) {
-                const userHistory = allHistory
-                    .filter(r => r.boat_id === boatId && r.user_id === userId)
-                    .sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at));
-                rigging = userHistory[0] || null;
-
-                // 履歴にない場合は旧形式から取得
-                if (!rigging) {
-                    rigging = allRiggings.find(r => r.boat_id === boatId && r.user_id === userId);
-                }
+            // 履歴にない場合は旧形式から取得
+            if (!rigging) {
+                rigging = allRiggings.find(r => r.boat_id === boatId && r.user_id === userId);
             }
+        }
 
-            if (rigging) {
-                rows += `<tr>
+        if (rigging) {
+            rows += `<tr>
                 <td class="crew-rig-name">${user.name}</td>
                 <td>${rigging.pin_to_heel || '-'}</td>
                 <td>${rigging.depth || '-'}</td>
@@ -7532,17 +7533,17 @@ function openPracticeNoteModal(noteId) {
                 <td>${rigging.pitch || '-'}</td>
                 <td>${rigging.height || '-'}</td>
             </tr>`;
-            } else {
-                rows += `<tr>
+        } else {
+            rows += `<tr>
                 <td class="crew-rig-name">${user.name}</td>
                 <td colspan="5" style="color: #888; text-align: center;">未設定</td>
             </tr>`;
-            }
-        });
+        }
+    });
 
-        if (!rows) return '';
+    if (!rows) return '';
 
-        return `
+    return `
     <div class="crew-rigging-boat-card">
         <h3 class="crew-rigging-boat-title">🚣 ${boatName}</h3>
         <div class="crew-rigging-table-wrap">
@@ -7561,47 +7562,47 @@ function openPracticeNoteModal(noteId) {
             </table>
         </div>
     </div>`;
+}
+
+/**
+ * 選手別リギング閲覧
+ */
+function loadMemberRigging(userId) {
+    const container = document.getElementById('crew-rigging-member-detail');
+    if (!container || !userId) {
+        if (container) container.innerHTML = '<div class="empty-state"><p>選手を選択してリギング情報を表示</p></div>';
+        return;
     }
 
-    /**
-     * 選手別リギング閲覧
-     */
-    function loadMemberRigging(userId) {
-        const container = document.getElementById('crew-rigging-member-detail');
-        if (!container || !userId) {
-            if (container) container.innerHTML = '<div class="empty-state"><p>選手を選択してリギング情報を表示</p></div>';
-            return;
+    const user = (state.users || []).find(u => u.id === userId);
+    if (!user) return;
+
+    const allHistory = DB.loadLocal('rigging_history') || [];
+    const allRiggings = DB.loadLocal('riggings') || [];
+    const boats = state.boats || [];
+
+    // この選手の全艇のリギングデータを収集
+    let html = `<h3 style="margin: 12px 0 8px; font-size: 16px;">🏋️ ${user.name} のリギング設定</h3>`;
+    let hasData = false;
+
+    boats.forEach(boat => {
+        // 履歴から最新を取得
+        const userHistory = allHistory
+            .filter(r => r.boat_id === boat.id && r.user_id === userId)
+            .sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at));
+        let latest = userHistory[0] || null;
+
+        // 旧形式からも取得
+        if (!latest) {
+            latest = allRiggings.find(r => r.boat_id === boat.id && r.user_id === userId);
         }
 
-        const user = (state.users || []).find(u => u.id === userId);
-        if (!user) return;
+        if (latest) {
+            hasData = true;
+            const updatedAt = latest.saved_at || latest.updated_at;
+            const dateStr = updatedAt ? new Date(updatedAt).toLocaleDateString('ja-JP') : '不明';
 
-        const allHistory = DB.loadLocal('rigging_history') || [];
-        const allRiggings = DB.loadLocal('riggings') || [];
-        const boats = state.boats || [];
-
-        // この選手の全艇のリギングデータを収集
-        let html = `<h3 style="margin: 12px 0 8px; font-size: 16px;">🏋️ ${user.name} のリギング設定</h3>`;
-        let hasData = false;
-
-        boats.forEach(boat => {
-            // 履歴から最新を取得
-            const userHistory = allHistory
-                .filter(r => r.boat_id === boat.id && r.user_id === userId)
-                .sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at));
-            let latest = userHistory[0] || null;
-
-            // 旧形式からも取得
-            if (!latest) {
-                latest = allRiggings.find(r => r.boat_id === boat.id && r.user_id === userId);
-            }
-
-            if (latest) {
-                hasData = true;
-                const updatedAt = latest.saved_at || latest.updated_at;
-                const dateStr = updatedAt ? new Date(updatedAt).toLocaleDateString('ja-JP') : '不明';
-
-                html += `
+            html += `
             <div class="crew-rigging-boat-card">
                 <h3 class="crew-rigging-boat-title">${boat.name}</h3>
                 <div style="font-size: 12px; color: #888; margin-bottom: 8px;">最終更新: ${dateStr}</div>
@@ -7624,1050 +7625,1050 @@ function openPracticeNoteModal(noteId) {
                 ${latest.memo ? `<div style="margin-top: 8px; font-size: 13px; color: #aaa;">💬 ${latest.memo}</div>` : ''}
                 ${userHistory.length > 1 ? `<div style="margin-top: 4px; font-size: 12px; color: #666;">📋 ${userHistory.length}件の履歴あり</div>` : ''}
             </div>`;
-            }
-        });
-
-        if (!hasData) {
-            html += '<div class="empty-state"><p>この選手のリギングデータはまだありません</p></div>';
         }
+    });
 
-        container.innerHTML = html;
+    if (!hasData) {
+        html += '<div class="empty-state"><p>この選手のリギングデータはまだありません</p></div>';
     }
 
-    /**
-     * Supabaseプロフィールを更新するヘルパー
-     */
-    async function syncProfileToSupabase(updates) {
-        if (DB.useSupabase && window.SupabaseConfig?.isReady() && state.currentUser?.id) {
-            try {
-                await window.SupabaseConfig.db.updateProfile(state.currentUser.id, updates);
-            } catch (e) {
-                console.warn('Profile sync to Supabase failed:', e);
-            }
-        }
-    }
+    container.innerHTML = html;
+}
 
-    /**
-     * 設定画面の描画
-     */
-    function renderSettings() {
-        const user = state.currentUser;
-        if (!user) return;
-
-        // アカウント情報
-        setText('settings-name', user.name);
-
-        // 権限設定
-        const roleSelect = document.getElementById('settings-role-select');
-        if (roleSelect) {
-            roleSelect.value = user.role || '漕手';
-            roleSelect.onchange = (e) => {
-                const newRole = e.target.value;
-                const previousRole = state.currentUser.role;
-
-                // 管理者への変更はパスコード認証が必要
-                if (newRole === ROLES.ADMIN && previousRole !== ROLES.ADMIN) {
-                    const adminPasscode = DB.load('admin_passcode') || 'tanteibu';
-                    const inputCode = prompt('管理者パスコードを入力してください：');
-
-                    if (inputCode === null) {
-                        // キャンセルの場合は元に戻す
-                        roleSelect.value = previousRole;
-                        return;
-                    }
-
-                    if (inputCode !== adminPasscode) {
-                        showToast('パスコードが正しくありません', 'error');
-                        roleSelect.value = previousRole;
-                        return;
-                    }
-                }
-
-                // 権限を変更
-                state.currentUser.role = newRole;
-                DB.save('current_user', state.currentUser);
-
-                const idx = state.users.findIndex(u => u.id === state.currentUser.id);
-                if (idx !== -1) {
-                    state.users[idx] = state.currentUser;
-                    DB.save('users', state.users);
-                }
-                // ヘッダーの権限バッジも更新
-                document.getElementById('user-role').textContent = newRole;
-                // マスタ管理の表示/非表示を更新
-                const masterSection = document.getElementById('master-settings');
-                if (canEditMaster(state.currentUser)) {
-                    masterSection.classList.remove('hidden');
-                } else {
-                    masterSection.classList.add('hidden');
-                }
-                // パスコード設定セクションの表示/非表示
-                const passcodeSection = document.getElementById('admin-passcode-settings');
-                if (passcodeSection) {
-                    if (newRole === ROLES.ADMIN) {
-                        passcodeSection.classList.remove('hidden');
-                    } else {
-                        passcodeSection.classList.add('hidden');
-                    }
-                }
-                syncProfileToSupabase({ role: newRole });
-                // ロール変更に伴いタブの表示/非表示を再適用
-                applyRoleBasedTabs();
-                showToast('権限を変更しました', 'success');
-            };
-        }
-
-        // 管理者パスコード設定（管理者のみ表示）
-        const passcodeSection = document.getElementById('admin-passcode-settings');
-        if (passcodeSection) {
-            if (user.role === ROLES.ADMIN) {
-                passcodeSection.classList.remove('hidden');
-                const currentPasscode = DB.load('admin_passcode') || 'tanteibu';
-                document.getElementById('current-admin-passcode').textContent = currentPasscode;
-
-                // Supabaseからも読み込み（非同期）
-                if (DB.useSupabase && window.SupabaseConfig?.db) {
-                    window.SupabaseConfig.db.loadSetting('admin_passcode').then(val => {
-                        if (val) {
-                            DB.save('admin_passcode', val);
-                            document.getElementById('current-admin-passcode').textContent = val;
-                        }
-                    }).catch(() => { });
-                }
-
-                document.getElementById('set-admin-passcode-btn').onclick = () => {
-                    const newPasscode = document.getElementById('new-admin-passcode').value.trim();
-                    if (!newPasscode) {
-                        showToast('パスコードを入力してください', 'error');
-                        return;
-                    }
-                    if (newPasscode.length < 4) {
-                        showToast('4文字以上のパスコードを設定してください', 'error');
-                        return;
-                    }
-                    DB.save('admin_passcode', newPasscode);
-                    // Supabaseにも保存
-                    if (DB.useSupabase && window.SupabaseConfig?.db) {
-                        window.SupabaseConfig.db.saveSetting('admin_passcode', newPasscode).catch(e => console.warn('Passcode sync failed:', e));
-                    }
-                    document.getElementById('current-admin-passcode').textContent = newPasscode;
-                    document.getElementById('new-admin-passcode').value = '';
-                    showToast('管理者パスコードを更新しました', 'success');
-                };
-            } else {
-                passcodeSection.classList.add('hidden');
-            }
-        }
-
-        // 学年設定
-        const gradeSelect = document.getElementById('settings-grade-select');
-        if (gradeSelect) {
-            gradeSelect.value = String(user.grade || 1);
-            gradeSelect.onchange = (e) => {
-                const newGrade = parseInt(e.target.value);
-                state.currentUser.grade = newGrade;
-                DB.save('current_user', state.currentUser);
-
-                const idx = state.users.findIndex(u => u.id === state.currentUser.id);
-                if (idx !== -1) {
-                    state.users[idx] = state.currentUser;
-                    DB.save('users', state.users);
-                }
-                syncProfileToSupabase({ grade: newGrade });
-                showToast('学年を変更しました', 'success');
-            };
-        }
-
-        // 性別設定
-        const genderSelect = document.getElementById('settings-gender-select');
-        if (genderSelect) {
-            genderSelect.value = user.gender || 'man';
-            genderSelect.onchange = (e) => {
-                const newGender = e.target.value;
-                state.currentUser.gender = newGender;
-                DB.save('current_user', state.currentUser);
-
-                const idx = state.users.findIndex(u => u.id === state.currentUser.id);
-                if (idx !== -1) {
-                    state.users[idx] = state.currentUser;
-                    DB.save('users', state.users);
-                }
-                syncProfileToSupabase({ gender: newGender });
-                showToast('性別を変更しました', 'success');
-            };
-        }
-
-        // サイド (S/B) 設定
-        const sideSelect = document.getElementById('settings-side-select');
-        if (sideSelect) {
-            sideSelect.value = user.side || '';
-            sideSelect.onchange = (e) => {
-                const newSide = e.target.value;
-                state.currentUser.side = newSide;
-                DB.save('current_user', state.currentUser);
-
-                const idx = state.users.findIndex(u => u.id === state.currentUser.id);
-                if (idx !== -1) {
-                    state.users[idx] = state.currentUser;
-                    DB.save('users', state.users);
-                }
-                syncProfileToSupabase({ side: newSide });
-                showToast('サイドを変更しました', 'success');
-            };
-        }
-
-        // 体重管理
+/**
+ * Supabaseプロフィールを更新するヘルパー
+ */
+async function syncProfileToSupabase(updates) {
+    if (DB.useSupabase && window.SupabaseConfig?.isReady() && state.currentUser?.id) {
         try {
-            initWeightSection();
+            await window.SupabaseConfig.db.updateProfile(state.currentUser.id, updates);
         } catch (e) {
-            console.error('initWeightSection error:', e);
+            console.warn('Profile sync to Supabase failed:', e);
         }
+    }
+}
 
-        // Concept2連携
-        const isConnected = user.concept2Connected;
-        const statusEl = document.getElementById('concept2-status');
-        const lastSyncEl = document.getElementById('concept2-last-sync');
-        const setupDiv = document.getElementById('concept2-setup');
-        const actionsDiv = document.querySelector('.concept2-actions');
-        const toggleBtn = document.getElementById('toggle-concept2-btn');
-        const syncBtn = document.getElementById('sync-concept2-btn');
+/**
+ * 設定画面の描画
+ */
+function renderSettings() {
+    const user = state.currentUser;
+    if (!user) return;
 
-        if (isConnected) {
-            if (statusEl) {
-                statusEl.textContent = '連携済み';
-                statusEl.className = 'settings-value success';
-            }
-            if (lastSyncEl) {
-                lastSyncEl.classList.remove('hidden');
-                document.getElementById('concept2-last-sync-time').textContent = user.concept2LastSync ? new Date(user.concept2LastSync).toLocaleString() : '未同期';
-            }
-            if (setupDiv) setupDiv.classList.add('hidden');
-            if (syncBtn) syncBtn.classList.remove('hidden');
-            if (toggleBtn) {
-                toggleBtn.textContent = '連携を解除';
-                toggleBtn.className = 'danger-btn';
-                // 既存のリスナーを削除するためクローンして差し替え
-                const newToggleBtn = toggleBtn.cloneNode(true);
-                toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
-                newToggleBtn.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.stopImmediatePropagation();
-                    disconnectConcept2();
-                });
-            }
-        } else {
-            if (statusEl) {
-                statusEl.textContent = '未連携';
-                statusEl.className = 'settings-value';
-            }
-            if (lastSyncEl) lastSyncEl.classList.add('hidden');
-            if (setupDiv) setupDiv.classList.remove('hidden');
-            if (syncBtn) syncBtn.classList.add('hidden');
-            if (toggleBtn) {
-                toggleBtn.textContent = '連携する';
-                toggleBtn.className = 'secondary-btn';
-                const newToggleBtn = toggleBtn.cloneNode(true);
-                toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
-                newToggleBtn.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    connectConcept2();
-                });
-            }
-        }
+    // アカウント情報
+    setText('settings-name', user.name);
 
-        // マスタ管理 (管理者/Coxのみ)
-        const masterSection = document.getElementById('master-settings');
-        if (canEditMaster(user)) {
-            masterSection.classList.remove('hidden');
-            document.getElementById('manage-boats-btn').onclick = () => openMasterModal('boats');
-            document.getElementById('manage-oars-btn').onclick = () => openMasterModal('oars');
-            document.getElementById('manage-ergos-btn').onclick = () => openMasterModal('ergos');
-        } else {
-            masterSection.classList.add('hidden');
-        }
+    // 権限設定
+    const roleSelect = document.getElementById('settings-role-select');
+    if (roleSelect) {
+        roleSelect.value = user.role || '漕手';
+        roleSelect.onchange = (e) => {
+            const newRole = e.target.value;
+            const previousRole = state.currentUser.role;
 
-        // ログアウト
-        const logoutBtn = document.getElementById('logout-btn');
-        if (logoutBtn) {
-            logoutBtn.onclick = handleLogout;
-        }
+            // 管理者への変更はパスコード認証が必要
+            if (newRole === ROLES.ADMIN && previousRole !== ROLES.ADMIN) {
+                const adminPasscode = DB.load('admin_passcode') || 'tanteibu';
+                const inputCode = prompt('管理者パスコードを入力してください：');
 
-        // 登録者名簿
-        renderMemberRoster();
+                if (inputCode === null) {
+                    // キャンセルの場合は元に戻す
+                    roleSelect.value = previousRole;
+                    return;
+                }
+
+                if (inputCode !== adminPasscode) {
+                    showToast('パスコードが正しくありません', 'error');
+                    roleSelect.value = previousRole;
+                    return;
+                }
+            }
+
+            // 権限を変更
+            state.currentUser.role = newRole;
+            DB.save('current_user', state.currentUser);
+
+            const idx = state.users.findIndex(u => u.id === state.currentUser.id);
+            if (idx !== -1) {
+                state.users[idx] = state.currentUser;
+                DB.save('users', state.users);
+            }
+            // ヘッダーの権限バッジも更新
+            document.getElementById('user-role').textContent = newRole;
+            // マスタ管理の表示/非表示を更新
+            const masterSection = document.getElementById('master-settings');
+            if (canEditMaster(state.currentUser)) {
+                masterSection.classList.remove('hidden');
+            } else {
+                masterSection.classList.add('hidden');
+            }
+            // パスコード設定セクションの表示/非表示
+            const passcodeSection = document.getElementById('admin-passcode-settings');
+            if (passcodeSection) {
+                if (newRole === ROLES.ADMIN) {
+                    passcodeSection.classList.remove('hidden');
+                } else {
+                    passcodeSection.classList.add('hidden');
+                }
+            }
+            syncProfileToSupabase({ role: newRole });
+            // ロール変更に伴いタブの表示/非表示を再適用
+            applyRoleBasedTabs();
+            showToast('権限を変更しました', 'success');
+        };
     }
 
-    // 登録者名簿をレンダリング
-    function renderMemberRoster() {
-        const container = document.getElementById('member-roster');
-        if (!container) return;
+    // 管理者パスコード設定（管理者のみ表示）
+    const passcodeSection = document.getElementById('admin-passcode-settings');
+    if (passcodeSection) {
+        if (user.role === ROLES.ADMIN) {
+            passcodeSection.classList.remove('hidden');
+            const currentPasscode = DB.load('admin_passcode') || 'tanteibu';
+            document.getElementById('current-admin-passcode').textContent = currentPasscode;
 
-        const isAdmin = state.currentUser?.role === '管理者';
-        const members = (state.users || []).filter(u => u.approvalStatus === '承認済み' && u.status !== '非在籍');
-
-        if (members.length === 0) {
-            container.innerHTML = '<p style="color:#888;font-size:13px;">登録者がいません</p>';
-            return;
-        }
-
-        // 学年でグループ化（降順: 4年→1年→コーチ/OB）
-        const gradeGroups = {};
-        members.forEach(m => {
-            const grade = m.grade || 0;
-            const label = grade === 0 ? 'コーチ / OB' : `${grade}年`;
-            if (!gradeGroups[grade]) gradeGroups[grade] = { label, members: [] };
-            gradeGroups[grade].members.push(m);
-        });
-
-        const sortedGrades = Object.keys(gradeGroups).map(Number).sort((a, b) => b - a);
-
-        const roleEmoji = (role) => {
-            switch (role) {
-                case '管理者': return '👑';
-                case 'コーチ': return '🎓';
-                case 'Cox': return '📣';
-                case '漕手': return '🚣';
-                default: return '👤';
+            // Supabaseからも読み込み（非同期）
+            if (DB.useSupabase && window.SupabaseConfig?.db) {
+                window.SupabaseConfig.db.loadSetting('admin_passcode').then(val => {
+                    if (val) {
+                        DB.save('admin_passcode', val);
+                        document.getElementById('current-admin-passcode').textContent = val;
+                    }
+                }).catch(() => { });
             }
+
+            document.getElementById('set-admin-passcode-btn').onclick = () => {
+                const newPasscode = document.getElementById('new-admin-passcode').value.trim();
+                if (!newPasscode) {
+                    showToast('パスコードを入力してください', 'error');
+                    return;
+                }
+                if (newPasscode.length < 4) {
+                    showToast('4文字以上のパスコードを設定してください', 'error');
+                    return;
+                }
+                DB.save('admin_passcode', newPasscode);
+                // Supabaseにも保存
+                if (DB.useSupabase && window.SupabaseConfig?.db) {
+                    window.SupabaseConfig.db.saveSetting('admin_passcode', newPasscode).catch(e => console.warn('Passcode sync failed:', e));
+                }
+                document.getElementById('current-admin-passcode').textContent = newPasscode;
+                document.getElementById('new-admin-passcode').value = '';
+                showToast('管理者パスコードを更新しました', 'success');
+            };
+        } else {
+            passcodeSection.classList.add('hidden');
+        }
+    }
+
+    // 学年設定
+    const gradeSelect = document.getElementById('settings-grade-select');
+    if (gradeSelect) {
+        gradeSelect.value = String(user.grade || 1);
+        gradeSelect.onchange = (e) => {
+            const newGrade = parseInt(e.target.value);
+            state.currentUser.grade = newGrade;
+            DB.save('current_user', state.currentUser);
+
+            const idx = state.users.findIndex(u => u.id === state.currentUser.id);
+            if (idx !== -1) {
+                state.users[idx] = state.currentUser;
+                DB.save('users', state.users);
+            }
+            syncProfileToSupabase({ grade: newGrade });
+            showToast('学年を変更しました', 'success');
         };
-        const genderLabel = (g) => g === 'woman' ? '女' : '男';
+    }
 
-        let html = `<div style="font-size:13px;color:#666;margin-bottom:8px;">合計 ${members.length}名</div>`;
+    // 性別設定
+    const genderSelect = document.getElementById('settings-gender-select');
+    if (genderSelect) {
+        genderSelect.value = user.gender || 'man';
+        genderSelect.onchange = (e) => {
+            const newGender = e.target.value;
+            state.currentUser.gender = newGender;
+            DB.save('current_user', state.currentUser);
 
-        sortedGrades.forEach(grade => {
-            const group = gradeGroups[grade];
-            const sorted = group.members.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
+            const idx = state.users.findIndex(u => u.id === state.currentUser.id);
+            if (idx !== -1) {
+                state.users[idx] = state.currentUser;
+                DB.save('users', state.users);
+            }
+            syncProfileToSupabase({ gender: newGender });
+            showToast('性別を変更しました', 'success');
+        };
+    }
 
-            html += `<div style="margin-bottom:12px;">`;
-            html += `<div style="font-weight:600;font-size:14px;margin-bottom:4px;color:#333;">${group.label}（${sorted.length}名）</div>`;
-            html += `<table style="width:100%;border-collapse:collapse;font-size:13px;">`;
-            html += `<thead><tr style="background:#f5f5f5;border-bottom:1px solid #ddd;">
+    // サイド (S/B) 設定
+    const sideSelect = document.getElementById('settings-side-select');
+    if (sideSelect) {
+        sideSelect.value = user.side || '';
+        sideSelect.onchange = (e) => {
+            const newSide = e.target.value;
+            state.currentUser.side = newSide;
+            DB.save('current_user', state.currentUser);
+
+            const idx = state.users.findIndex(u => u.id === state.currentUser.id);
+            if (idx !== -1) {
+                state.users[idx] = state.currentUser;
+                DB.save('users', state.users);
+            }
+            syncProfileToSupabase({ side: newSide });
+            showToast('サイドを変更しました', 'success');
+        };
+    }
+
+    // 体重管理
+    try {
+        initWeightSection();
+    } catch (e) {
+        console.error('initWeightSection error:', e);
+    }
+
+    // Concept2連携
+    const isConnected = user.concept2Connected;
+    const statusEl = document.getElementById('concept2-status');
+    const lastSyncEl = document.getElementById('concept2-last-sync');
+    const setupDiv = document.getElementById('concept2-setup');
+    const actionsDiv = document.querySelector('.concept2-actions');
+    const toggleBtn = document.getElementById('toggle-concept2-btn');
+    const syncBtn = document.getElementById('sync-concept2-btn');
+
+    if (isConnected) {
+        if (statusEl) {
+            statusEl.textContent = '連携済み';
+            statusEl.className = 'settings-value success';
+        }
+        if (lastSyncEl) {
+            lastSyncEl.classList.remove('hidden');
+            document.getElementById('concept2-last-sync-time').textContent = user.concept2LastSync ? new Date(user.concept2LastSync).toLocaleString() : '未同期';
+        }
+        if (setupDiv) setupDiv.classList.add('hidden');
+        if (syncBtn) syncBtn.classList.remove('hidden');
+        if (toggleBtn) {
+            toggleBtn.textContent = '連携を解除';
+            toggleBtn.className = 'danger-btn';
+            // 既存のリスナーを削除するためクローンして差し替え
+            const newToggleBtn = toggleBtn.cloneNode(true);
+            toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
+            newToggleBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                disconnectConcept2();
+            });
+        }
+    } else {
+        if (statusEl) {
+            statusEl.textContent = '未連携';
+            statusEl.className = 'settings-value';
+        }
+        if (lastSyncEl) lastSyncEl.classList.add('hidden');
+        if (setupDiv) setupDiv.classList.remove('hidden');
+        if (syncBtn) syncBtn.classList.add('hidden');
+        if (toggleBtn) {
+            toggleBtn.textContent = '連携する';
+            toggleBtn.className = 'secondary-btn';
+            const newToggleBtn = toggleBtn.cloneNode(true);
+            toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
+            newToggleBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                connectConcept2();
+            });
+        }
+    }
+
+    // マスタ管理 (管理者/Coxのみ)
+    const masterSection = document.getElementById('master-settings');
+    if (canEditMaster(user)) {
+        masterSection.classList.remove('hidden');
+        document.getElementById('manage-boats-btn').onclick = () => openMasterModal('boats');
+        document.getElementById('manage-oars-btn').onclick = () => openMasterModal('oars');
+        document.getElementById('manage-ergos-btn').onclick = () => openMasterModal('ergos');
+    } else {
+        masterSection.classList.add('hidden');
+    }
+
+    // ログアウト
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.onclick = handleLogout;
+    }
+
+    // 登録者名簿
+    renderMemberRoster();
+}
+
+// 登録者名簿をレンダリング
+function renderMemberRoster() {
+    const container = document.getElementById('member-roster');
+    if (!container) return;
+
+    const isAdmin = state.currentUser?.role === '管理者';
+    const members = (state.users || []).filter(u => u.approvalStatus === '承認済み' && u.status !== '非在籍');
+
+    if (members.length === 0) {
+        container.innerHTML = '<p style="color:#888;font-size:13px;">登録者がいません</p>';
+        return;
+    }
+
+    // 学年でグループ化（降順: 4年→1年→コーチ/OB）
+    const gradeGroups = {};
+    members.forEach(m => {
+        const grade = m.grade || 0;
+        const label = grade === 0 ? 'コーチ / OB' : `${grade}年`;
+        if (!gradeGroups[grade]) gradeGroups[grade] = { label, members: [] };
+        gradeGroups[grade].members.push(m);
+    });
+
+    const sortedGrades = Object.keys(gradeGroups).map(Number).sort((a, b) => b - a);
+
+    const roleEmoji = (role) => {
+        switch (role) {
+            case '管理者': return '👑';
+            case 'コーチ': return '🎓';
+            case 'Cox': return '📣';
+            case '漕手': return '🚣';
+            default: return '👤';
+        }
+    };
+    const genderLabel = (g) => g === 'woman' ? '女' : '男';
+
+    let html = `<div style="font-size:13px;color:#666;margin-bottom:8px;">合計 ${members.length}名</div>`;
+
+    sortedGrades.forEach(grade => {
+        const group = gradeGroups[grade];
+        const sorted = group.members.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
+
+        html += `<div style="margin-bottom:12px;">`;
+        html += `<div style="font-weight:600;font-size:14px;margin-bottom:4px;color:#333;">${group.label}（${sorted.length}名）</div>`;
+        html += `<table style="width:100%;border-collapse:collapse;font-size:13px;">`;
+        html += `<thead><tr style="background:#f5f5f5;border-bottom:1px solid #ddd;">
             <th style="text-align:left;padding:6px 8px;">名前</th>
             <th style="text-align:center;padding:6px 4px;">権限</th>
             <th style="text-align:center;padding:6px 4px;">性別</th>
             ${isAdmin ? '<th style="text-align:center;padding:6px 4px;width:40px;"></th>' : ''}
         </tr></thead><tbody>`;
 
-            sorted.forEach(m => {
-                const isMe = state.currentUser && m.id === state.currentUser.id;
-                const bgStyle = isMe ? 'background:#e8f4fd;' : '';
-                const deleteBtn = (isAdmin && !isMe)
-                    ? `<td style="text-align:center;padding:4px 2px;">
+        sorted.forEach(m => {
+            const isMe = state.currentUser && m.id === state.currentUser.id;
+            const bgStyle = isMe ? 'background:#e8f4fd;' : '';
+            const deleteBtn = (isAdmin && !isMe)
+                ? `<td style="text-align:center;padding:4px 2px;">
                     <button onclick="deleteMember('${m.id}')" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:16px;" title="削除">✕</button>
                    </td>`
-                    : (isAdmin ? '<td></td>' : '');
-                html += `<tr style="border-bottom:1px solid #eee;${bgStyle}">
+                : (isAdmin ? '<td></td>' : '');
+            html += `<tr style="border-bottom:1px solid #eee;${bgStyle}">
                 <td style="padding:6px 8px;">${m.name || '不明'}${isMe ? ' <span style="color:#2196f3;font-size:11px;">（自分）</span>' : ''}</td>
                 <td style="text-align:center;padding:6px 4px;">${roleEmoji(m.role)} ${m.role || '-'}</td>
                 <td style="text-align:center;padding:6px 4px;">${genderLabel(m.gender)}</td>
                 ${deleteBtn}
             </tr>`;
-            });
-
-            html += `</tbody></table></div>`;
         });
 
-        container.innerHTML = html;
+        html += `</tbody></table></div>`;
+    });
+
+    container.innerHTML = html;
+}
+
+// 管理者: メンバーを削除（非在籍に変更）
+async function deleteMember(userId) {
+    if (!state.currentUser || state.currentUser.role !== '管理者') {
+        showToast('管理者権限が必要です', 'error');
+        return;
+    }
+    if (userId === state.currentUser.id) {
+        showToast('自分自身は削除できません', 'error');
+        return;
     }
 
-    // 管理者: メンバーを削除（非在籍に変更）
-    async function deleteMember(userId) {
-        if (!state.currentUser || state.currentUser.role !== '管理者') {
-            showToast('管理者権限が必要です', 'error');
-            return;
-        }
-        if (userId === state.currentUser.id) {
-            showToast('自分自身は削除できません', 'error');
-            return;
-        }
+    const member = state.users.find(u => u.id === userId);
+    if (!member) return;
 
-        const member = state.users.find(u => u.id === userId);
-        if (!member) return;
+    // カスタム確認モーダルを使用（confirm()はモバイルで問題あり）
+    showConfirmModal(`${member.name} を名簿から削除しますか？\n（アカウントは「非在籍」に変更されます）`, async () => {
+        // ローカルで非在籍に変更
+        member.status = '非在籍';
+        DB.save('users', state.users);
 
-        // カスタム確認モーダルを使用（confirm()はモバイルで問題あり）
-        showConfirmModal(`${member.name} を名簿から削除しますか？\n（アカウントは「非在籍」に変更されます）`, async () => {
-            // ローカルで非在籍に変更
-            member.status = '非在籍';
-            DB.save('users', state.users);
-
-            // Supabase プロフィールも更新
-            if (DB.useSupabase && window.SupabaseConfig?.isReady()) {
-                try {
-                    await window.SupabaseConfig.db.updateProfile(userId, { status: '非在籍' });
-                } catch (e) {
-                    console.warn('Profile update failed:', e);
-                }
-            }
-
-            showToast(`${member.name} を名簿から削除しました`, 'success');
-            renderMemberRoster();
-        }, null, '削除する');
-    }
-
-
-    function disconnectConcept2() {
-        showConfirmModal('Concept2との連携を解除しますか？', () => {
+        // Supabase プロフィールも更新
+        if (DB.useSupabase && window.SupabaseConfig?.isReady()) {
             try {
-                state.currentUser.concept2Connected = false;
-                state.currentUser.concept2Token = null;
-                state.currentUser.concept2LastSync = null;
-                DB.save('current_user', state.currentUser);
-
-                // ユーザー一覧も更新
-                const idx = state.users.findIndex(u => u.id === state.currentUser.id);
-                if (idx !== -1) {
-                    state.users[idx] = state.currentUser;
-                    DB.save('users', state.users);
-                }
-
-                // Supabaseのプロフィールも更新
-                syncProfileToSupabase({
-                    concept2_connected: false,
-                    concept2_access_token: null,
-                    concept2_last_sync: null
-                });
-
-                showToast('連携を解除しました', 'success');
-                renderSettings();
+                await window.SupabaseConfig.db.updateProfile(userId, { status: '非在籍' });
             } catch (e) {
-                console.error('disconnectConcept2 error:', e);
-                showToast('連携解除中にエラーが発生しました', 'error');
+                console.warn('Profile update failed:', e);
             }
-        });
-    }
-
-    /**
-     * カスタム確認モーダル（window.confirmの代替）
-     * タイムスタンプベースの二重ガードでモバイルゴーストクリックを確実に防止
-     */
-    function showConfirmModal(message, onConfirm, onCancel, confirmText = '実行する') {
-        // 既存のモーダルがあれば削除
-        const existing = document.getElementById('custom-confirm-modal');
-        if (existing) existing.remove();
-
-        const GUARD_MS = 600;
-        const createdAt = Date.now();
-
-        const modal = document.createElement('div');
-        modal.id = 'custom-confirm-modal';
-        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:10000;opacity:0;transition:opacity 0.2s ease;';
-
-        const box = document.createElement('div');
-        box.style.cssText = 'background:#1e1e2e;border-radius:16px;padding:24px;margin:16px;max-width:320px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.4);transform:scale(0.92);transition:transform 0.2s ease;';
-
-        const msgEl = document.createElement('p');
-        msgEl.textContent = message;
-        msgEl.style.cssText = 'color:#eee;font-size:15px;margin:0 0 20px 0;text-align:center;line-height:1.5;';
-
-        const btnRow = document.createElement('div');
-        btnRow.style.cssText = 'display:flex;gap:10px;';
-
-        const cancelBtn = document.createElement('button');
-        cancelBtn.textContent = 'キャンセル';
-        cancelBtn.style.cssText = 'flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;background:#333;color:#aaa;cursor:pointer;';
-
-        const confirmBtn = document.createElement('button');
-        confirmBtn.textContent = confirmText;
-        confirmBtn.style.cssText = 'flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;background:#e74c3c;color:#fff;cursor:pointer;';
-
-        btnRow.appendChild(cancelBtn);
-        btnRow.appendChild(confirmBtn);
-        box.appendChild(msgEl);
-        box.appendChild(btnRow);
-        modal.appendChild(box);
-        document.body.appendChild(modal);
-
-        function isGuarded() { return (Date.now() - createdAt) < GUARD_MS; }
-
-        function closeModal(cb) {
-            modal.style.opacity = '0';
-            box.style.transform = 'scale(0.92)';
-            setTimeout(() => { modal.remove(); if (cb) cb(); }, 150);
         }
 
-        cancelBtn.addEventListener('click', function (e) {
-            e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-            if (isGuarded()) return;
-            closeModal(onCancel);
-        });
-        confirmBtn.addEventListener('click', function (e) {
-            e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-            if (isGuarded()) return;
-            closeModal(onConfirm);
-        });
-        modal.addEventListener('click', function (e) {
-            if (e.target !== modal) return;
-            e.preventDefault(); e.stopPropagation();
-            if (isGuarded()) return;
-            closeModal(onCancel);
-        });
+        showToast(`${member.name} を名簿から削除しました`, 'success');
+        renderMemberRoster();
+    }, null, '削除する');
+}
 
-        // タッチイベント遮断（ガード期間中、capture phaseで）
-        modal.addEventListener('touchstart', function (e) {
-            if (isGuarded()) { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); }
-        }, { passive: false, capture: true });
-        modal.addEventListener('touchend', function (e) {
-            if (isGuarded()) { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); }
-        }, { passive: false, capture: true });
 
-        // フェードイン
+function disconnectConcept2() {
+    showConfirmModal('Concept2との連携を解除しますか？', () => {
+        try {
+            state.currentUser.concept2Connected = false;
+            state.currentUser.concept2Token = null;
+            state.currentUser.concept2LastSync = null;
+            DB.save('current_user', state.currentUser);
+
+            // ユーザー一覧も更新
+            const idx = state.users.findIndex(u => u.id === state.currentUser.id);
+            if (idx !== -1) {
+                state.users[idx] = state.currentUser;
+                DB.save('users', state.users);
+            }
+
+            // Supabaseのプロフィールも更新
+            syncProfileToSupabase({
+                concept2_connected: false,
+                concept2_access_token: null,
+                concept2_last_sync: null
+            });
+
+            showToast('連携を解除しました', 'success');
+            renderSettings();
+        } catch (e) {
+            console.error('disconnectConcept2 error:', e);
+            showToast('連携解除中にエラーが発生しました', 'error');
+        }
+    });
+}
+
+/**
+ * カスタム確認モーダル（window.confirmの代替）
+ * タイムスタンプベースの二重ガードでモバイルゴーストクリックを確実に防止
+ */
+function showConfirmModal(message, onConfirm, onCancel, confirmText = '実行する') {
+    // 既存のモーダルがあれば削除
+    const existing = document.getElementById('custom-confirm-modal');
+    if (existing) existing.remove();
+
+    const GUARD_MS = 600;
+    const createdAt = Date.now();
+
+    const modal = document.createElement('div');
+    modal.id = 'custom-confirm-modal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:10000;opacity:0;transition:opacity 0.2s ease;';
+
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#1e1e2e;border-radius:16px;padding:24px;margin:16px;max-width:320px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.4);transform:scale(0.92);transition:transform 0.2s ease;';
+
+    const msgEl = document.createElement('p');
+    msgEl.textContent = message;
+    msgEl.style.cssText = 'color:#eee;font-size:15px;margin:0 0 20px 0;text-align:center;line-height:1.5;';
+
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:10px;';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'キャンセル';
+    cancelBtn.style.cssText = 'flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;background:#333;color:#aaa;cursor:pointer;';
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.textContent = confirmText;
+    confirmBtn.style.cssText = 'flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;background:#e74c3c;color:#fff;cursor:pointer;';
+
+    btnRow.appendChild(cancelBtn);
+    btnRow.appendChild(confirmBtn);
+    box.appendChild(msgEl);
+    box.appendChild(btnRow);
+    modal.appendChild(box);
+    document.body.appendChild(modal);
+
+    function isGuarded() { return (Date.now() - createdAt) < GUARD_MS; }
+
+    function closeModal(cb) {
+        modal.style.opacity = '0';
+        box.style.transform = 'scale(0.92)';
+        setTimeout(() => { modal.remove(); if (cb) cb(); }, 150);
+    }
+
+    cancelBtn.addEventListener('click', function (e) {
+        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+        if (isGuarded()) return;
+        closeModal(onCancel);
+    });
+    confirmBtn.addEventListener('click', function (e) {
+        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+        if (isGuarded()) return;
+        closeModal(onConfirm);
+    });
+    modal.addEventListener('click', function (e) {
+        if (e.target !== modal) return;
+        e.preventDefault(); e.stopPropagation();
+        if (isGuarded()) return;
+        closeModal(onCancel);
+    });
+
+    // タッチイベント遮断（ガード期間中、capture phaseで）
+    modal.addEventListener('touchstart', function (e) {
+        if (isGuarded()) { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); }
+    }, { passive: false, capture: true });
+    modal.addEventListener('touchend', function (e) {
+        if (isGuarded()) { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); }
+    }, { passive: false, capture: true });
+
+    // フェードイン
+    requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                modal.style.opacity = '1';
-                box.style.transform = 'scale(1)';
-            });
+            modal.style.opacity = '1';
+            box.style.transform = 'scale(1)';
         });
-    }
+    });
+}
 
-    // =========================================
-    // 体重管理
-    // =========================================
+// =========================================
+// 体重管理
+// =========================================
 
-    function initWeightSection() {
-        const weightHistory = getWeightHistory();
-        const latestWeight = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1] : null;
+function initWeightSection() {
+    const weightHistory = getWeightHistory();
+    const latestWeight = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1] : null;
 
-        // 大きな体重表示を更新
-        const displayLarge = document.getElementById('current-weight-display-large');
-        if (displayLarge) {
-            if (latestWeight) {
-                displayLarge.textContent = latestWeight.weight.toFixed(1);
-            } else {
-                displayLarge.textContent = '--.-';
-            }
-        }
-
-        // 体重入力フィールドに最新値をプリセット
-        const input = document.getElementById('weight-input');
-        if (input && latestWeight) {
-            input.value = latestWeight.weight.toFixed(1);
-        }
-
-        // ±ステッパーボタン
-        document.querySelectorAll('.weight-step-btn').forEach(btn => {
-            btn.onclick = () => {
-                const step = parseFloat(btn.dataset.step);
-                const input = document.getElementById('weight-input');
-                if (!input) return;
-                let current = parseFloat(input.value) || (latestWeight ? latestWeight.weight : 70);
-                current = Math.round((current + step) * 10) / 10;
-                current = Math.max(30, Math.min(150, current));
-                input.value = current.toFixed(1);
-                // 大きな表示も即時更新
-                if (displayLarge) displayLarge.textContent = current.toFixed(1);
-            };
-        });
-
-        // 入力フィールドの変更で大きな表示も更新
-        if (input) {
-            input.oninput = () => {
-                const val = parseFloat(input.value);
-                if (displayLarge && !isNaN(val) && val >= 30 && val <= 150) {
-                    displayLarge.textContent = val.toFixed(1);
-                }
-            };
-        }
-
-        // 記録ボタン
-        const saveBtn = document.getElementById('save-weight-btn');
-        if (saveBtn) {
-            saveBtn.onclick = saveWeight;
-        }
-
-        // グラフと履歴を描画
-        renderWeightChart(weightHistory);
-        renderWeightHistoryList(weightHistory);
-    }
-
-    function getWeightHistory() {
-        const history = DB.load('weight_history') || [];
-        // 日付順にソート
-        return history
-            .filter(w => w.userId === state.currentUser?.id)
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
-    }
-
-    // 指定ユーザーの指定日の体重を取得（当日中に記録されていればOK）
-    function getWeightForDate(userId, dateStr) {
-        const history = DB.load('weight_history') || [];
-        const targetDate = dateStr?.split('T')[0] || dateStr; // YYYY-MM-DD形式に正規化
-        const entry = history.find(w => w.userId === userId && w.date === targetDate);
-        return entry ? entry.weight : null;
-    }
-
-    function saveWeight() {
-        const input = document.getElementById('weight-input');
-        if (!input) return;
-
-        const weight = parseFloat(input.value);
-        if (isNaN(weight) || weight < 30 || weight > 150) {
-            showToast('30〜150kgの範囲で入力してください', 'error');
-            return;
-        }
-
-        const today = new Date().toISOString().split('T')[0];
-        let allHistory = DB.load('weight_history') || [];
-
-        // 同じ日の記録があれば更新
-        const existingIdx = allHistory.findIndex(w => w.userId === state.currentUser.id && w.date === today);
-        if (existingIdx !== -1) {
-            allHistory[existingIdx].weight = weight;
+    // 大きな体重表示を更新
+    const displayLarge = document.getElementById('current-weight-display-large');
+    if (displayLarge) {
+        if (latestWeight) {
+            displayLarge.textContent = latestWeight.weight.toFixed(1);
         } else {
-            allHistory.push({
-                id: generateId(),
-                userId: state.currentUser.id,
-                date: today,
-                weight: weight,
-                createdAt: new Date().toISOString()
-            });
+            displayLarge.textContent = '--.-';
         }
-
-        DB.save('weight_history', allHistory);
-
-        // Supabaseにも保存
-        const entry = existingIdx !== -1 ? allHistory[existingIdx] : allHistory[allHistory.length - 1];
-        if (DB.useSupabase && window.SupabaseConfig?.db) {
-            window.SupabaseConfig.db.saveWeightEntry(entry).catch(e => console.warn('Weight sync failed:', e));
-        }
-
-        // ユーザーの現在体重も更新
-        state.currentUser.weight = weight;
-        DB.save('current_user', state.currentUser);
-        const idx = state.users.findIndex(u => u.id === state.currentUser.id);
-        if (idx !== -1) {
-            state.users[idx] = state.currentUser;
-            DB.save('users', state.users);
-        }
-
-        // Supabaseのプロフィールにも体重を同期
-        syncProfileToSupabase({ weight: weight });
-
-        input.value = '';
-        showToast(`体重 ${weight} kg を記録しました`, 'success');
-        initWeightSection(); // UI更新
     }
 
-    function renderWeightChart(history) {
-        const canvas = document.getElementById('weight-chart');
-        if (!canvas) return;
+    // 体重入力フィールドに最新値をプリセット
+    const input = document.getElementById('weight-input');
+    if (input && latestWeight) {
+        input.value = latestWeight.weight.toFixed(1);
+    }
 
-        const ctx = canvas.getContext('2d');
-        const rect = canvas.parentElement.getBoundingClientRect();
-        canvas.width = rect.width || 300;
-        canvas.height = 150;
+    // ±ステッパーボタン
+    document.querySelectorAll('.weight-step-btn').forEach(btn => {
+        btn.onclick = () => {
+            const step = parseFloat(btn.dataset.step);
+            const input = document.getElementById('weight-input');
+            if (!input) return;
+            let current = parseFloat(input.value) || (latestWeight ? latestWeight.weight : 70);
+            current = Math.round((current + step) * 10) / 10;
+            current = Math.max(30, Math.min(150, current));
+            input.value = current.toFixed(1);
+            // 大きな表示も即時更新
+            if (displayLarge) displayLarge.textContent = current.toFixed(1);
+        };
+    });
 
-        // 背景クリア
-        ctx.fillStyle = '#1a1a2e';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // 入力フィールドの変更で大きな表示も更新
+    if (input) {
+        input.oninput = () => {
+            const val = parseFloat(input.value);
+            if (displayLarge && !isNaN(val) && val >= 30 && val <= 150) {
+                displayLarge.textContent = val.toFixed(1);
+            }
+        };
+    }
 
-        // 最近30日のデータ
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const recentData = history.filter(w => new Date(w.date) >= thirtyDaysAgo);
+    // 記録ボタン
+    const saveBtn = document.getElementById('save-weight-btn');
+    if (saveBtn) {
+        saveBtn.onclick = saveWeight;
+    }
 
-        if (recentData.length < 2) {
-            ctx.fillStyle = '#888';
-            ctx.font = '13px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('2件以上の記録でグラフが表示されます', canvas.width / 2, canvas.height / 2);
-            return;
-        }
+    // グラフと履歴を描画
+    renderWeightChart(weightHistory);
+    renderWeightHistoryList(weightHistory);
+}
 
-        const weights = recentData.map(w => w.weight);
-        const minW = Math.floor(Math.min(...weights) - 1);
-        const maxW = Math.ceil(Math.max(...weights) + 1);
-        const rangeW = maxW - minW || 1;
+function getWeightHistory() {
+    const history = DB.load('weight_history') || [];
+    // 日付順にソート
+    return history
+        .filter(w => w.userId === state.currentUser?.id)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+}
 
-        const padding = { top: 20, right: 15, bottom: 30, left: 40 };
-        const plotWidth = canvas.width - padding.left - padding.right;
-        const plotHeight = canvas.height - padding.top - padding.bottom;
+// 指定ユーザーの指定日の体重を取得（当日中に記録されていればOK）
+function getWeightForDate(userId, dateStr) {
+    const history = DB.load('weight_history') || [];
+    const targetDate = dateStr?.split('T')[0] || dateStr; // YYYY-MM-DD形式に正規化
+    const entry = history.find(w => w.userId === userId && w.date === targetDate);
+    return entry ? entry.weight : null;
+}
 
-        // Y軸ラベル
-        ctx.fillStyle = '#aaa';
-        ctx.font = '10px sans-serif';
-        ctx.textAlign = 'right';
-        for (let i = 0; i <= 4; i++) {
-            const val = minW + (rangeW * i / 4);
-            const y = padding.top + plotHeight - (plotHeight * i / 4);
-            ctx.fillText(val.toFixed(1), padding.left - 5, y + 3);
-            // グリッド線
-            ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-            ctx.beginPath();
-            ctx.moveTo(padding.left, y);
-            ctx.lineTo(canvas.width - padding.right, y);
-            ctx.stroke();
-        }
+function saveWeight() {
+    const input = document.getElementById('weight-input');
+    if (!input) return;
 
-        // データポイントとライン
-        const points = recentData.map((w, i) => ({
-            x: padding.left + (plotWidth * i / (recentData.length - 1)),
-            y: padding.top + plotHeight - (plotHeight * (w.weight - minW) / rangeW),
-            weight: w.weight,
-            date: w.date
-        }));
+    const weight = parseFloat(input.value);
+    if (isNaN(weight) || weight < 30 || weight > 150) {
+        showToast('30〜150kgの範囲で入力してください', 'error');
+        return;
+    }
 
-        // グラデーション塗りつぶし
-        const gradient = ctx.createLinearGradient(0, padding.top, 0, canvas.height - padding.bottom);
-        gradient.addColorStop(0, 'rgba(74, 144, 226, 0.3)');
-        gradient.addColorStop(1, 'rgba(74, 144, 226, 0.02)');
+    const today = new Date().toISOString().split('T')[0];
+    let allHistory = DB.load('weight_history') || [];
 
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.moveTo(points[0].x, canvas.height - padding.bottom);
-        points.forEach(p => ctx.lineTo(p.x, p.y));
-        ctx.lineTo(points[points.length - 1].x, canvas.height - padding.bottom);
-        ctx.closePath();
-        ctx.fill();
-
-        // ライン
-        ctx.strokeStyle = '#4a90e2';
-        ctx.lineWidth = 2;
-        ctx.lineJoin = 'round';
-        ctx.beginPath();
-        points.forEach((p, i) => {
-            if (i === 0) ctx.moveTo(p.x, p.y);
-            else ctx.lineTo(p.x, p.y);
+    // 同じ日の記録があれば更新
+    const existingIdx = allHistory.findIndex(w => w.userId === state.currentUser.id && w.date === today);
+    if (existingIdx !== -1) {
+        allHistory[existingIdx].weight = weight;
+    } else {
+        allHistory.push({
+            id: generateId(),
+            userId: state.currentUser.id,
+            date: today,
+            weight: weight,
+            createdAt: new Date().toISOString()
         });
+    }
+
+    DB.save('weight_history', allHistory);
+
+    // Supabaseにも保存
+    const entry = existingIdx !== -1 ? allHistory[existingIdx] : allHistory[allHistory.length - 1];
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.saveWeightEntry(entry).catch(e => console.warn('Weight sync failed:', e));
+    }
+
+    // ユーザーの現在体重も更新
+    state.currentUser.weight = weight;
+    DB.save('current_user', state.currentUser);
+    const idx = state.users.findIndex(u => u.id === state.currentUser.id);
+    if (idx !== -1) {
+        state.users[idx] = state.currentUser;
+        DB.save('users', state.users);
+    }
+
+    // Supabaseのプロフィールにも体重を同期
+    syncProfileToSupabase({ weight: weight });
+
+    input.value = '';
+    showToast(`体重 ${weight} kg を記録しました`, 'success');
+    initWeightSection(); // UI更新
+}
+
+function renderWeightChart(history) {
+    const canvas = document.getElementById('weight-chart');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width || 300;
+    canvas.height = 150;
+
+    // 背景クリア
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 最近30日のデータ
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const recentData = history.filter(w => new Date(w.date) >= thirtyDaysAgo);
+
+    if (recentData.length < 2) {
+        ctx.fillStyle = '#888';
+        ctx.font = '13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('2件以上の記録でグラフが表示されます', canvas.width / 2, canvas.height / 2);
+        return;
+    }
+
+    const weights = recentData.map(w => w.weight);
+    const minW = Math.floor(Math.min(...weights) - 1);
+    const maxW = Math.ceil(Math.max(...weights) + 1);
+    const rangeW = maxW - minW || 1;
+
+    const padding = { top: 20, right: 15, bottom: 30, left: 40 };
+    const plotWidth = canvas.width - padding.left - padding.right;
+    const plotHeight = canvas.height - padding.top - padding.bottom;
+
+    // Y軸ラベル
+    ctx.fillStyle = '#aaa';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= 4; i++) {
+        const val = minW + (rangeW * i / 4);
+        const y = padding.top + plotHeight - (plotHeight * i / 4);
+        ctx.fillText(val.toFixed(1), padding.left - 5, y + 3);
+        // グリッド線
+        ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(canvas.width - padding.right, y);
         ctx.stroke();
-
-        // データポイント（ドット）
-        points.forEach(p => {
-            ctx.fillStyle = '#4a90e2';
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#fff';
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
-            ctx.fill();
-        });
-
-        // X軸ラベル（最初と最後の日付）
-        ctx.fillStyle = '#aaa';
-        ctx.font = '10px sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText(recentData[0].date.slice(5), padding.left, canvas.height - 5);
-        ctx.textAlign = 'right';
-        ctx.fillText(recentData[recentData.length - 1].date.slice(5), canvas.width - padding.right, canvas.height - 5);
-
-        // 最新値を強調
-        const last = points[points.length - 1];
-        ctx.fillStyle = '#4a90e2';
-        ctx.font = 'bold 12px sans-serif';
-        ctx.textAlign = 'right';
-        ctx.fillText(`${last.weight} kg`, last.x - 5, last.y - 8);
     }
 
-    function renderWeightHistoryList(history) {
-        const list = document.getElementById('weight-history-list');
-        if (!list) return;
+    // データポイントとライン
+    const points = recentData.map((w, i) => ({
+        x: padding.left + (plotWidth * i / (recentData.length - 1)),
+        y: padding.top + plotHeight - (plotHeight * (w.weight - minW) / rangeW),
+        weight: w.weight,
+        date: w.date
+    }));
 
-        const recent = history.slice(-10).reverse(); // 最新10件
+    // グラデーション塗りつぶし
+    const gradient = ctx.createLinearGradient(0, padding.top, 0, canvas.height - padding.bottom);
+    gradient.addColorStop(0, 'rgba(74, 144, 226, 0.3)');
+    gradient.addColorStop(1, 'rgba(74, 144, 226, 0.02)');
 
-        if (recent.length === 0) {
-            list.innerHTML = '<div style="text-align:center; color:#888; font-size:12px; padding:8px;">記録はまだありません</div>';
-            return;
-        }
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, canvas.height - padding.bottom);
+    points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(points[points.length - 1].x, canvas.height - padding.bottom);
+    ctx.closePath();
+    ctx.fill();
 
-        list.innerHTML = recent.map((w, i) => {
-            const prev = i < recent.length - 1 ? recent[i + 1].weight : null;
-            const diff = prev !== null ? (w.weight - prev).toFixed(1) : null;
-            const diffStr = diff !== null
-                ? (diff > 0 ? `<span style="color:#e74c3c">+${diff}</span>` : diff < 0 ? `<span style="color:#27ae60">${diff}</span>` : `<span style="color:#888">±0</span>`)
-                : '';
+    // ライン
+    ctx.strokeStyle = '#4a90e2';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    points.forEach((p, i) => {
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
 
-            return `<div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:12px;">
+    // データポイント（ドット）
+    points.forEach(p => {
+        ctx.fillStyle = '#4a90e2';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // X軸ラベル（最初と最後の日付）
+    ctx.fillStyle = '#aaa';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(recentData[0].date.slice(5), padding.left, canvas.height - 5);
+    ctx.textAlign = 'right';
+    ctx.fillText(recentData[recentData.length - 1].date.slice(5), canvas.width - padding.right, canvas.height - 5);
+
+    // 最新値を強調
+    const last = points[points.length - 1];
+    ctx.fillStyle = '#4a90e2';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(`${last.weight} kg`, last.x - 5, last.y - 8);
+}
+
+function renderWeightHistoryList(history) {
+    const list = document.getElementById('weight-history-list');
+    if (!list) return;
+
+    const recent = history.slice(-10).reverse(); // 最新10件
+
+    if (recent.length === 0) {
+        list.innerHTML = '<div style="text-align:center; color:#888; font-size:12px; padding:8px;">記録はまだありません</div>';
+        return;
+    }
+
+    list.innerHTML = recent.map((w, i) => {
+        const prev = i < recent.length - 1 ? recent[i + 1].weight : null;
+        const diff = prev !== null ? (w.weight - prev).toFixed(1) : null;
+        const diffStr = diff !== null
+            ? (diff > 0 ? `<span style="color:#e74c3c">+${diff}</span>` : diff < 0 ? `<span style="color:#27ae60">${diff}</span>` : `<span style="color:#888">±0</span>`)
+            : '';
+
+        return `<div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:12px;">
             <span style="color:#aaa;">${w.date.slice(5).replace('-', '/')}</span>
             <span><strong>${w.weight}</strong> kg ${diffStr}</span>
         </div>`;
-        }).join('');
-    }
+    }).join('');
+}
 
-    function setText(id, text) {
-        const el = document.getElementById(id);
-        if (el) el.textContent = text;
-    }
+function setText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+}
 
-    /**
-     * リギングデータの読み込み（履歴方式）
-     */
-    const RIGGING_MAX_HISTORY = 10;
-    const RIGGING_FIELDS = ['pin_to_heel', 'depth', 'span', 'pitch', 'height'];
-    const RIGGING_FIELD_LABELS = {
-        pin_to_heel: 'ピン・トゥ・ヒール',
-        depth: 'デプス',
-        span: 'スパン',
-        pitch: '足角',
-        height: 'ハイト'
-    };
+/**
+ * リギングデータの読み込み（履歴方式）
+ */
+const RIGGING_MAX_HISTORY = 10;
+const RIGGING_FIELDS = ['pin_to_heel', 'depth', 'span', 'pitch', 'height'];
+const RIGGING_FIELD_LABELS = {
+    pin_to_heel: 'ピン・トゥ・ヒール',
+    depth: 'デプス',
+    span: 'スパン',
+    pitch: '足角',
+    height: 'ハイト'
+};
 
-    function getRiggingHistory(boatId, userId) {
-        const all = DB.loadLocal('rigging_history') || [];
-        return all
-            .filter(r => r.boat_id === boatId && r.user_id === userId)
-            .sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at));
-    }
+function getRiggingHistory(boatId, userId) {
+    const all = DB.loadLocal('rigging_history') || [];
+    return all
+        .filter(r => r.boat_id === boatId && r.user_id === userId)
+        .sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at));
+}
 
-    async function loadRigging(boatId) {
-        if (!boatId) {
-            document.getElementById('rigging-form').classList.add('hidden');
-            document.getElementById('rigging-empty-state').classList.remove('hidden');
-            document.getElementById('rigging-history-panel').classList.add('hidden');
-            document.getElementById('rigging-comparison-panel').classList.add('hidden');
-            return;
-        }
-
-        const currentUser = state.currentUser;
-        if (!currentUser) return;
-
-        document.getElementById('rigging-form').classList.remove('hidden');
-        document.getElementById('rigging-empty-state').classList.add('hidden');
+async function loadRigging(boatId) {
+    if (!boatId) {
+        document.getElementById('rigging-form').classList.add('hidden');
+        document.getElementById('rigging-empty-state').classList.remove('hidden');
         document.getElementById('rigging-history-panel').classList.add('hidden');
         document.getElementById('rigging-comparison-panel').classList.add('hidden');
+        return;
+    }
 
-        const inputs = {
-            pin_to_heel: document.getElementById('rigging-pin-to-heel'),
-            depth: document.getElementById('rigging-depth'),
-            span: document.getElementById('rigging-span'),
-            pitch: document.getElementById('rigging-pitch'),
-            height: document.getElementById('rigging-height'),
-            memo: document.getElementById('rigging-memo')
-        };
+    const currentUser = state.currentUser;
+    if (!currentUser) return;
 
-        // 入力値をリセット
-        Object.values(inputs).forEach(input => { if (input) input.value = ''; });
+    document.getElementById('rigging-form').classList.remove('hidden');
+    document.getElementById('rigging-empty-state').classList.add('hidden');
+    document.getElementById('rigging-history-panel').classList.add('hidden');
+    document.getElementById('rigging-comparison-panel').classList.add('hidden');
 
-        // 旧データからのマイグレーション
-        let oldRiggings = DB.loadLocal('riggings') || [];
-        let oldRigging = oldRiggings.find(r => r.boat_id === boatId && r.user_id === currentUser.id);
+    const inputs = {
+        pin_to_heel: document.getElementById('rigging-pin-to-heel'),
+        depth: document.getElementById('rigging-depth'),
+        span: document.getElementById('rigging-span'),
+        pitch: document.getElementById('rigging-pitch'),
+        height: document.getElementById('rigging-height'),
+        memo: document.getElementById('rigging-memo')
+    };
 
-        // Supabaseから取得試行
-        if (DB.useSupabase && window.SupabaseConfig?.db) {
-            try {
-                const riggings = await window.SupabaseConfig.db.loadRiggings();
-                const supabaseRigging = riggings.find(r => r.boat_id === boatId && r.user_id === currentUser.id);
-                if (supabaseRigging) {
-                    oldRigging = supabaseRigging;
-                }
-            } catch (e) {
-                // Not found is expected
+    // 入力値をリセット
+    Object.values(inputs).forEach(input => { if (input) input.value = ''; });
+
+    // 旧データからのマイグレーション
+    let oldRiggings = DB.loadLocal('riggings') || [];
+    let oldRigging = oldRiggings.find(r => r.boat_id === boatId && r.user_id === currentUser.id);
+
+    // Supabaseから取得試行
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        try {
+            const riggings = await window.SupabaseConfig.db.loadRiggings();
+            const supabaseRigging = riggings.find(r => r.boat_id === boatId && r.user_id === currentUser.id);
+            if (supabaseRigging) {
+                oldRigging = supabaseRigging;
             }
+        } catch (e) {
+            // Not found is expected
         }
+    }
 
-        // 旧データがあれば履歴にマイグレーション
-        if (oldRigging) {
-            const history = getRiggingHistory(boatId, currentUser.id);
-            const alreadyMigrated = history.some(h => h.migrated_from_old);
-            if (!alreadyMigrated) {
-                const migratedEntry = {
-                    id: generateId(),
-                    boat_id: boatId,
-                    user_id: currentUser.id,
-                    pin_to_heel: oldRigging.pin_to_heel || '',
-                    depth: oldRigging.depth || '',
-                    span: oldRigging.span || '',
-                    pitch: oldRigging.pitch || '',
-                    height: oldRigging.height || '',
-                    memo: oldRigging.memo || '',
-                    saved_at: oldRigging.updated_at || oldRigging.created_at || new Date().toISOString(),
-                    migrated_from_old: true
-                };
-                let allHistory = DB.loadLocal('rigging_history') || [];
-                allHistory.push(migratedEntry);
-                DB.saveLocal('rigging_history', allHistory);
-            }
-        }
-
-        // 履歴から最新を取得してフォームに反映
+    // 旧データがあれば履歴にマイグレーション
+    if (oldRigging) {
         const history = getRiggingHistory(boatId, currentUser.id);
-        if (history.length > 0) {
-            const latest = history[0];
-            if (inputs.pin_to_heel) inputs.pin_to_heel.value = latest.pin_to_heel || '';
-            if (inputs.depth) inputs.depth.value = latest.depth || '';
-            if (inputs.span) inputs.span.value = latest.span || '';
-            if (inputs.pitch) inputs.pitch.value = latest.pitch || '';
-            if (inputs.height) inputs.height.value = latest.height || '';
-            if (inputs.memo) inputs.memo.value = latest.memo || '';
-        }
-
-        // 履歴カウント更新
-        updateRiggingHistoryCount(history.length);
-    }
-
-    function updateRiggingHistoryCount(count) {
-        const badge = document.getElementById('rigging-history-count');
-        if (badge) {
-            badge.textContent = count;
-            badge.classList.toggle('hidden', count <= 0);
-        }
-    }
-
-    /**
-     * リギングデータの保存（履歴方式）
-     */
-    async function saveRigging(boatId) {
-        if (!boatId) return;
-
-        const currentUser = state.currentUser;
-        if (!currentUser) return;
-
-        const newEntry = {
-            id: generateId(),
-            boat_id: boatId,
-            user_id: currentUser.id,
-            pin_to_heel: document.getElementById('rigging-pin-to-heel').value,
-            depth: document.getElementById('rigging-depth').value,
-            span: document.getElementById('rigging-span').value,
-            pitch: document.getElementById('rigging-pitch').value,
-            height: document.getElementById('rigging-height').value,
-            memo: document.getElementById('rigging-memo').value,
-            saved_at: new Date().toISOString()
-        };
-
-        // 履歴に追加
-        let allHistory = DB.loadLocal('rigging_history') || [];
-        allHistory.push(newEntry);
-
-        // ボート×ユーザーごとに最大件数を制限
-        const boatUserHistory = allHistory
-            .filter(r => r.boat_id === boatId && r.user_id === currentUser.id)
-            .sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at));
-
-        let removedIds = [];
-        if (boatUserHistory.length > RIGGING_MAX_HISTORY) {
-            const toRemove = boatUserHistory.slice(RIGGING_MAX_HISTORY);
-            removedIds = toRemove.map(r => r.id);
-            allHistory = allHistory.filter(r => !removedIds.includes(r.id));
-        }
-
-        DB.saveLocal('rigging_history', allHistory);
-
-        // 旧形式（riggings）にも最新値を保存（後方互換性）
-        let riggings = DB.loadLocal('riggings') || [];
-        const oldData = {
-            pin_to_heel: newEntry.pin_to_heel,
-            depth: newEntry.depth,
-            span: newEntry.span,
-            pitch: newEntry.pitch,
-            height: newEntry.height,
-            memo: newEntry.memo,
-            updated_at: newEntry.saved_at
-        };
-
-        const index = riggings.findIndex(r => r.boat_id === boatId && r.user_id === currentUser.id);
-        if (index >= 0) {
-            riggings[index] = { ...riggings[index], ...oldData };
-        } else {
-            riggings.push({
+        const alreadyMigrated = history.some(h => h.migrated_from_old);
+        if (!alreadyMigrated) {
+            const migratedEntry = {
                 id: generateId(),
+                boat_id: boatId,
+                user_id: currentUser.id,
+                pin_to_heel: oldRigging.pin_to_heel || '',
+                depth: oldRigging.depth || '',
+                span: oldRigging.span || '',
+                pitch: oldRigging.pitch || '',
+                height: oldRigging.height || '',
+                memo: oldRigging.memo || '',
+                saved_at: oldRigging.updated_at || oldRigging.created_at || new Date().toISOString(),
+                migrated_from_old: true
+            };
+            let allHistory = DB.loadLocal('rigging_history') || [];
+            allHistory.push(migratedEntry);
+            DB.saveLocal('rigging_history', allHistory);
+        }
+    }
+
+    // 履歴から最新を取得してフォームに反映
+    const history = getRiggingHistory(boatId, currentUser.id);
+    if (history.length > 0) {
+        const latest = history[0];
+        if (inputs.pin_to_heel) inputs.pin_to_heel.value = latest.pin_to_heel || '';
+        if (inputs.depth) inputs.depth.value = latest.depth || '';
+        if (inputs.span) inputs.span.value = latest.span || '';
+        if (inputs.pitch) inputs.pitch.value = latest.pitch || '';
+        if (inputs.height) inputs.height.value = latest.height || '';
+        if (inputs.memo) inputs.memo.value = latest.memo || '';
+    }
+
+    // 履歴カウント更新
+    updateRiggingHistoryCount(history.length);
+}
+
+function updateRiggingHistoryCount(count) {
+    const badge = document.getElementById('rigging-history-count');
+    if (badge) {
+        badge.textContent = count;
+        badge.classList.toggle('hidden', count <= 0);
+    }
+}
+
+/**
+ * リギングデータの保存（履歴方式）
+ */
+async function saveRigging(boatId) {
+    if (!boatId) return;
+
+    const currentUser = state.currentUser;
+    if (!currentUser) return;
+
+    const newEntry = {
+        id: generateId(),
+        boat_id: boatId,
+        user_id: currentUser.id,
+        pin_to_heel: document.getElementById('rigging-pin-to-heel').value,
+        depth: document.getElementById('rigging-depth').value,
+        span: document.getElementById('rigging-span').value,
+        pitch: document.getElementById('rigging-pitch').value,
+        height: document.getElementById('rigging-height').value,
+        memo: document.getElementById('rigging-memo').value,
+        saved_at: new Date().toISOString()
+    };
+
+    // 履歴に追加
+    let allHistory = DB.loadLocal('rigging_history') || [];
+    allHistory.push(newEntry);
+
+    // ボート×ユーザーごとに最大件数を制限
+    const boatUserHistory = allHistory
+        .filter(r => r.boat_id === boatId && r.user_id === currentUser.id)
+        .sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at));
+
+    let removedIds = [];
+    if (boatUserHistory.length > RIGGING_MAX_HISTORY) {
+        const toRemove = boatUserHistory.slice(RIGGING_MAX_HISTORY);
+        removedIds = toRemove.map(r => r.id);
+        allHistory = allHistory.filter(r => !removedIds.includes(r.id));
+    }
+
+    DB.saveLocal('rigging_history', allHistory);
+
+    // 旧形式（riggings）にも最新値を保存（後方互換性）
+    let riggings = DB.loadLocal('riggings') || [];
+    const oldData = {
+        pin_to_heel: newEntry.pin_to_heel,
+        depth: newEntry.depth,
+        span: newEntry.span,
+        pitch: newEntry.pitch,
+        height: newEntry.height,
+        memo: newEntry.memo,
+        updated_at: newEntry.saved_at
+    };
+
+    const index = riggings.findIndex(r => r.boat_id === boatId && r.user_id === currentUser.id);
+    if (index >= 0) {
+        riggings[index] = { ...riggings[index], ...oldData };
+    } else {
+        riggings.push({
+            id: generateId(),
+            user_id: currentUser.id,
+            boat_id: boatId,
+            ...oldData,
+            created_at: newEntry.saved_at
+        });
+    }
+    DB.saveLocal('riggings', riggings);
+
+    // Supabase保存
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        try {
+            // riggingsテーブル（最新値）を保存
+            await window.SupabaseConfig.db.saveRigging({
                 user_id: currentUser.id,
                 boat_id: boatId,
-                ...oldData,
-                created_at: newEntry.saved_at
+                ...oldData
+            });
+
+            // rigging_historyテーブルに新エントリ保存
+            await window.SupabaseConfig.db.saveRiggingHistory({
+                id: newEntry.id,
+                boat_id: newEntry.boat_id,
+                user_id: newEntry.user_id,
+                pin_to_heel: newEntry.pin_to_heel,
+                depth: newEntry.depth,
+                span: newEntry.span,
+                pitch: newEntry.pitch,
+                height: newEntry.height,
+                memo: newEntry.memo,
+                saved_at: newEntry.saved_at
+            });
+
+            // 古い履歴をSupabaseからも削除
+            if (removedIds.length > 0) {
+                await window.SupabaseConfig.db.deleteRiggingHistory(removedIds);
+            }
+
+            showToast('リギング設定を保存しました（クラウド同期）', 'success');
+        } catch (e) {
+            console.error('Failed to save rigging to Supabase', e);
+            showToast('リギング設定を保存しました（オフライン）', 'success');
+        }
+    } else {
+        showToast('リギング設定を保存しました', 'success');
+    }
+
+    // 履歴カウント更新
+    const updatedHistory = getRiggingHistory(boatId, currentUser.id);
+    updateRiggingHistoryCount(updatedHistory.length);
+}
+
+/**
+ * リギング履歴パネルの表示/非表示
+ */
+function toggleRiggingHistory() {
+    const panel = document.getElementById('rigging-history-panel');
+    const compPanel = document.getElementById('rigging-comparison-panel');
+
+    if (panel.classList.contains('hidden')) {
+        compPanel.classList.add('hidden');
+        panel.classList.remove('hidden');
+        renderRiggingHistory();
+    } else {
+        panel.classList.add('hidden');
+    }
+}
+
+/**
+ * リギング履歴の描画
+ */
+function renderRiggingHistory() {
+    const boatId = document.getElementById('rigging-boat-select').value;
+    const currentUser = state.currentUser;
+    if (!boatId || !currentUser) return;
+
+    const history = getRiggingHistory(boatId, currentUser.id);
+    const listEl = document.getElementById('rigging-history-list');
+
+    if (history.length === 0) {
+        listEl.innerHTML = '<div class="empty-state"><p>履歴がありません</p></div>';
+        return;
+    }
+
+    const latest = history[0];
+
+    listEl.innerHTML = history.map((entry, idx) => {
+        const date = new Date(entry.saved_at);
+        const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+        const isLatest = idx === 0;
+
+        // 変更された項目数を計算（最新との比較）
+        let diffCount = 0;
+        if (!isLatest) {
+            RIGGING_FIELDS.forEach(f => {
+                if (String(entry[f] || '') !== String(latest[f] || '')) diffCount++;
             });
         }
-        DB.saveLocal('riggings', riggings);
+        const diffBadge = !isLatest && diffCount > 0 ? `<span class="rigging-diff-count">${diffCount}項目変更</span>` : '';
 
-        // Supabase保存
-        if (DB.useSupabase && window.SupabaseConfig?.db) {
-            try {
-                // riggingsテーブル（最新値）を保存
-                await window.SupabaseConfig.db.saveRigging({
-                    user_id: currentUser.id,
-                    boat_id: boatId,
-                    ...oldData
-                });
+        // 主要値のプレビュー
+        const previewParts = [];
+        if (entry.pin_to_heel) previewParts.push(`P2H: ${entry.pin_to_heel}`);
+        if (entry.span) previewParts.push(`スパン: ${entry.span}`);
+        if (entry.height) previewParts.push(`ハイト: ${entry.height}`);
+        const previewStr = previewParts.length > 0 ? previewParts.join(' / ') : '値なし';
 
-                // rigging_historyテーブルに新エントリ保存
-                await window.SupabaseConfig.db.saveRiggingHistory({
-                    id: newEntry.id,
-                    boat_id: newEntry.boat_id,
-                    user_id: newEntry.user_id,
-                    pin_to_heel: newEntry.pin_to_heel,
-                    depth: newEntry.depth,
-                    span: newEntry.span,
-                    pitch: newEntry.pitch,
-                    height: newEntry.height,
-                    memo: newEntry.memo,
-                    saved_at: newEntry.saved_at
-                });
-
-                // 古い履歴をSupabaseからも削除
-                if (removedIds.length > 0) {
-                    await window.SupabaseConfig.db.deleteRiggingHistory(removedIds);
-                }
-
-                showToast('リギング設定を保存しました（クラウド同期）', 'success');
-            } catch (e) {
-                console.error('Failed to save rigging to Supabase', e);
-                showToast('リギング設定を保存しました（オフライン）', 'success');
-            }
-        } else {
-            showToast('リギング設定を保存しました', 'success');
-        }
-
-        // 履歴カウント更新
-        const updatedHistory = getRiggingHistory(boatId, currentUser.id);
-        updateRiggingHistoryCount(updatedHistory.length);
-    }
-
-    /**
-     * リギング履歴パネルの表示/非表示
-     */
-    function toggleRiggingHistory() {
-        const panel = document.getElementById('rigging-history-panel');
-        const compPanel = document.getElementById('rigging-comparison-panel');
-
-        if (panel.classList.contains('hidden')) {
-            compPanel.classList.add('hidden');
-            panel.classList.remove('hidden');
-            renderRiggingHistory();
-        } else {
-            panel.classList.add('hidden');
-        }
-    }
-
-    /**
-     * リギング履歴の描画
-     */
-    function renderRiggingHistory() {
-        const boatId = document.getElementById('rigging-boat-select').value;
-        const currentUser = state.currentUser;
-        if (!boatId || !currentUser) return;
-
-        const history = getRiggingHistory(boatId, currentUser.id);
-        const listEl = document.getElementById('rigging-history-list');
-
-        if (history.length === 0) {
-            listEl.innerHTML = '<div class="empty-state"><p>履歴がありません</p></div>';
-            return;
-        }
-
-        const latest = history[0];
-
-        listEl.innerHTML = history.map((entry, idx) => {
-            const date = new Date(entry.saved_at);
-            const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
-            const isLatest = idx === 0;
-
-            // 変更された項目数を計算（最新との比較）
-            let diffCount = 0;
-            if (!isLatest) {
-                RIGGING_FIELDS.forEach(f => {
-                    if (String(entry[f] || '') !== String(latest[f] || '')) diffCount++;
-                });
-            }
-            const diffBadge = !isLatest && diffCount > 0 ? `<span class="rigging-diff-count">${diffCount}項目変更</span>` : '';
-
-            // 主要値のプレビュー
-            const previewParts = [];
-            if (entry.pin_to_heel) previewParts.push(`P2H: ${entry.pin_to_heel}`);
-            if (entry.span) previewParts.push(`スパン: ${entry.span}`);
-            if (entry.height) previewParts.push(`ハイト: ${entry.height}`);
-            const previewStr = previewParts.length > 0 ? previewParts.join(' / ') : '値なし';
-
-            return `
+        return `
         <div class="rigging-history-item ${isLatest ? 'latest' : ''}" onclick="${isLatest ? '' : `showRiggingComparison(${idx})`}">
             <div class="rigging-history-item-header">
                 <span class="rigging-history-date">${dateStr}</span>
@@ -8678,61 +8679,61 @@ function openPracticeNoteModal(noteId) {
             ${entry.memo ? `<div class="rigging-history-memo">💬 ${entry.memo}</div>` : ''}
             ${!isLatest ? '<div class="rigging-history-compare-hint">タップして最新と比較 →</div>' : ''}
         </div>`;
-        }).join('');
-    }
+    }).join('');
+}
 
-    /**
-     * リギング比較表示
-     */
-    function showRiggingComparison(historyIdx) {
-        const boatId = document.getElementById('rigging-boat-select').value;
-        const currentUser = state.currentUser;
-        if (!boatId || !currentUser) return;
+/**
+ * リギング比較表示
+ */
+function showRiggingComparison(historyIdx) {
+    const boatId = document.getElementById('rigging-boat-select').value;
+    const currentUser = state.currentUser;
+    if (!boatId || !currentUser) return;
 
-        const history = getRiggingHistory(boatId, currentUser.id);
-        if (historyIdx >= history.length) return;
+    const history = getRiggingHistory(boatId, currentUser.id);
+    if (historyIdx >= history.length) return;
 
-        const latest = history[0];
-        const older = history[historyIdx];
+    const latest = history[0];
+    const older = history[historyIdx];
 
-        const latestDate = new Date(latest.saved_at);
-        const olderDate = new Date(older.saved_at);
-        const fmtDate = (d) => `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const latestDate = new Date(latest.saved_at);
+    const olderDate = new Date(older.saved_at);
+    const fmtDate = (d) => `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
 
-        let rows = RIGGING_FIELDS.map(field => {
-            const latestVal = latest[field] || '-';
-            const olderVal = older[field] || '-';
-            const isDiff = String(latestVal) !== String(olderVal);
-            const diffClass = isDiff ? 'rigging-diff-highlight' : '';
+    let rows = RIGGING_FIELDS.map(field => {
+        const latestVal = latest[field] || '-';
+        const olderVal = older[field] || '-';
+        const isDiff = String(latestVal) !== String(olderVal);
+        const diffClass = isDiff ? 'rigging-diff-highlight' : '';
 
-            let diffArrow = '';
-            if (isDiff && latestVal !== '-' && olderVal !== '-') {
-                const diff = (parseFloat(latestVal) - parseFloat(olderVal)).toFixed(1);
-                const sign = diff > 0 ? '+' : '';
-                diffArrow = `<span class="rigging-diff-arrow ${diff > 0 ? 'up' : 'down'}">${sign}${diff}</span>`;
-            }
+        let diffArrow = '';
+        if (isDiff && latestVal !== '-' && olderVal !== '-') {
+            const diff = (parseFloat(latestVal) - parseFloat(olderVal)).toFixed(1);
+            const sign = diff > 0 ? '+' : '';
+            diffArrow = `<span class="rigging-diff-arrow ${diff > 0 ? 'up' : 'down'}">${sign}${diff}</span>`;
+        }
 
-            return `
+        return `
         <tr class="${diffClass}">
             <td class="rigging-cmp-label">${RIGGING_FIELD_LABELS[field]}</td>
             <td class="rigging-cmp-old">${olderVal}</td>
             <td class="rigging-cmp-new">${latestVal} ${diffArrow}</td>
         </tr>`;
-        }).join('');
+    }).join('');
 
-        // メモ比較
-        if (latest.memo || older.memo) {
-            const memoChanged = (latest.memo || '') !== (older.memo || '');
-            rows += `
+    // メモ比較
+    if (latest.memo || older.memo) {
+        const memoChanged = (latest.memo || '') !== (older.memo || '');
+        rows += `
         <tr class="${memoChanged ? 'rigging-diff-highlight' : ''}">
             <td class="rigging-cmp-label">メモ</td>
             <td class="rigging-cmp-old rigging-cmp-memo">${older.memo || '-'}</td>
             <td class="rigging-cmp-new rigging-cmp-memo">${latest.memo || '-'}</td>
         </tr>`;
-        }
+    }
 
-        const body = document.getElementById('rigging-comparison-body');
-        body.innerHTML = `
+    const body = document.getElementById('rigging-comparison-body');
+    body.innerHTML = `
         <table class="rigging-comparison-table">
             <thead>
                 <tr>
@@ -8745,369 +8746,369 @@ function openPracticeNoteModal(noteId) {
         </table>
         <button class="secondary-btn rigging-restore-btn" onclick="restoreRigging(${historyIdx})">🔄 この設定をフォームに戻す</button>`;
 
-        document.getElementById('rigging-comparison-panel').classList.remove('hidden');
-        document.getElementById('rigging-history-panel').classList.add('hidden');
+    document.getElementById('rigging-comparison-panel').classList.remove('hidden');
+    document.getElementById('rigging-history-panel').classList.add('hidden');
+}
+
+/**
+ * 過去のリギング値をフォームに復元
+ */
+function restoreRigging(historyIdx) {
+    const boatId = document.getElementById('rigging-boat-select').value;
+    const currentUser = state.currentUser;
+    if (!boatId || !currentUser) return;
+
+    const history = getRiggingHistory(boatId, currentUser.id);
+    if (historyIdx >= history.length) return;
+
+    const entry = history[historyIdx];
+
+    document.getElementById('rigging-pin-to-heel').value = entry.pin_to_heel || '';
+    document.getElementById('rigging-depth').value = entry.depth || '';
+    document.getElementById('rigging-span').value = entry.span || '';
+    document.getElementById('rigging-pitch').value = entry.pitch || '';
+    document.getElementById('rigging-height').value = entry.height || '';
+    document.getElementById('rigging-memo').value = entry.memo || '';
+
+    document.getElementById('rigging-comparison-panel').classList.add('hidden');
+    showToast('過去の設定をフォームに反映しました。保存すると新バージョンとして記録されます。', 'info');
+}
+
+function closeRiggingComparison() {
+    document.getElementById('rigging-comparison-panel').classList.add('hidden');
+}
+
+// =========================================
+// クルーノート機能
+// =========================================
+
+// スケジュールからクルー情報を抽出
+function extractCrewsFromSchedules() {
+    const crewMap = new Map();
+
+    // 既存のクルーノートからクルーをリスト化
+    if (state.crewNotes) {
+        state.crewNotes.forEach(note => {
+            const hash = note.crewHash;
+            if (!crewMap.has(hash)) {
+                crewMap.set(hash, {
+                    hash: hash,
+                    memberIds: note.memberIds,
+                    boatType: note.boatType,
+                    lastPractice: note.date
+                });
+            } else {
+                // 最新の日付を更新
+                const existing = crewMap.get(hash);
+                if (new Date(note.date) > new Date(existing.lastPractice)) {
+                    existing.lastPractice = note.date;
+                }
+            }
+        });
     }
 
-    /**
-     * 過去のリギング値をフォームに復元
-     */
-    function restoreRigging(historyIdx) {
-        const boatId = document.getElementById('rigging-boat-select').value;
-        const currentUser = state.currentUser;
-        if (!boatId || !currentUser) return;
+    // スケジュールからもクルーを抽出 (ノート未作成のクルーも表示するため)
+    if (state.schedules) {
+        state.schedules.forEach(schedule => {
+            if (schedule.scheduleType === SCHEDULE_TYPES.BOAT && schedule.crewIds && schedule.crewIds.length > 0) {
+                // ハッシュ生成 (メンバーIDをソートして結合)
+                const sortedIds = [...schedule.crewIds].sort();
+                const hash = sortedIds.join('-');
 
-        const history = getRiggingHistory(boatId, currentUser.id);
-        if (historyIdx >= history.length) return;
+                // 艇種推定 (人数から)
+                let boatType = '不明';
+                const count = sortedIds.length;
+                if (count === 1) boatType = '1x';
+                else if (count === 2) boatType = '2x/2-';
+                else if (count === 4) boatType = '4x/4+';
+                else if (count === 8) boatType = '8+';
 
-        const entry = history[historyIdx];
+                // 明示的なboatTypeがあればそれを使う
+                if (schedule.boatType) boatType = schedule.boatType;
 
-        document.getElementById('rigging-pin-to-heel').value = entry.pin_to_heel || '';
-        document.getElementById('rigging-depth').value = entry.depth || '';
-        document.getElementById('rigging-span').value = entry.span || '';
-        document.getElementById('rigging-pitch').value = entry.pitch || '';
-        document.getElementById('rigging-height').value = entry.height || '';
-        document.getElementById('rigging-memo').value = entry.memo || '';
 
-        document.getElementById('rigging-comparison-panel').classList.add('hidden');
-        showToast('過去の設定をフォームに反映しました。保存すると新バージョンとして記録されます。', 'info');
-    }
-
-    function closeRiggingComparison() {
-        document.getElementById('rigging-comparison-panel').classList.add('hidden');
-    }
-
-    // =========================================
-    // クルーノート機能
-    // =========================================
-
-    // スケジュールからクルー情報を抽出
-    function extractCrewsFromSchedules() {
-        const crewMap = new Map();
-
-        // 既存のクルーノートからクルーをリスト化
-        if (state.crewNotes) {
-            state.crewNotes.forEach(note => {
-                const hash = note.crewHash;
                 if (!crewMap.has(hash)) {
                     crewMap.set(hash, {
                         hash: hash,
-                        memberIds: note.memberIds,
-                        boatType: note.boatType,
-                        lastPractice: note.date
+                        memberIds: sortedIds,
+                        boatType: boatType,
+                        lastPractice: schedule.date
                     });
                 } else {
-                    // 最新の日付を更新
                     const existing = crewMap.get(hash);
-                    if (new Date(note.date) > new Date(existing.lastPractice)) {
-                        existing.lastPractice = note.date;
-                    }
-                }
-            });
-        }
-
-        // スケジュールからもクルーを抽出 (ノート未作成のクルーも表示するため)
-        if (state.schedules) {
-            state.schedules.forEach(schedule => {
-                if (schedule.scheduleType === SCHEDULE_TYPES.BOAT && schedule.crewIds && schedule.crewIds.length > 0) {
-                    // ハッシュ生成 (メンバーIDをソートして結合)
-                    const sortedIds = [...schedule.crewIds].sort();
-                    const hash = sortedIds.join('-');
-
-                    // 艇種推定 (人数から)
-                    let boatType = '不明';
-                    const count = sortedIds.length;
-                    if (count === 1) boatType = '1x';
-                    else if (count === 2) boatType = '2x/2-';
-                    else if (count === 4) boatType = '4x/4+';
-                    else if (count === 8) boatType = '8+';
-
-                    // 明示的なboatTypeがあればそれを使う
-                    if (schedule.boatType) boatType = schedule.boatType;
-
-
-                    if (!crewMap.has(hash)) {
-                        crewMap.set(hash, {
-                            hash: hash,
-                            memberIds: sortedIds,
-                            boatType: boatType,
-                            lastPractice: schedule.date
-                        });
-                    } else {
-                        const existing = crewMap.get(hash);
-                        if (new Date(schedule.date) > new Date(existing.lastPractice)) {
-                            existing.lastPractice = schedule.date;
-                            // boatTypeが不明で、こちらで判明しているなら更新
-                            if ((existing.boatType === '不明' || !existing.boatType) && boatType !== '不明') {
-                                existing.boatType = boatType;
-                            }
+                    if (new Date(schedule.date) > new Date(existing.lastPractice)) {
+                        existing.lastPractice = schedule.date;
+                        // boatTypeが不明で、こちらで判明しているなら更新
+                        if ((existing.boatType === '不明' || !existing.boatType) && boatType !== '不明') {
+                            existing.boatType = boatType;
                         }
                     }
                 }
-            });
-        }
-
-        state.crews = Array.from(crewMap.values()).sort((a, b) => new Date(b.lastPractice) - new Date(a.lastPractice));
-
-        // playlistUrlをLocalStorageから復元
-        const savedPlaylists = DB.load('crews_playlist') || [];
-        savedPlaylists.forEach(p => {
-            const crew = state.crews.find(c => c.hash === p.hash);
-            if (crew && p.playlistUrl) crew.playlistUrl = p.playlistUrl;
+            }
         });
     }
 
-    // スケジュールから自動でクルーノートを作成または更新
-    function autoCreateCrewNotesFromSchedule(schedule) {
-        if (!schedule || schedule.scheduleType !== SCHEDULE_TYPES.BOAT || !schedule.boatId) return;
+    state.crews = Array.from(crewMap.values()).sort((a, b) => new Date(b.lastPractice) - new Date(a.lastPractice));
 
-        let memberIds = [];
+    // playlistUrlをLocalStorageから復元
+    const savedPlaylists = DB.load('crews_playlist') || [];
+    savedPlaylists.forEach(p => {
+        const crew = state.crews.find(c => c.hash === p.hash);
+        if (crew && p.playlistUrl) crew.playlistUrl = p.playlistUrl;
+    });
+}
 
-        // 1. input-crewIds (タグ選択されたメンバー) があればそれを使用
-        // schedule.crewIds は自分以外のIDリストなので、自分(userId)も追加
-        if (schedule.crewIds && Array.isArray(schedule.crewIds)) {
-            memberIds = [schedule.userId, ...schedule.crewIds];
+// スケジュールから自動でクルーノートを作成または更新
+function autoCreateCrewNotesFromSchedule(schedule) {
+    if (!schedule || schedule.scheduleType !== SCHEDULE_TYPES.BOAT || !schedule.boatId) return;
+
+    let memberIds = [];
+
+    // 1. input-crewIds (タグ選択されたメンバー) があればそれを使用
+    // schedule.crewIds は自分以外のIDリストなので、自分(userId)も追加
+    if (schedule.crewIds && Array.isArray(schedule.crewIds)) {
+        memberIds = [schedule.userId, ...schedule.crewIds];
+    }
+
+    // 2. crewIdsがない場合は、スケジュール全体から同じ艇・時間のメンバーを集める (フォールバック)
+    if (memberIds.length <= 1) { // 自分しかいない、または空
+        const sameCrewSchedules = state.schedules.filter(s =>
+            s.date === schedule.date &&
+            s.timeSlot === schedule.timeSlot &&
+            s.boatId === schedule.boatId &&
+            s.scheduleType === SCHEDULE_TYPES.BOAT
+        );
+        if (sameCrewSchedules.length > 0) {
+            memberIds = sameCrewSchedules.map(s => s.userId);
         }
+    }
 
-        // 2. crewIdsがない場合は、スケジュール全体から同じ艇・時間のメンバーを集める (フォールバック)
-        if (memberIds.length <= 1) { // 自分しかいない、または空
-            const sameCrewSchedules = state.schedules.filter(s =>
-                s.date === schedule.date &&
-                s.timeSlot === schedule.timeSlot &&
-                s.boatId === schedule.boatId &&
-                s.scheduleType === SCHEDULE_TYPES.BOAT
-            );
-            if (sameCrewSchedules.length > 0) {
-                memberIds = sameCrewSchedules.map(s => s.userId);
-            }
-        }
+    // 重複除去とソート
+    memberIds = [...new Set(memberIds)].sort();
 
-        // 重複除去とソート
-        memberIds = [...new Set(memberIds)].sort();
+    if (memberIds.length === 0) return;
 
-        if (memberIds.length === 0) return;
-
-        // 3. 艇種を取得 (Master Data)
-        let boatType = '1x'; // デフォルト
-        if (schedule.boatId) {
-            // 艇ID指定あり
-            const boat = state.boats.find(b => b.id === schedule.boatId);
-            // boat.typeプロパティが存在しない場合は名前から推測するか、schedule.boatTypeを使う
-            if (boat && boat.type) {
-                boatType = boat.type;
-            } else if (boat && boat.name) {
-                // 艇名から推測
-                if (boat.name.includes('8+')) boatType = '8+';
-                else if (boat.name.includes('4+')) boatType = '4+';
-                else if (boat.name.includes('4x')) boatType = '4x';
-                else if (boat.name.includes('2-')) boatType = '2-';
-                else if (boat.name.includes('2x')) boatType = '2x';
-                else if (boat.name.includes('1x')) boatType = '1x';
-            } else if (schedule.boatType) {
-                boatType = schedule.boatType;
-            }
+    // 3. 艇種を取得 (Master Data)
+    let boatType = '1x'; // デフォルト
+    if (schedule.boatId) {
+        // 艇ID指定あり
+        const boat = state.boats.find(b => b.id === schedule.boatId);
+        // boat.typeプロパティが存在しない場合は名前から推測するか、schedule.boatTypeを使う
+        if (boat && boat.type) {
+            boatType = boat.type;
+        } else if (boat && boat.name) {
+            // 艇名から推測
+            if (boat.name.includes('8+')) boatType = '8+';
+            else if (boat.name.includes('4+')) boatType = '4+';
+            else if (boat.name.includes('4x')) boatType = '4x';
+            else if (boat.name.includes('2-')) boatType = '2-';
+            else if (boat.name.includes('2x')) boatType = '2x';
+            else if (boat.name.includes('1x')) boatType = '1x';
         } else if (schedule.boatType) {
-            // 艇ID指定なし、艇種のみ指定あり
             boatType = schedule.boatType;
         }
-
-        // 4. クルーハッシュ生成
-        const hash = generateCrewHash(memberIds, boatType);
-
-        // 5. 既存のノートがあるか確認
-        // 同じハッシュ、同じ日付のノートがあるか
-        const existingNote = state.crewNotes.find(n => n.crewHash === hash && n.date === schedule.date);
-
-        if (!existingNote) {
-            // ノートがない場合、新規作成
-            const newNote = {
-                id: generateId(),
-                crewHash: hash,
-                memberIds: memberIds,
-                boatType: boatType,
-                date: schedule.date,
-                content: '', // 空で作成
-                videoUrls: [],
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                lastAuthorId: 'system' // システム作成
-            };
-            state.crewNotes.push(newNote);
-            DB.save('crew_notes', state.crewNotes);
-            DB.saveCrewNote(newNote); // Supabase同期
-
-            // クルーリストも更新
-            extractCrewsFromSchedules();
-
-            showToast('クルーノートを自動作成しました', 'success');
-        }
+    } else if (schedule.boatType) {
+        // 艇ID指定なし、艇種のみ指定あり
+        boatType = schedule.boatType;
     }
 
+    // 4. クルーハッシュ生成
+    const hash = generateCrewHash(memberIds, boatType);
 
-    // クルーハッシュ生成 (メンバーIDをソートして結合)
-    function generateCrewHash(memberIds, boatType) {
-        const sortedIds = [...memberIds].sort();
-        return `${boatType}_${sortedIds.join('_')} `;
-    }
+    // 5. 既存のノートがあるか確認
+    // 同じハッシュ、同じ日付のノートがあるか
+    const existingNote = state.crewNotes.find(n => n.crewHash === hash && n.date === schedule.date);
 
-    // クルーノート保存
-    function saveCrewNote(noteData) {
-        const hash = generateCrewHash(noteData.memberIds, noteData.boatType);
-
-        let note = state.crewNotes.find(n => n.crewHash === hash && n.date === noteData.date);
-
-        const now = new Date().toISOString();
-
-        if (note) {
-            note.content = noteData.content;
-            note.videoUrls = noteData.videoUrls;
-            note.updatedAt = now;
-            note.lastAuthorId = noteData.authorId;
-        } else {
-            note = {
-                id: generateId(),
-                crewHash: hash,
-                memberIds: noteData.memberIds,
-                boatType: noteData.boatType,
-                date: noteData.date,
-                content: noteData.content,
-                videoUrls: noteData.videoUrls,
-                createdAt: now,
-                updatedAt: now,
-                lastAuthorId: noteData.authorId
-            };
-            state.crewNotes.push(note);
-        }
-
+    if (!existingNote) {
+        // ノートがない場合、新規作成
+        const newNote = {
+            id: generateId(),
+            crewHash: hash,
+            memberIds: memberIds,
+            boatType: boatType,
+            date: schedule.date,
+            content: '', // 空で作成
+            videoUrls: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            lastAuthorId: 'system' // システム作成
+        };
+        state.crewNotes.push(newNote);
         DB.save('crew_notes', state.crewNotes);
-        DB.saveCrewNote(note); // Supabase同期
+        DB.saveCrewNote(newNote); // Supabase同期
+
+        // クルーリストも更新
         extractCrewsFromSchedules();
-        return note;
+
+        showToast('クルーノートを自動作成しました', 'success');
+    }
+}
+
+
+// クルーハッシュ生成 (メンバーIDをソートして結合)
+function generateCrewHash(memberIds, boatType) {
+    const sortedIds = [...memberIds].sort();
+    return `${boatType}_${sortedIds.join('_')} `;
+}
+
+// クルーノート保存
+function saveCrewNote(noteData) {
+    const hash = generateCrewHash(noteData.memberIds, noteData.boatType);
+
+    let note = state.crewNotes.find(n => n.crewHash === hash && n.date === noteData.date);
+
+    const now = new Date().toISOString();
+
+    if (note) {
+        note.content = noteData.content;
+        note.videoUrls = noteData.videoUrls;
+        note.updatedAt = now;
+        note.lastAuthorId = noteData.authorId;
+    } else {
+        note = {
+            id: generateId(),
+            crewHash: hash,
+            memberIds: noteData.memberIds,
+            boatType: noteData.boatType,
+            date: noteData.date,
+            content: noteData.content,
+            videoUrls: noteData.videoUrls,
+            createdAt: now,
+            updatedAt: now,
+            lastAuthorId: noteData.authorId
+        };
+        state.crewNotes.push(note);
     }
 
-    // UIロジック: クルーノート
+    DB.save('crew_notes', state.crewNotes);
+    DB.saveCrewNote(note); // Supabase同期
+    extractCrewsFromSchedules();
+    return note;
+}
 
-    let isCrewNoteInitialized = false;
+// UIロジック: クルーノート
 
-    function initCrewNoteFeatures() {
-        if (isCrewNoteInitialized) return;
+let isCrewNoteInitialized = false;
 
-        // タブ切り替えリスナー (My / All)
-        document.querySelectorAll('.crew-nav-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.crew-nav-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
+function initCrewNoteFeatures() {
+    if (isCrewNoteInitialized) return;
 
-                const type = btn.dataset.type;
-                const searchSection = document.getElementById('crew-search-section');
-                if (type === 'all') {
-                    searchSection.classList.remove('hidden');
-                } else {
-                    searchSection.classList.add('hidden');
-                }
-                renderCrewList();
-            });
-        });
+    // タブ切り替えリスナー (My / All)
+    document.querySelectorAll('.crew-nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.crew-nav-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
 
-        // 検索リスナー
-        const searchInput = document.getElementById('crew-search-input');
-        if (searchInput) searchInput.addEventListener('input', renderCrewList);
-
-        const searchBoat = document.getElementById('crew-search-boat');
-        if (searchBoat) searchBoat.addEventListener('change', renderCrewList);
-
-        const searchDate = document.getElementById('crew-search-date');
-        if (searchDate) searchDate.addEventListener('change', renderCrewList);
-
-        // FAB (新規作成)
-        const fab = document.getElementById('add-crew-note-btn');
-        if (fab) {
-            fab.addEventListener('click', () => {
-                openCrewNoteEdit(null, formatDate(new Date()));
-            });
-        }
-
-        // モーダル閉じる
-        document.getElementById('crew-detail-close')?.addEventListener('click', () => {
-            document.getElementById('crew-detail-modal').classList.add('hidden');
-        });
-        document.getElementById('crew-note-close')?.addEventListener('click', () => {
-            document.getElementById('crew-note-modal').classList.add('hidden');
-        });
-
-        isCrewNoteInitialized = true;
-    }
-
-    // クルーリスト描画
-    function renderCrewList() {
-        const list = document.getElementById('crew-list');
-        const activeBtn = document.querySelector('.crew-nav-btn.active');
-        const filterType = activeBtn ? activeBtn.dataset.type : 'my';
-        const searchInput = document.getElementById('crew-search-input');
-        const searchName = searchInput ? searchInput.value.toLowerCase() : '';
-        const searchBoatInput = document.getElementById('crew-search-boat');
-        const searchBoat = searchBoatInput ? searchBoatInput.value : 'all';
-        const searchDateInput = document.getElementById('crew-search-date');
-        const searchDate = searchDateInput ? searchDateInput.value : '';
-
-        let crews = state.crews || [];
-
-        // My Crewsフィルタ (自分が含まれるクルー)
-        if (filterType === 'my') {
-            crews = crews.filter(c => c.memberIds.includes(state.currentUser.id));
-        }
-
-        // 日付フィルタ (その日にノートがあるクルーのみ)
-        if (searchDate) {
-            const dateHashes = state.crewNotes
-                .filter(n => n.date === searchDate)
-                .map(n => n.crewHash);
-
-            crews = crews.filter(c => dateHashes.includes(c.hash));
-        }
-
-        // 検索フィルタ
-        if (searchName) {
-            crews = crews.filter(c => {
-                const members = c.memberIds.map(id => state.users.find(u => u.id === id)?.name || '').join(' ');
-                return members.toLowerCase().includes(searchName);
-            });
-        }
-
-        // 艇種フィルタ
-        if (searchBoat !== 'all') {
-            crews = crews.filter(c => c.boatType === searchBoat);
-        }
-
-        // 空の状態
-        if (crews.length === 0) {
-            if (filterType === 'my') {
-                list.innerHTML = '<div class="empty-state"><p>まだクルー記録がありません。<br>画面右下の「＋」ボタンから<br>新しいクルーノートを作成してください。</p></div>';
+            const type = btn.dataset.type;
+            const searchSection = document.getElementById('crew-search-section');
+            if (type === 'all') {
+                searchSection.classList.remove('hidden');
             } else {
-                list.innerHTML = '<div class="empty-state"><p>該当するクルーがありません</p></div>';
+                searchSection.classList.add('hidden');
             }
-            return;
+            renderCrewList();
+        });
+    });
+
+    // 検索リスナー
+    const searchInput = document.getElementById('crew-search-input');
+    if (searchInput) searchInput.addEventListener('input', renderCrewList);
+
+    const searchBoat = document.getElementById('crew-search-boat');
+    if (searchBoat) searchBoat.addEventListener('change', renderCrewList);
+
+    const searchDate = document.getElementById('crew-search-date');
+    if (searchDate) searchDate.addEventListener('change', renderCrewList);
+
+    // FAB (新規作成)
+    const fab = document.getElementById('add-crew-note-btn');
+    if (fab) {
+        fab.addEventListener('click', () => {
+            openCrewNoteEdit(null, formatDate(new Date()));
+        });
+    }
+
+    // モーダル閉じる
+    document.getElementById('crew-detail-close')?.addEventListener('click', () => {
+        document.getElementById('crew-detail-modal').classList.add('hidden');
+    });
+    document.getElementById('crew-note-close')?.addEventListener('click', () => {
+        document.getElementById('crew-note-modal').classList.add('hidden');
+    });
+
+    isCrewNoteInitialized = true;
+}
+
+// クルーリスト描画
+function renderCrewList() {
+    const list = document.getElementById('crew-list');
+    const activeBtn = document.querySelector('.crew-nav-btn.active');
+    const filterType = activeBtn ? activeBtn.dataset.type : 'my';
+    const searchInput = document.getElementById('crew-search-input');
+    const searchName = searchInput ? searchInput.value.toLowerCase() : '';
+    const searchBoatInput = document.getElementById('crew-search-boat');
+    const searchBoat = searchBoatInput ? searchBoatInput.value : 'all';
+    const searchDateInput = document.getElementById('crew-search-date');
+    const searchDate = searchDateInput ? searchDateInput.value : '';
+
+    let crews = state.crews || [];
+
+    // My Crewsフィルタ (自分が含まれるクルー)
+    if (filterType === 'my') {
+        crews = crews.filter(c => c.memberIds.includes(state.currentUser.id));
+    }
+
+    // 日付フィルタ (その日にノートがあるクルーのみ)
+    if (searchDate) {
+        const dateHashes = state.crewNotes
+            .filter(n => n.date === searchDate)
+            .map(n => n.crewHash);
+
+        crews = crews.filter(c => dateHashes.includes(c.hash));
+    }
+
+    // 検索フィルタ
+    if (searchName) {
+        crews = crews.filter(c => {
+            const members = c.memberIds.map(id => state.users.find(u => u.id === id)?.name || '').join(' ');
+            return members.toLowerCase().includes(searchName);
+        });
+    }
+
+    // 艇種フィルタ
+    if (searchBoat !== 'all') {
+        crews = crews.filter(c => c.boatType === searchBoat);
+    }
+
+    // 空の状態
+    if (crews.length === 0) {
+        if (filterType === 'my') {
+            list.innerHTML = '<div class="empty-state"><p>まだクルー記録がありません。<br>画面右下の「＋」ボタンから<br>新しいクルーノートを作成してください。</p></div>';
+        } else {
+            list.innerHTML = '<div class="empty-state"><p>該当するクルーがありません</p></div>';
         }
+        return;
+    }
 
-        const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
+    const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
 
-        list.innerHTML = crews.map(crew => {
-            const memberNames = crew.memberIds.map(id => {
-                const user = state.users.find(u => u.id === id);
-                return user ? user.name : '不明';
-            });
+    list.innerHTML = crews.map(crew => {
+        const memberNames = crew.memberIds.map(id => {
+            const user = state.users.find(u => u.id === id);
+            return user ? user.name : '不明';
+        });
 
-            // 最終練習日
-            const lastDate = new Date(crew.lastPractice);
-            const displayDate = `${lastDate.getMonth() + 1}/${lastDate.getDate()}`;
-            const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
-            const dayOfWeek = dayNames[lastDate.getDay()];
+        // 最終練習日
+        const lastDate = new Date(crew.lastPractice);
+        const displayDate = `${lastDate.getMonth() + 1}/${lastDate.getDate()}`;
+        const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+        const dayOfWeek = dayNames[lastDate.getDay()];
 
-            // ノート件数
-            const noteCount = (state.crewNotes || []).filter(n => n.crewHash === crew.hash).length;
-            const btColor = boatTypeColors[crew.boatType] || '#6b7280';
+        // ノート件数
+        const noteCount = (state.crewNotes || []).filter(n => n.crewHash === crew.hash).length;
+        const btColor = boatTypeColors[crew.boatType] || '#6b7280';
 
-            return `<div class="crew-card-enhanced" onclick="openCrewDetail('${crew.hash}')">
+        return `<div class="crew-card-enhanced" onclick="openCrewDetail('${crew.hash}')">
             <div class="crew-card-top">
                 <span class="crew-boat-badge" style="background:${btColor};">${crew.boatType || '?'}</span>
                 <span class="crew-card-date">📅 ${displayDate}（${dayOfWeek}）</span>
@@ -9118,28 +9119,28 @@ function openPracticeNoteModal(noteId) {
                 <span class="crew-card-arrow">→</span>
             </div>
         </div>`;
-        }).join('');
-    }
+    }).join('');
+}
 
-    // クルー詳細モーダル
-    function openCrewDetail(hash) {
-        const crew = state.crews.find(c => c.hash === hash);
-        if (!crew) return;
+// クルー詳細モーダル
+function openCrewDetail(hash) {
+    const crew = state.crews.find(c => c.hash === hash);
+    if (!crew) return;
 
-        const modal = document.getElementById('crew-detail-modal');
-        const infoCard = document.getElementById('crew-detail-info');
-        const historyList = document.getElementById('crew-history-list');
-        const addBtn = document.getElementById('add-new-note-btn');
+    const modal = document.getElementById('crew-detail-modal');
+    const infoCard = document.getElementById('crew-detail-info');
+    const historyList = document.getElementById('crew-history-list');
+    const addBtn = document.getElementById('add-new-note-btn');
 
-        // クルー情報表示
-        const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
-        const btColor = boatTypeColors[crew.boatType] || '#6b7280';
-        const memberNames = crew.memberIds.map(id => {
-            const u = state.users.find(u => u.id === id);
-            return u ? u.name : '未登録';
-        });
+    // クルー情報表示
+    const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
+    const btColor = boatTypeColors[crew.boatType] || '#6b7280';
+    const memberNames = crew.memberIds.map(id => {
+        const u = state.users.find(u => u.id === id);
+        return u ? u.name : '未登録';
+    });
 
-        infoCard.innerHTML = `
+    infoCard.innerHTML = `
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
             <span class="crew-boat-badge" style="background:${btColor};font-size:14px;padding:4px 12px;">${crew.boatType || '未設定'}</span>
             <span style="font-size:12px;color:var(--text-muted);">${crew.memberIds.length}人</span>
@@ -9149,14 +9150,14 @@ function openPracticeNoteModal(noteId) {
         </div>
     `;
 
-        // 履歴リスト生成
-        const notes = state.crewNotes.filter(n => n.crewHash === hash);
-        const historyItems = notes.sort((a, b) => new Date(b.date) - new Date(a.date));
+    // 履歴リスト生成
+    const notes = state.crewNotes.filter(n => n.crewHash === hash);
+    const historyItems = notes.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        historyList.innerHTML = historyItems.length ? historyItems.map(n => {
-            const d = formatDisplayDate(n.date);
-            const contentPreview = n.content ? n.content.substring(0, 50) + (n.content.length > 50 ? '…' : '') : '';
-            return `<div class="history-card" onclick="openCrewNoteEdit('${hash}', '${n.date}')">
+    historyList.innerHTML = historyItems.length ? historyItems.map(n => {
+        const d = formatDisplayDate(n.date);
+        const contentPreview = n.content ? n.content.substring(0, 50) + (n.content.length > 50 ? '…' : '') : '';
+        return `<div class="history-card" onclick="openCrewNoteEdit('${hash}', '${n.date}')">
             <div class="history-card-header">
                 <span class="history-card-date">${d.month}/${d.day}（${d.weekday}）</span>
                 <div class="history-card-badges">
@@ -9164,131 +9165,131 @@ function openPracticeNoteModal(noteId) {
             </div>
             ${contentPreview ? `<div class="history-card-content">${contentPreview}</div>` : '<div class="history-card-empty">タップして記録を確認</div>'}
         </div>`;
-        }).join('') : '<div class="empty-state"><p>ノート履歴がありません</p></div>';
+    }).join('') : '<div class="empty-state"><p>ノート履歴がありません</p></div>';
 
-        addBtn.onclick = () => {
-            openCrewNoteEdit(hash, formatDate(new Date()));
-        };
+    addBtn.onclick = () => {
+        openCrewNoteEdit(hash, formatDate(new Date()));
+    };
 
-        // --- YouTube再生リスト管理 ---
-        const playlistDisplay = document.getElementById('crew-playlist-display');
-        const playlistInputGroup = document.getElementById('crew-playlist-input-group');
-        const playlistUrlInput = document.getElementById('crew-playlist-url');
-        const playlistLink = document.getElementById('crew-playlist-link');
-        const playlistUrlDisplay = document.getElementById('crew-playlist-url-display');
-        const savePlaylistBtn = document.getElementById('save-playlist-btn');
-        const editPlaylistBtn = document.getElementById('crew-playlist-edit-btn');
+    // --- YouTube再生リスト管理 ---
+    const playlistDisplay = document.getElementById('crew-playlist-display');
+    const playlistInputGroup = document.getElementById('crew-playlist-input-group');
+    const playlistUrlInput = document.getElementById('crew-playlist-url');
+    const playlistLink = document.getElementById('crew-playlist-link');
+    const playlistUrlDisplay = document.getElementById('crew-playlist-url-display');
+    const savePlaylistBtn = document.getElementById('save-playlist-btn');
+    const editPlaylistBtn = document.getElementById('crew-playlist-edit-btn');
 
-        const showPlaylistState = (url) => {
-            if (url) {
-                playlistDisplay.style.display = 'block';
-                playlistInputGroup.style.display = 'none';
-                playlistLink.href = url;
-                playlistUrlDisplay.textContent = url;
-            } else {
-                playlistDisplay.style.display = 'none';
-                playlistInputGroup.style.display = 'block';
-                playlistUrlInput.value = '';
-            }
-        };
-
-        showPlaylistState(crew.playlistUrl || '');
-
-        savePlaylistBtn.onclick = () => {
-            const url = playlistUrlInput.value.trim();
-            if (!url) {
-                showToast('URLを入力してください', 'error');
-                return;
-            }
-            // crewオブジェクトに保存
-            crew.playlistUrl = url;
-            // crewNotes内の該当crewHashのノートにもplaylistUrlを付与（同期用）
-            DB.save('crews_playlist', state.crews.map(c => ({ hash: c.hash, playlistUrl: c.playlistUrl })).filter(c => c.playlistUrl));
-            showPlaylistState(url);
-            showToast('再生リストを保存しました', 'success');
-        };
-
-        editPlaylistBtn.onclick = () => {
+    const showPlaylistState = (url) => {
+        if (url) {
+            playlistDisplay.style.display = 'block';
+            playlistInputGroup.style.display = 'none';
+            playlistLink.href = url;
+            playlistUrlDisplay.textContent = url;
+        } else {
             playlistDisplay.style.display = 'none';
             playlistInputGroup.style.display = 'block';
-            playlistUrlInput.value = crew.playlistUrl || '';
-            playlistUrlInput.focus();
-        };
+            playlistUrlInput.value = '';
+        }
+    };
 
-        modal.classList.remove('hidden');
+    showPlaylistState(crew.playlistUrl || '');
+
+    savePlaylistBtn.onclick = () => {
+        const url = playlistUrlInput.value.trim();
+        if (!url) {
+            showToast('URLを入力してください', 'error');
+            return;
+        }
+        // crewオブジェクトに保存
+        crew.playlistUrl = url;
+        // crewNotes内の該当crewHashのノートにもplaylistUrlを付与（同期用）
+        DB.save('crews_playlist', state.crews.map(c => ({ hash: c.hash, playlistUrl: c.playlistUrl })).filter(c => c.playlistUrl));
+        showPlaylistState(url);
+        showToast('再生リストを保存しました', 'success');
+    };
+
+    editPlaylistBtn.onclick = () => {
+        playlistDisplay.style.display = 'none';
+        playlistInputGroup.style.display = 'block';
+        playlistUrlInput.value = crew.playlistUrl || '';
+        playlistUrlInput.focus();
+    };
+
+    modal.classList.remove('hidden');
+}
+
+/**
+ * クルーメンバーの振り返り一覧を描画
+ * クルーに属する全メンバーの練習ノート(乗艇)を日付ごとに表示
+ */
+function renderCrewMemberReflections(crew) {
+    const container = document.getElementById('crew-member-reflections');
+    if (!container || !crew) return;
+
+    // このクルーのメンバーIDリスト
+    const memberIds = crew.memberIds || [];
+    if (memberIds.length === 0) {
+        container.innerHTML = '<p class="text-muted">メンバーがいません</p>';
+        return;
     }
 
-    /**
-     * クルーメンバーの振り返り一覧を描画
-     * クルーに属する全メンバーの練習ノート(乗艇)を日付ごとに表示
-     */
-    function renderCrewMemberReflections(crew) {
-        const container = document.getElementById('crew-member-reflections');
-        if (!container || !crew) return;
+    // クルーノートの日付リスト（このクルーの練習日）
+    const crewNoteDates = (state.crewNotes || [])
+        .filter(n => n.crewHash === crew.hash)
+        .map(n => n.date)
+        .sort((a, b) => b.localeCompare(a));
 
-        // このクルーのメンバーIDリスト
-        const memberIds = crew.memberIds || [];
-        if (memberIds.length === 0) {
-            container.innerHTML = '<p class="text-muted">メンバーがいません</p>';
-            return;
+    // 各日付のクルーノートに加え、メンバーの練習ノートも検索
+    // 乗艇スケジュールでこのクルーメンバーが同日に乗っている練習を探す
+    const allDates = new Set(crewNoteDates);
+
+    // 乗艇スケジュールから関連日付を追加
+    (state.schedules || []).forEach(s => {
+        if (s.scheduleType === '乗艇' && memberIds.includes(s.userId)) {
+            allDates.add(s.date);
         }
+    });
 
-        // クルーノートの日付リスト（このクルーの練習日）
-        const crewNoteDates = (state.crewNotes || [])
-            .filter(n => n.crewHash === crew.hash)
-            .map(n => n.date)
-            .sort((a, b) => b.localeCompare(a));
+    const sortedDates = [...allDates].sort((a, b) => b.localeCompare(a)).slice(0, 10); // 直近10日分
 
-        // 各日付のクルーノートに加え、メンバーの練習ノートも検索
-        // 乗艇スケジュールでこのクルーメンバーが同日に乗っている練習を探す
-        const allDates = new Set(crewNoteDates);
+    if (sortedDates.length === 0) {
+        container.innerHTML = '<p class="text-muted">まだ練習記録がありません</p>';
+        return;
+    }
 
-        // 乗艇スケジュールから関連日付を追加
-        (state.schedules || []).forEach(s => {
-            if (s.scheduleType === '乗艇' && memberIds.includes(s.userId)) {
-                allDates.add(s.date);
-            }
-        });
+    let html = '';
+    sortedDates.forEach(date => {
+        const display = formatDisplayDate(date);
+        let weekdayClass = '';
+        if (display.dayOfWeek === 0) weekdayClass = 'sunday';
+        if (display.dayOfWeek === 6) weekdayClass = 'saturday';
 
-        const sortedDates = [...allDates].sort((a, b) => b.localeCompare(a)).slice(0, 10); // 直近10日分
+        // この日の各メンバーの練習ノートを取得
+        let memberNotesHtml = '';
+        let hasAnyContent = false;
 
-        if (sortedDates.length === 0) {
-            container.innerHTML = '<p class="text-muted">まだ練習記録がありません</p>';
-            return;
-        }
+        memberIds.forEach(uid => {
+            const user = state.users.find(u => u.id === uid);
+            const userName = user ? user.name : '不明';
 
-        let html = '';
-        sortedDates.forEach(date => {
-            const display = formatDisplayDate(date);
-            let weekdayClass = '';
-            if (display.dayOfWeek === 0) weekdayClass = 'sunday';
-            if (display.dayOfWeek === 6) weekdayClass = 'saturday';
+            // この日・このユーザーの練習ノート（乗艇）を検索
+            const notes = (state.practiceNotes || []).filter(n =>
+                n.userId === uid && n.date === date &&
+                (n.scheduleType === '乗艇' || !n.scheduleType) // 乗艇または未設定
+            );
 
-            // この日の各メンバーの練習ノートを取得
-            let memberNotesHtml = '';
-            let hasAnyContent = false;
+            const reflection = notes.map(n => n.reflection).filter(r => r && r.trim()).join(' / ');
+            const distance = notes.reduce((sum, n) => sum + (n.rowingDistance || 0), 0);
+            const distanceText = distance > 0 ? `${(distance / 1000).toFixed(1)}km` : '';
 
-            memberIds.forEach(uid => {
-                const user = state.users.find(u => u.id === uid);
-                const userName = user ? user.name : '不明';
+            if (reflection || distance > 0) hasAnyContent = true;
 
-                // この日・このユーザーの練習ノート（乗艇）を検索
-                const notes = (state.practiceNotes || []).filter(n =>
-                    n.userId === uid && n.date === date &&
-                    (n.scheduleType === '乗艇' || !n.scheduleType) // 乗艇または未設定
-                );
+            const reflectionDisplay = reflection
+                ? `<span class="member-reflection-text">${reflection.substring(0, 80)}${reflection.length > 80 ? '…' : ''}</span>`
+                : '<span class="member-reflection-empty">未記入</span>';
 
-                const reflection = notes.map(n => n.reflection).filter(r => r && r.trim()).join(' / ');
-                const distance = notes.reduce((sum, n) => sum + (n.rowingDistance || 0), 0);
-                const distanceText = distance > 0 ? `${(distance / 1000).toFixed(1)}km` : '';
-
-                if (reflection || distance > 0) hasAnyContent = true;
-
-                const reflectionDisplay = reflection
-                    ? `<span class="member-reflection-text">${reflection.substring(0, 80)}${reflection.length > 80 ? '…' : ''}</span>`
-                    : '<span class="member-reflection-empty">未記入</span>';
-
-                memberNotesHtml += `
+            memberNotesHtml += `
                 <div class="member-reflection-row">
                     <span class="member-reflection-name">${userName}</span>
                     <div class="member-reflection-content">
@@ -9297,151 +9298,151 @@ function openPracticeNoteModal(noteId) {
                     </div>
                 </div>
             `;
-            });
+        });
 
-            html += `
+        html += `
             <div class="reflection-date-group">
                 <div class="reflection-date-header">${display.month}/${display.day} <span class="weekday ${weekdayClass}">(${display.weekday})</span></div>
                 ${memberNotesHtml}
             </div>
         `;
-        });
+    });
 
-        container.innerHTML = html;
+    container.innerHTML = html;
+}
+
+// ノート編集モーダル (hashがnullの場合は新規作成)
+function openCrewNoteEdit(hash, date) {
+    const modal = document.getElementById('crew-note-modal');
+    const dateInput = document.getElementById('crew-note-date');
+    const contentInput = document.getElementById('crew-note-content');
+    const memberSelectGroup = document.getElementById('crew-member-select-group');
+    const boatSelectGroup = document.getElementById('crew-boat-select-group');
+
+    let note = null;
+    let memberIds = [];
+    let boatType = '1x';
+
+    if (hash) {
+        // 既存クルーのノート（編集または新規日付）
+        memberSelectGroup.classList.add('hidden');
+        if (boatSelectGroup) boatSelectGroup.classList.add('hidden');
+
+        note = state.crewNotes.find(n => n.crewHash === hash && n.date === date);
+        const crew = state.crews.find(c => c.hash === hash);
+        memberIds = crew.memberIds;
+        boatType = crew.boatType;
+    } else {
+        // 全く新しいクルーでの作成
+        memberSelectGroup.classList.remove('hidden');
+        if (boatSelectGroup) boatSelectGroup.classList.remove('hidden');
+
+        // メンバー選択リスト生成
+        renderMemberSelect();
+        memberIds = []; // 選択されたものが入る
     }
 
-    // ノート編集モーダル (hashがnullの場合は新規作成)
-    function openCrewNoteEdit(hash, date) {
-        const modal = document.getElementById('crew-note-modal');
-        const dateInput = document.getElementById('crew-note-date');
-        const contentInput = document.getElementById('crew-note-content');
-        const memberSelectGroup = document.getElementById('crew-member-select-group');
-        const boatSelectGroup = document.getElementById('crew-boat-select-group');
+    dateInput.value = date;
+    contentInput.value = note?.content || '';
 
-        let note = null;
-        let memberIds = [];
-        let boatType = '1x';
+    // 保存処理
+    document.getElementById('save-crew-note-btn').onclick = () => {
+        const newDate = dateInput.value;
+        const newContent = contentInput.value;
 
-        if (hash) {
-            // 既存クルーのノート（編集または新規日付）
-            memberSelectGroup.classList.add('hidden');
-            if (boatSelectGroup) boatSelectGroup.classList.add('hidden');
-
-            note = state.crewNotes.find(n => n.crewHash === hash && n.date === date);
-            const crew = state.crews.find(c => c.hash === hash);
-            memberIds = crew.memberIds;
-            boatType = crew.boatType;
-        } else {
-            // 全く新しいクルーでの作成
-            memberSelectGroup.classList.remove('hidden');
-            if (boatSelectGroup) boatSelectGroup.classList.remove('hidden');
-
-            // メンバー選択リスト生成
-            renderMemberSelect();
-            memberIds = []; // 選択されたものが入る
+        if (!newDate) {
+            showToast('日付を入力してください', 'error');
+            return;
         }
 
-        dateInput.value = date;
-        contentInput.value = note?.content || '';
+        if (!hash) {
+            // 新規クルー作成時はフォームからメンバーと艇種を取得
+            const selectedMembers = Array.from(document.querySelectorAll('.crew-member-checkbox:checked')).map(cb => cb.value);
+            const selectedBoat = document.getElementById('crew-note-boat-type').value;
 
-        // 保存処理
-        document.getElementById('save-crew-note-btn').onclick = () => {
-            const newDate = dateInput.value;
-            const newContent = contentInput.value;
-
-            if (!newDate) {
-                showToast('日付を入力してください', 'error');
+            if (selectedMembers.length === 0) {
+                showToast('メンバーを選択してください', 'error');
                 return;
             }
+            memberIds = selectedMembers;
+            boatType = selectedBoat;
+        }
 
-            if (!hash) {
-                // 新規クルー作成時はフォームからメンバーと艇種を取得
-                const selectedMembers = Array.from(document.querySelectorAll('.crew-member-checkbox:checked')).map(cb => cb.value);
-                const selectedBoat = document.getElementById('crew-note-boat-type').value;
+        // 既存の場合は hash, memberIds, boatType は設定済み
 
-                if (selectedMembers.length === 0) {
-                    showToast('メンバーを選択してください', 'error');
-                    return;
-                }
-                memberIds = selectedMembers;
-                boatType = selectedBoat;
+        saveCrewNote({
+            date: newDate,
+            memberIds: memberIds,
+            boatType: boatType,
+            content: newContent,
+            videoUrls: [], // 動画はクルー単位の再生リストに移行
+            authorId: state.currentUser.id
+        });
+
+        // 自分の振り返りを練習ノートにも保存
+        const myReflectionEl = document.getElementById('crew-my-reflection');
+        if (myReflectionEl) {
+            const myReflection = myReflectionEl.value || '';
+            if (myPracticeNoteForCrew) {
+                // 既存の練習ノートを更新
+                myPracticeNoteForCrew.reflection = myReflection;
+                myPracticeNoteForCrew.updatedAt = new Date().toISOString();
+            } else if (myReflection.trim()) {
+                // 練習ノートがなければ新規作成
+                const newNote = {
+                    id: generateId(),
+                    scheduleId: null,
+                    userId: state.currentUser.id,
+                    date: newDate,
+                    timeSlot: '',
+                    scheduleType: '乗艇',
+                    reflection: myReflection,
+                    ergoRecordIds: [],
+                    crewNoteId: null,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                state.practiceNotes.push(newNote);
             }
+            DB.save('practice_notes', state.practiceNotes);
+        }
 
-            // 既存の場合は hash, memberIds, boatType は設定済み
+        modal.classList.add('hidden');
 
-            saveCrewNote({
-                date: newDate,
-                memberIds: memberIds,
-                boatType: boatType,
-                content: newContent,
-                videoUrls: [], // 動画はクルー単位の再生リストに移行
-                authorId: state.currentUser.id
-            });
+        if (hash) {
+            openCrewDetail(hash); // 詳細画面更新
+        } else {
+            renderCrewList(); // リスト更新
+        }
+        showToast('保存しました', 'success');
+    };
 
-            // 自分の振り返りを練習ノートにも保存
-            const myReflectionEl = document.getElementById('crew-my-reflection');
-            if (myReflectionEl) {
-                const myReflection = myReflectionEl.value || '';
-                if (myPracticeNoteForCrew) {
-                    // 既存の練習ノートを更新
-                    myPracticeNoteForCrew.reflection = myReflection;
-                    myPracticeNoteForCrew.updatedAt = new Date().toISOString();
-                } else if (myReflection.trim()) {
-                    // 練習ノートがなければ新規作成
-                    const newNote = {
-                        id: generateId(),
-                        scheduleId: null,
-                        userId: state.currentUser.id,
-                        date: newDate,
-                        timeSlot: '',
-                        scheduleType: '乗艇',
-                        reflection: myReflection,
-                        ergoRecordIds: [],
-                        crewNoteId: null,
-                        createdAt: new Date().toISOString(),
-                        updatedAt: new Date().toISOString()
-                    };
-                    state.practiceNotes.push(newNote);
-                }
-                DB.save('practice_notes', state.practiceNotes);
-            }
+    // メンバーの振り返りを描画（既存クルーの場合のみ）
+    const reflectionsContainer = document.getElementById('crew-note-member-reflections');
+    const reflectionsGroup = document.getElementById('crew-note-member-reflections-group');
+    let myPracticeNoteForCrew = null; // 保存時に使う参照
+    if (reflectionsContainer && memberIds.length > 0 && date) {
+        reflectionsGroup.classList.remove('hidden');
+        let refHtml = '';
+        memberIds.forEach(uid => {
+            const user = state.users.find(u => u.id === uid);
+            const userName = user ? user.name : '不明';
+            const isMe = uid === state.currentUser.id;
 
-            modal.classList.add('hidden');
+            // この日・このユーザーの練習ノート（乗艇）を検索
+            const notes = (state.practiceNotes || []).filter(n =>
+                n.userId === uid && n.date === date &&
+                (n.scheduleType === '乗艇' || !n.scheduleType)
+            );
 
-            if (hash) {
-                openCrewDetail(hash); // 詳細画面更新
-            } else {
-                renderCrewList(); // リスト更新
-            }
-            showToast('保存しました', 'success');
-        };
+            const reflection = notes.map(n => n.reflection).filter(r => r && r.trim()).join(' / ');
+            const distance = notes.reduce((sum, n) => sum + (n.rowingDistance || 0), 0);
+            const distanceText = distance > 0 ? `${(distance / 1000).toFixed(1)}km` : '';
 
-        // メンバーの振り返りを描画（既存クルーの場合のみ）
-        const reflectionsContainer = document.getElementById('crew-note-member-reflections');
-        const reflectionsGroup = document.getElementById('crew-note-member-reflections-group');
-        let myPracticeNoteForCrew = null; // 保存時に使う参照
-        if (reflectionsContainer && memberIds.length > 0 && date) {
-            reflectionsGroup.classList.remove('hidden');
-            let refHtml = '';
-            memberIds.forEach(uid => {
-                const user = state.users.find(u => u.id === uid);
-                const userName = user ? user.name : '不明';
-                const isMe = uid === state.currentUser.id;
-
-                // この日・このユーザーの練習ノート（乗艇）を検索
-                const notes = (state.practiceNotes || []).filter(n =>
-                    n.userId === uid && n.date === date &&
-                    (n.scheduleType === '乗艇' || !n.scheduleType)
-                );
-
-                const reflection = notes.map(n => n.reflection).filter(r => r && r.trim()).join(' / ');
-                const distance = notes.reduce((sum, n) => sum + (n.rowingDistance || 0), 0);
-                const distanceText = distance > 0 ? `${(distance / 1000).toFixed(1)}km` : '';
-
-                if (isMe) {
-                    // 自分の振り返り: 編集可能なtextarea
-                    myPracticeNoteForCrew = notes.length > 0 ? notes[0] : null;
-                    refHtml += `
+            if (isMe) {
+                // 自分の振り返り: 編集可能なtextarea
+                myPracticeNoteForCrew = notes.length > 0 ? notes[0] : null;
+                refHtml += `
                     <div class="member-reflection-row member-reflection-me">
                         <span class="member-reflection-name" style="color:#10b981;">✏️ ${userName}</span>
                         <div class="member-reflection-content">
@@ -9451,13 +9452,13 @@ function openPracticeNoteModal(noteId) {
                         </div>
                     </div>
                 `;
-                } else {
-                    // 他メンバー: 読み取り専用
-                    const reflectionDisplay = reflection
-                        ? `<span class="member-reflection-text">${reflection}</span>`
-                        : '<span class="member-reflection-empty">未記入</span>';
+            } else {
+                // 他メンバー: 読み取り専用
+                const reflectionDisplay = reflection
+                    ? `<span class="member-reflection-text">${reflection}</span>`
+                    : '<span class="member-reflection-empty">未記入</span>';
 
-                    refHtml += `
+                refHtml += `
                     <div class="member-reflection-row">
                         <span class="member-reflection-name">${userName}</span>
                         <div class="member-reflection-content">
@@ -9466,137 +9467,137 @@ function openPracticeNoteModal(noteId) {
                         </div>
                     </div>
                 `;
-                }
-            });
-            reflectionsContainer.innerHTML = refHtml || '<p class="text-muted">メンバーの練習ノートがありません</p>';
-        } else if (reflectionsGroup) {
-            reflectionsGroup.classList.add('hidden');
-        }
-
-        modal.classList.remove('hidden');
+            }
+        });
+        reflectionsContainer.innerHTML = refHtml || '<p class="text-muted">メンバーの練習ノートがありません</p>';
+    } else if (reflectionsGroup) {
+        reflectionsGroup.classList.add('hidden');
     }
 
-    function renderMemberSelect() {
-        const list = document.getElementById('crew-member-select-list');
-        if (!list) return;
+    modal.classList.remove('hidden');
+}
 
-        // 自分のIDを含めるかどうか？ -> 含めるべき。自分＋他
-        const users = state.users.filter(u => u.approvalStatus === '承認済み');
+function renderMemberSelect() {
+    const list = document.getElementById('crew-member-select-list');
+    if (!list) return;
 
-        list.innerHTML = users.map(u => `
+    // 自分のIDを含めるかどうか？ -> 含めるべき。自分＋他
+    const users = state.users.filter(u => u.approvalStatus === '承認済み');
+
+    list.innerHTML = users.map(u => `
         <label class="checkbox-item" style="display:block; margin-bottom:4px;">
             <input type="checkbox" class="crew-member-checkbox" value="${u.id}" ${u.id === state.currentUser.id ? 'checked' : ''}>
             ${u.name}
         </label>
     `).join('');
+}
+
+function updateVideoPreview(url) {
+    const preview = document.getElementById('video-preview');
+    if (!url) {
+        preview.classList.add('hidden');
+        preview.innerHTML = '';
+        return;
     }
 
-    function updateVideoPreview(url) {
-        const preview = document.getElementById('video-preview');
-        if (!url) {
-            preview.classList.add('hidden');
-            preview.innerHTML = '';
-            return;
-        }
+    let videoId = null;
+    if (url.includes('youtube.com/watch?v=')) {
+        videoId = url.split('v=')[1]?.split('&')[0];
+    } else if (url.includes('youtu.be/')) {
+        videoId = url.split('youtu.be/')[1];
+    }
 
-        let videoId = null;
-        if (url.includes('youtube.com/watch?v=')) {
-            videoId = url.split('v=')[1]?.split('&')[0];
-        } else if (url.includes('youtu.be/')) {
-            videoId = url.split('youtu.be/')[1];
-        }
+    if (videoId) {
+        preview.classList.remove('hidden');
+        preview.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}" allowfullscreen></iframe>`;
+    } else {
+        preview.classList.add('hidden');
+    }
+}
 
-        if (videoId) {
-            preview.classList.remove('hidden');
-            preview.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}" allowfullscreen></iframe>`;
+
+// =========================================
+// IDT計算機
+// =========================================
+function openIDTModal() {
+    const modal = document.getElementById('idt-calculator-modal');
+    modal.classList.remove('hidden');
+
+    // 保存済み体重を自動入力
+    const savedWeight = state.currentUser?.weight;
+    const weightInput = document.getElementById('idt-weight');
+    if (weightInput && savedWeight) {
+        weightInput.value = savedWeight;
+    }
+
+    // 性別トグルの初期化
+    const userGender = state.currentUser?.gender || 'man';
+    const toggleGroup = document.getElementById('idt-gender-toggle');
+    const btns = toggleGroup.querySelectorAll('.gender-btn');
+
+    // UI初期状態設定
+    btns.forEach(btn => {
+        if (btn.dataset.gender === userGender) {
+            btn.classList.add('active');
         } else {
-            preview.classList.add('hidden');
+            btn.classList.remove('active');
         }
-    }
+    });
 
-
-    // =========================================
-    // IDT計算機
-    // =========================================
-    function openIDTModal() {
-        const modal = document.getElementById('idt-calculator-modal');
-        modal.classList.remove('hidden');
-
-        // 保存済み体重を自動入力
-        const savedWeight = state.currentUser?.weight;
-        const weightInput = document.getElementById('idt-weight');
-        if (weightInput && savedWeight) {
-            weightInput.value = savedWeight;
-        }
-
-        // 性別トグルの初期化
-        const userGender = state.currentUser?.gender || 'man';
-        const toggleGroup = document.getElementById('idt-gender-toggle');
-        const btns = toggleGroup.querySelectorAll('.gender-btn');
-
-        // UI初期状態設定
-        btns.forEach(btn => {
-            if (btn.dataset.gender === userGender) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
+    // イベントリスナー設定（重複防止のため、すでに設定済みかチェックするか、
+    // 毎回置き換える。ここではシンプルに毎回設定するが、removeEventListenerしないと
+    // 累積する可能性がある。initInputEventsでやるべきだが、後付けなのでここで簡易実装）
+    // クリーンな方法はonclick属性を使うか、ここでonclicプロパティに代入すること
+    btns.forEach(btn => {
+        btn.onclick = (e) => {
+            btns.forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            // 計算結果が出ていれば再計算
+            if (document.getElementById('idt-result-box').style.display === 'block') {
+                calculateIDT();
             }
-        });
+        };
+    });
+}
 
-        // イベントリスナー設定（重複防止のため、すでに設定済みかチェックするか、
-        // 毎回置き換える。ここではシンプルに毎回設定するが、removeEventListenerしないと
-        // 累積する可能性がある。initInputEventsでやるべきだが、後付けなのでここで簡易実装）
-        // クリーンな方法はonclick属性を使うか、ここでonclicプロパティに代入すること
-        btns.forEach(btn => {
-            btn.onclick = (e) => {
-                btns.forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                // 計算結果が出ていれば再計算
-                if (document.getElementById('idt-result-box').style.display === 'block') {
-                    calculateIDT();
-                }
-            };
-        });
+function closeIDTModal() {
+    document.getElementById('idt-calculator-modal').classList.add('hidden');
+    document.getElementById('idt-weight').value = '';
+    document.getElementById('idt-result-box').style.display = 'none';
+}
+
+function calculateIDT() {
+    const weightInput = document.getElementById('idt-weight').value;
+    const weight = parseFloat(weightInput);
+
+    if (!weight || weight <= 0) {
+        return;
     }
 
-    function closeIDTModal() {
-        document.getElementById('idt-calculator-modal').classList.add('hidden');
-        document.getElementById('idt-weight').value = '';
-        document.getElementById('idt-result-box').style.display = 'none';
-    }
+    const genderBtn = document.querySelector('#idt-gender-toggle .gender-btn.active');
+    const gender = genderBtn?.dataset.gender || 'man';
 
-    function calculateIDT() {
-        const weightInput = document.getElementById('idt-weight').value;
-        const weight = parseFloat(weightInput);
+    // IDT100のタイム（秒）
+    const idt100Seconds = calculateIDTSeconds(weight, gender);
 
-        if (!weight || weight <= 0) {
-            return;
-        }
-
-        const genderBtn = document.querySelector('#idt-gender-toggle .gender-btn.active');
-        const gender = genderBtn?.dataset.gender || 'man';
-
-        // IDT100のタイム（秒）
-        const idt100Seconds = calculateIDTSeconds(weight, gender);
-
-        // IDT75~95のタイムを計算（IDT = idt100 / actual * 100 → actual = idt100 * 100 / idt）
-        const idtLevels = [75, 80, 85, 90, 95, 100];
-        let tableRows = '';
-        idtLevels.forEach(idt => {
-            const actualSeconds = idt100Seconds * 100 / idt;
-            const formattedTime = formatTime(actualSeconds);
-            const splitSeconds = actualSeconds / 4;
-            const formattedSplit = formatTime(splitSeconds);
-            const highlight = idt === 100 ? ' style="background:var(--accent-color);color:#fff;font-weight:700;"' : '';
-            tableRows += `<tr${highlight}>
+    // IDT75~95のタイムを計算（IDT = idt100 / actual * 100 → actual = idt100 * 100 / idt）
+    const idtLevels = [75, 80, 85, 90, 95, 100];
+    let tableRows = '';
+    idtLevels.forEach(idt => {
+        const actualSeconds = idt100Seconds * 100 / idt;
+        const formattedTime = formatTime(actualSeconds);
+        const splitSeconds = actualSeconds / 4;
+        const formattedSplit = formatTime(splitSeconds);
+        const highlight = idt === 100 ? ' style="background:var(--accent-color);color:#fff;font-weight:700;"' : '';
+        tableRows += `<tr${highlight}>
             <td style="padding:6px 10px;text-align:center;font-weight:600;">IDT ${idt}</td>
             <td style="padding:6px 10px;text-align:center;">${formattedTime}</td>
             <td style="padding:6px 10px;text-align:center;color:var(--text-muted);">${formattedSplit}</td>
         </tr>`;
-        });
+    });
 
-        const container = document.getElementById('idt-table-container');
-        container.innerHTML = `
+    const container = document.getElementById('idt-table-container');
+    container.innerHTML = `
         <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">体重 ${weight}kg（${gender === 'man' ? '男子' : '女子'}）</div>
         <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;font-size:14px;">
             <thead>
@@ -9610,323 +9611,323 @@ function openPracticeNoteModal(noteId) {
         </table>
     `;
 
-        const resultBox = document.getElementById('idt-result-box');
-        resultBox.style.display = 'block';
+    const resultBox = document.getElementById('idt-result-box');
+    resultBox.style.display = 'block';
+}
+
+// =========================================
+// IDT計算ヘルパー関数（共用）
+// =========================================
+// 体重と性別からIDT目標タイム（秒）を算出
+function calculateIDTSeconds(weight, gender) {
+    if (!weight || weight <= 0) return null;
+    if (gender === 'man') {
+        return 335.8 * Math.pow(98.0 / weight, 2.0 / 9.0);
+    } else {
+        return 384.4 * Math.pow(81.0 / weight, 0.2455);
+    }
+}
+
+// 実際のタイムとIDT目標タイムからIDT達成率(%)を算出
+function calculateIDTPercent(actualSeconds, idtSeconds) {
+    if (!actualSeconds || !idtSeconds || actualSeconds <= 0 || idtSeconds <= 0) return null;
+    return (idtSeconds / actualSeconds) * 100;
+}
+
+// IDTバッジHTML生成（ランキング用）
+function renderIDTBadge(weight, gender, actualSeconds) {
+    if (!weight || !actualSeconds) return '';
+    const idtSeconds = calculateIDTSeconds(weight, gender);
+    if (!idtSeconds) return '';
+    const idtValue = calculateIDTPercent(actualSeconds, idtSeconds);
+    if (!idtValue) return '';
+    let cls = 'idt-low';
+    if (idtValue >= 100) cls = 'idt-high';
+    else if (idtValue >= 95) cls = 'idt-mid';
+    return `<span class="idt-badge ${cls}">IDT ${idtValue.toFixed(1)}</span>`;
+}
+
+// =========================================
+// データエクスポート（CSV）
+// =========================================
+
+function getExportDateRange() {
+    const from = document.getElementById('export-date-from')?.value || '';
+    const to = document.getElementById('export-date-to')?.value || '';
+    return { from, to };
+}
+
+function filterByDateRange(items, dateField) {
+    const { from, to } = getExportDateRange();
+    return items.filter(item => {
+        const d = item[dateField];
+        if (!d) return true;
+        if (from && d < from) return false;
+        if (to && d > to) return false;
+        return true;
+    });
+}
+
+function getUserName(userId) {
+    const u = (state.users || []).find(u => u.id === userId);
+    return u ? u.name : userId || '不明';
+}
+
+function downloadCSV(filename, headers, rows) {
+    const bom = '\uFEFF'; // UTF-8 BOM for Excel
+    const escape = (v) => {
+        const s = String(v == null ? '' : v);
+        return s.includes(',') || s.includes('"') || s.includes('\n')
+            ? '"' + s.replace(/"/g, '""') + '"'
+            : s;
+    };
+    const csv = bom + headers.map(escape).join(',') + '\n'
+        + rows.map(r => r.map(escape).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+}
+
+// 1. スケジュール CSV
+function exportSchedulesCSV() {
+    const all = state.schedules || [];
+    const filtered = filterByDateRange(all, 'date');
+    if (filtered.length === 0) {
+        showToast('該当するスケジュールがありません', 'info');
+        return;
     }
 
-    // =========================================
-    // IDT計算ヘルパー関数（共用）
-    // =========================================
-    // 体重と性別からIDT目標タイム（秒）を算出
-    function calculateIDTSeconds(weight, gender) {
-        if (!weight || weight <= 0) return null;
-        if (gender === 'man') {
-            return 335.8 * Math.pow(98.0 / weight, 2.0 / 9.0);
-        } else {
-            return 384.4 * Math.pow(81.0 / weight, 0.2455);
-        }
-    }
+    const boatName = (id) => {
+        const b = (state.boats || []).find(b => b.id === id);
+        return b ? b.name : '';
+    };
 
-    // 実際のタイムとIDT目標タイムからIDT達成率(%)を算出
-    function calculateIDTPercent(actualSeconds, idtSeconds) {
-        if (!actualSeconds || !idtSeconds || actualSeconds <= 0 || idtSeconds <= 0) return null;
-        return (idtSeconds / actualSeconds) * 100;
-    }
-
-    // IDTバッジHTML生成（ランキング用）
-    function renderIDTBadge(weight, gender, actualSeconds) {
-        if (!weight || !actualSeconds) return '';
-        const idtSeconds = calculateIDTSeconds(weight, gender);
-        if (!idtSeconds) return '';
-        const idtValue = calculateIDTPercent(actualSeconds, idtSeconds);
-        if (!idtValue) return '';
-        let cls = 'idt-low';
-        if (idtValue >= 100) cls = 'idt-high';
-        else if (idtValue >= 95) cls = 'idt-mid';
-        return `<span class="idt-badge ${cls}">IDT ${idtValue.toFixed(1)}</span>`;
-    }
-
-    // =========================================
-    // データエクスポート（CSV）
-    // =========================================
-
-    function getExportDateRange() {
-        const from = document.getElementById('export-date-from')?.value || '';
-        const to = document.getElementById('export-date-to')?.value || '';
-        return { from, to };
-    }
-
-    function filterByDateRange(items, dateField) {
-        const { from, to } = getExportDateRange();
-        return items.filter(item => {
-            const d = item[dateField];
-            if (!d) return true;
-            if (from && d < from) return false;
-            if (to && d > to) return false;
-            return true;
-        });
-    }
-
-    function getUserName(userId) {
-        const u = (state.users || []).find(u => u.id === userId);
-        return u ? u.name : userId || '不明';
-    }
-
-    function downloadCSV(filename, headers, rows) {
-        const bom = '\uFEFF'; // UTF-8 BOM for Excel
-        const escape = (v) => {
-            const s = String(v == null ? '' : v);
-            return s.includes(',') || s.includes('"') || s.includes('\n')
-                ? '"' + s.replace(/"/g, '""') + '"'
-                : s;
-        };
-        const csv = bom + headers.map(escape).join(',') + '\n'
-            + rows.map(r => r.map(escape).join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = filename;
-        link.click();
-        URL.revokeObjectURL(link.href);
-    }
-
-    // 1. スケジュール CSV
-    function exportSchedulesCSV() {
-        const all = state.schedules || [];
-        const filtered = filterByDateRange(all, 'date');
-        if (filtered.length === 0) {
-            showToast('該当するスケジュールがありません', 'info');
-            return;
-        }
-
-        const boatName = (id) => {
-            const b = (state.boats || []).find(b => b.id === id);
-            return b ? b.name : '';
-        };
-
-        const headers = ['日付', '時間帯', '氏名', '種目', '艇種', '船名', 'クルーメンバー', '欠席理由', 'メモ'];
-        const rows = filtered
-            .sort((a, b) => (a.date + a.timeSlot).localeCompare(b.date + b.timeSlot))
-            .map(s => {
-                const crewNames = (s.crewIds || []).map(getUserName).join(' / ');
-                return [
-                    s.date,
-                    s.timeSlot || '',
-                    getUserName(s.userId),
-                    s.scheduleType || '',
-                    s.boatType || '',
-                    boatName(s.boatId),
-                    crewNames,
-                    s.absenceReason || '',
-                    s.memo || ''
-                ];
-            });
-
-        downloadCSV(`schedules_${formatDate(new Date())}.csv`, headers, rows);
-        showToast(`${rows.length}件のスケジュールをCSV出力しました`, 'success');
-        const countEl = document.getElementById('export-schedule-count');
-        if (countEl) countEl.textContent = `✅ ${rows.length}件出力済み`;
-    }
-
-    // 2. エルゴ記録 CSV
-    function exportErgoCSV() {
-        const all = state.ergoRecords || [];
-        const filtered = filterByDateRange(all, 'date');
-        if (filtered.length === 0) {
-            showToast('該当するエルゴ記録がありません', 'info');
-            return;
-        }
-
-        const headers = ['日付', '氏名', 'カテゴリ', 'メニュー', 'タイム', '距離(m)', '平均ペース(/500m)', '平均心拍', 'メモ'];
-        const rows = filtered
-            .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
-            .map(r => {
-                return [
-                    r.date || '',
-                    getUserName(r.userId),
-                    r.category || r.workoutType || '',
-                    r.menuKey || '',
-                    r.time || r.formattedTime || '',
-                    r.distance || '',
-                    r.avgPace || '',
-                    r.avgHeartRate || '',
-                    r.memo || ''
-                ];
-            });
-
-        downloadCSV(`ergo_${formatDate(new Date())}.csv`, headers, rows);
-        showToast(`${rows.length}件のエルゴ記録をCSV出力しました`, 'success');
-        const countEl = document.getElementById('export-ergo-count');
-        if (countEl) countEl.textContent = `✅ ${rows.length}件出力済み`;
-    }
-
-    // 3. 体重記録 CSV
-    function exportWeightCSV() {
-        const allUsers = state.users || [];
-        const rows = [];
-
-        allUsers.forEach(u => {
-            const history = u.weightHistory || [];
-            history.forEach(w => {
-                rows.push([
-                    w.date || '',
-                    u.name || '',
-                    w.weight || '',
-                    u.gender || '',
-                    u.grade || ''
-                ]);
-            });
+    const headers = ['日付', '時間帯', '氏名', '種目', '艇種', '船名', 'クルーメンバー', '欠席理由', 'メモ'];
+    const rows = filtered
+        .sort((a, b) => (a.date + a.timeSlot).localeCompare(b.date + b.timeSlot))
+        .map(s => {
+            const crewNames = (s.crewIds || []).map(getUserName).join(' / ');
+            return [
+                s.date,
+                s.timeSlot || '',
+                getUserName(s.userId),
+                s.scheduleType || '',
+                s.boatType || '',
+                boatName(s.boatId),
+                crewNames,
+                s.absenceReason || '',
+                s.memo || ''
+            ];
         });
 
-        const filtered = filterByDateRange(
-            rows.map(r => ({ date: r[0], row: r })),
-            'date'
-        ).map(item => item.row);
+    downloadCSV(`schedules_${formatDate(new Date())}.csv`, headers, rows);
+    showToast(`${rows.length}件のスケジュールをCSV出力しました`, 'success');
+    const countEl = document.getElementById('export-schedule-count');
+    if (countEl) countEl.textContent = `✅ ${rows.length}件出力済み`;
+}
 
-        if (filtered.length === 0) {
-            showToast('該当する体重記録がありません', 'info');
-            return;
-        }
-
-        const headers = ['日付', '氏名', '体重(kg)', '性別', '学年'];
-        downloadCSV(`weight_${formatDate(new Date())}.csv`, headers, filtered);
-        showToast(`${filtered.length}件の体重記録をCSV出力しました`, 'success');
-        const countEl = document.getElementById('export-weight-count');
-        if (countEl) countEl.textContent = `✅ ${filtered.length}件出力済み`;
+// 2. エルゴ記録 CSV
+function exportErgoCSV() {
+    const all = state.ergoRecords || [];
+    const filtered = filterByDateRange(all, 'date');
+    if (filtered.length === 0) {
+        showToast('該当するエルゴ記録がありません', 'info');
+        return;
     }
 
-    // 4. 設備一覧 CSV
-    function exportEquipmentCSV() {
-        const boats = state.boats || [];
-        const oars = state.oars || [];
+    const headers = ['日付', '氏名', 'カテゴリ', 'メニュー', 'タイム', '距離(m)', '平均ペース(/500m)', '平均心拍', 'メモ'];
+    const rows = filtered
+        .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+        .map(r => {
+            return [
+                r.date || '',
+                getUserName(r.userId),
+                r.category || r.workoutType || '',
+                r.menuKey || '',
+                r.time || r.formattedTime || '',
+                r.distance || '',
+                r.avgPace || '',
+                r.avgHeartRate || '',
+                r.memo || ''
+            ];
+        });
 
-        const headers = ['種別', '名前', '艇種/タイプ', '所属', '状態', 'メモ'];
-        const rows = [];
+    downloadCSV(`ergo_${formatDate(new Date())}.csv`, headers, rows);
+    showToast(`${rows.length}件のエルゴ記録をCSV出力しました`, 'success');
+    const countEl = document.getElementById('export-ergo-count');
+    if (countEl) countEl.textContent = `✅ ${rows.length}件出力済み`;
+}
 
-        boats.forEach(b => {
+// 3. 体重記録 CSV
+function exportWeightCSV() {
+    const allUsers = state.users || [];
+    const rows = [];
+
+    allUsers.forEach(u => {
+        const history = u.weightHistory || [];
+        history.forEach(w => {
             rows.push([
-                '船',
-                b.name || '',
-                b.type || '',
-                b.organization || '',
-                translateStatus(b.status || (b.availability === '使用不可' ? 'broken' : 'available')),
-                b.memo || b.notes || ''
+                w.date || '',
+                u.name || '',
+                w.weight || '',
+                u.gender || '',
+                u.grade || ''
             ]);
         });
+    });
 
-        oars.forEach(o => {
-            rows.push([
-                'オール',
-                o.name || '',
-                o.type || '',
-                o.organization || '',
-                translateStatus(o.status || (o.availability === '使用不可' ? 'broken' : 'available')),
-                o.memo || o.notes || ''
-            ]);
+    const filtered = filterByDateRange(
+        rows.map(r => ({ date: r[0], row: r })),
+        'date'
+    ).map(item => item.row);
+
+    if (filtered.length === 0) {
+        showToast('該当する体重記録がありません', 'info');
+        return;
+    }
+
+    const headers = ['日付', '氏名', '体重(kg)', '性別', '学年'];
+    downloadCSV(`weight_${formatDate(new Date())}.csv`, headers, filtered);
+    showToast(`${filtered.length}件の体重記録をCSV出力しました`, 'success');
+    const countEl = document.getElementById('export-weight-count');
+    if (countEl) countEl.textContent = `✅ ${filtered.length}件出力済み`;
+}
+
+// 4. 設備一覧 CSV
+function exportEquipmentCSV() {
+    const boats = state.boats || [];
+    const oars = state.oars || [];
+
+    const headers = ['種別', '名前', '艇種/タイプ', '所属', '状態', 'メモ'];
+    const rows = [];
+
+    boats.forEach(b => {
+        rows.push([
+            '船',
+            b.name || '',
+            b.type || '',
+            b.organization || '',
+            translateStatus(b.status || (b.availability === '使用不可' ? 'broken' : 'available')),
+            b.memo || b.notes || ''
+        ]);
+    });
+
+    oars.forEach(o => {
+        rows.push([
+            'オール',
+            o.name || '',
+            o.type || '',
+            o.organization || '',
+            translateStatus(o.status || (o.availability === '使用不可' ? 'broken' : 'available')),
+            o.memo || o.notes || ''
+        ]);
+    });
+
+    if (rows.length === 0) {
+        showToast('設備データがありません', 'info');
+        return;
+    }
+
+    downloadCSV(`equipment_${formatDate(new Date())}.csv`, headers, rows);
+    showToast(`${rows.length}件の設備データをCSV出力しました`, 'success');
+}
+
+// 5. メンバー一覧 CSV
+function exportMembersCSV() {
+    const users = (state.users || []).filter(u => u.approvalStatus === '承認済み');
+    if (users.length === 0) {
+        showToast('メンバーデータがありません', 'info');
+        return;
+    }
+
+    const headers = ['氏名', '学年', 'ロール', '性別', '体重(最新)', '所属'];
+    const rows = users
+        .sort((a, b) => (a.grade || 0) - (b.grade || 0) || (a.name || '').localeCompare(b.name || ''))
+        .map(u => {
+            const latestWeight = u.weightHistory && u.weightHistory.length > 0
+                ? u.weightHistory[u.weightHistory.length - 1].weight
+                : '';
+            return [
+                u.name || '',
+                u.grade || '',
+                u.role || '',
+                u.gender || '',
+                latestWeight,
+                u.organization || ''
+            ];
         });
 
-        if (rows.length === 0) {
-            showToast('設備データがありません', 'info');
-            return;
-        }
+    downloadCSV(`members_${formatDate(new Date())}.csv`, headers, rows);
+    showToast(`${rows.length}名のメンバーをCSV出力しました`, 'success');
+}
 
-        downloadCSV(`equipment_${formatDate(new Date())}.csv`, headers, rows);
-        showToast(`${rows.length}件の設備データをCSV出力しました`, 'success');
+// =========================================
+// 個人レポート
+// =========================================
+
+function populateExportMemberSelect() {
+    const sel = document.getElementById('export-member-select');
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = '<option value="">-- 選択してください --</option>';
+    const users = (state.users || []).filter(u => u.approvalStatus === '承認済み');
+    users.sort((a, b) => (a.grade || 0) - (b.grade || 0) || (a.name || '').localeCompare(b.name || ''));
+    users.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.id;
+        opt.textContent = `${u.name}（${u.grade || '?'}年・${u.role || ''}）`;
+        sel.appendChild(opt);
+    });
+    if (current) sel.value = current;
+}
+
+function getSelectedExportUser() {
+    const sel = document.getElementById('export-member-select');
+    const uid = sel?.value;
+    if (!uid) { showToast('メンバーを選択してください', 'info'); return null; }
+    const user = (state.users || []).find(u => u.id === uid);
+    if (!user) { showToast('メンバーが見つかりません', 'error'); return null; }
+    return user;
+}
+
+function onExportMemberChange() {
+    const sel = document.getElementById('export-member-select');
+    const preview = document.getElementById('personal-report-preview');
+    const summary = document.getElementById('personal-report-summary');
+    const uid = sel?.value;
+
+    if (!uid) {
+        if (preview) preview.style.display = 'none';
+        return;
     }
 
-    // 5. メンバー一覧 CSV
-    function exportMembersCSV() {
-        const users = (state.users || []).filter(u => u.approvalStatus === '承認済み');
-        if (users.length === 0) {
-            showToast('メンバーデータがありません', 'info');
-            return;
-        }
+    const user = (state.users || []).find(u => u.id === uid);
+    if (!user) return;
 
-        const headers = ['氏名', '学年', 'ロール', '性別', '体重(最新)', '所属'];
-        const rows = users
-            .sort((a, b) => (a.grade || 0) - (b.grade || 0) || (a.name || '').localeCompare(b.name || ''))
-            .map(u => {
-                const latestWeight = u.weightHistory && u.weightHistory.length > 0
-                    ? u.weightHistory[u.weightHistory.length - 1].weight
-                    : '';
-                return [
-                    u.name || '',
-                    u.grade || '',
-                    u.role || '',
-                    u.gender || '',
-                    latestWeight,
-                    u.organization || ''
-                ];
-            });
+    // データ集計
+    const ergoCount = (state.ergoRecords || []).filter(r => r.userId === uid).length;
+    const scheduleCount = (state.schedules || []).filter(s => s.userId === uid).length;
+    const weightCount = (user.weightHistory || []).length;
+    const latestWeight = weightCount > 0 ? user.weightHistory[weightCount - 1] : null;
 
-        downloadCSV(`members_${formatDate(new Date())}.csv`, headers, rows);
-        showToast(`${rows.length}名のメンバーをCSV出力しました`, 'success');
-    }
-
-    // =========================================
-    // 個人レポート
-    // =========================================
-
-    function populateExportMemberSelect() {
-        const sel = document.getElementById('export-member-select');
-        if (!sel) return;
-        const current = sel.value;
-        sel.innerHTML = '<option value="">-- 選択してください --</option>';
-        const users = (state.users || []).filter(u => u.approvalStatus === '承認済み');
-        users.sort((a, b) => (a.grade || 0) - (b.grade || 0) || (a.name || '').localeCompare(b.name || ''));
-        users.forEach(u => {
-            const opt = document.createElement('option');
-            opt.value = u.id;
-            opt.textContent = `${u.name}（${u.grade || '?'}年・${u.role || ''}）`;
-            sel.appendChild(opt);
+    // エルゴベスト（2000mがあれば表示）
+    const ergo2k = (state.ergoRecords || []).filter(r =>
+        r.userId === uid && (r.menuKey === '2000m' || r.distance == 2000)
+    );
+    let best2k = '';
+    if (ergo2k.length > 0) {
+        const sorted = ergo2k.sort((a, b) => {
+            const ta = a.time || a.formattedTime || '99:99';
+            const tb = b.time || b.formattedTime || '99:99';
+            return ta.localeCompare(tb);
         });
-        if (current) sel.value = current;
+        best2k = sorted[0].time || sorted[0].formattedTime || '';
     }
 
-    function getSelectedExportUser() {
-        const sel = document.getElementById('export-member-select');
-        const uid = sel?.value;
-        if (!uid) { showToast('メンバーを選択してください', 'info'); return null; }
-        const user = (state.users || []).find(u => u.id === uid);
-        if (!user) { showToast('メンバーが見つかりません', 'error'); return null; }
-        return user;
-    }
-
-    function onExportMemberChange() {
-        const sel = document.getElementById('export-member-select');
-        const preview = document.getElementById('personal-report-preview');
-        const summary = document.getElementById('personal-report-summary');
-        const uid = sel?.value;
-
-        if (!uid) {
-            if (preview) preview.style.display = 'none';
-            return;
-        }
-
-        const user = (state.users || []).find(u => u.id === uid);
-        if (!user) return;
-
-        // データ集計
-        const ergoCount = (state.ergoRecords || []).filter(r => r.userId === uid).length;
-        const scheduleCount = (state.schedules || []).filter(s => s.userId === uid).length;
-        const weightCount = (user.weightHistory || []).length;
-        const latestWeight = weightCount > 0 ? user.weightHistory[weightCount - 1] : null;
-
-        // エルゴベスト（2000mがあれば表示）
-        const ergo2k = (state.ergoRecords || []).filter(r =>
-            r.userId === uid && (r.menuKey === '2000m' || r.distance == 2000)
-        );
-        let best2k = '';
-        if (ergo2k.length > 0) {
-            const sorted = ergo2k.sort((a, b) => {
-                const ta = a.time || a.formattedTime || '99:99';
-                const tb = b.time || b.formattedTime || '99:99';
-                return ta.localeCompare(tb);
-            });
-            best2k = sorted[0].time || sorted[0].formattedTime || '';
-        }
-
-        summary.innerHTML = `
+    summary.innerHTML = `
         <div style="font-weight:700;font-size:16px;margin-bottom:8px;">${user.name}</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
             <div style="background:var(--bg-light);padding:8px 10px;border-radius:8px;text-align:center;">
@@ -9948,270 +9949,270 @@ function openPracticeNoteModal(noteId) {
         </div>
     `;
 
-        if (preview) preview.style.display = 'block';
+    if (preview) preview.style.display = 'block';
+}
+
+// カテゴリの日本語表示
+function getCategoryLabel(cat) {
+    const map = { 'distance': '距離', 'time': 'タイム', 'interval': 'インターバル' };
+    return map[cat] || cat || '不明';
+}
+
+// エルゴ記録をメニュー別にグループ化するヘルパー
+function groupErgoByMenu(records) {
+    const catOrder = ['distance', 'time', 'interval'];
+    const groups = {};
+    records.forEach(r => {
+        const cat = r.category || r.workoutType || 'other';
+        const menu = r.menuKey || '不明';
+        const key = `${cat}|||${menu}`;
+        if (!groups[key]) groups[key] = { cat, menu, records: [] };
+        groups[key].records.push(r);
+    });
+    // カテゴリ順 → メニュー名順にソート
+    return Object.values(groups).sort((a, b) => {
+        const ai = catOrder.indexOf(a.cat); const bi = catOrder.indexOf(b.cat);
+        if (ai !== bi) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+        return (a.menu || '').localeCompare(b.menu || '');
+    });
+}
+
+// 個人エルゴCSV（メニュー別セクション形式）
+function exportPersonalErgoCSV() {
+    const user = getSelectedExportUser();
+    if (!user) return;
+    const all = (state.ergoRecords || []).filter(r => r.userId === user.id);
+    const filtered = filterByDateRange(all, 'date');
+    if (filtered.length === 0) {
+        showToast(`${user.name}のエルゴ記録がありません`, 'info');
+        return;
     }
 
-    // カテゴリの日本語表示
-    function getCategoryLabel(cat) {
-        const map = { 'distance': '距離', 'time': 'タイム', 'interval': 'インターバル' };
-        return map[cat] || cat || '不明';
-    }
+    const bom = '\uFEFF';
+    const escape = (v) => {
+        const s = String(v == null ? '' : v);
+        return s.includes(',') || s.includes('"') || s.includes('\n')
+            ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const toLine = (arr) => arr.map(escape).join(',');
 
-    // エルゴ記録をメニュー別にグループ化するヘルパー
-    function groupErgoByMenu(records) {
-        const catOrder = ['distance', 'time', 'interval'];
-        const groups = {};
-        records.forEach(r => {
-            const cat = r.category || r.workoutType || 'other';
-            const menu = r.menuKey || '不明';
-            const key = `${cat}|||${menu}`;
-            if (!groups[key]) groups[key] = { cat, menu, records: [] };
-            groups[key].records.push(r);
-        });
-        // カテゴリ順 → メニュー名順にソート
-        return Object.values(groups).sort((a, b) => {
-            const ai = catOrder.indexOf(a.cat); const bi = catOrder.indexOf(b.cat);
-            if (ai !== bi) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-            return (a.menu || '').localeCompare(b.menu || '');
-        });
-    }
+    const lines = [];
+    lines.push(`${user.name} エルゴ記録（${formatDate(new Date())}）`);
+    lines.push(`学年: ${user.grade || '-'}年 / 性別: ${user.gender || '-'}`);
+    lines.push('');
 
-    // 個人エルゴCSV（メニュー別セクション形式）
-    function exportPersonalErgoCSV() {
-        const user = getSelectedExportUser();
-        if (!user) return;
-        const all = (state.ergoRecords || []).filter(r => r.userId === user.id);
-        const filtered = filterByDateRange(all, 'date');
-        if (filtered.length === 0) {
-            showToast(`${user.name}のエルゴ記録がありません`, 'info');
-            return;
-        }
+    const groups = groupErgoByMenu(filtered);
+    let totalCount = 0;
 
-        const bom = '\uFEFF';
-        const escape = (v) => {
-            const s = String(v == null ? '' : v);
-            return s.includes(',') || s.includes('"') || s.includes('\n')
-                ? '"' + s.replace(/"/g, '""') + '"' : s;
-        };
-        const toLine = (arr) => arr.map(escape).join(',');
-
-        const lines = [];
-        lines.push(`${user.name} エルゴ記録（${formatDate(new Date())}）`);
-        lines.push(`学年: ${user.grade || '-'}年 / 性別: ${user.gender || '-'}`);
-        lines.push('');
-
-        const groups = groupErgoByMenu(filtered);
-        let totalCount = 0;
-
-        groups.forEach(g => {
-            const sorted = g.records.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-            // ベストタイムを特定
-            let bestTime = null;
-            sorted.forEach(r => {
-                const t = r.time || r.formattedTime || '';
-                if (t && (!bestTime || t < bestTime)) bestTime = t;
-            });
-
-            lines.push(`【${getCategoryLabel(g.cat)}】${g.menu}（${sorted.length}件）`);
-            lines.push(toLine(['日付', 'タイム', '距離(m)', '平均ペース(/500m)', '平均心拍', 'メモ', 'ベスト']));
-            sorted.forEach(r => {
-                const t = r.time || r.formattedTime || '';
-                const isBest = t && t === bestTime ? '★' : '';
-                lines.push(toLine([
-                    r.date || '', t, r.distance || '',
-                    r.avgPace || '', r.avgHeartRate || '',
-                    r.memo || '', isBest
-                ]));
-            });
-            if (bestTime) lines.push(`ベスト: ${bestTime}`);
-            lines.push('');
-            totalCount += sorted.length;
+    groups.forEach(g => {
+        const sorted = g.records.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+        // ベストタイムを特定
+        let bestTime = null;
+        sorted.forEach(r => {
+            const t = r.time || r.formattedTime || '';
+            if (t && (!bestTime || t < bestTime)) bestTime = t;
         });
 
-        lines.push(`全${groups.length}メニュー / 合計${totalCount}件`);
-
-        const csv = bom + lines.join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `${user.name}_エルゴ_${formatDate(new Date())}.csv`;
-        link.click();
-        URL.revokeObjectURL(link.href);
-        showToast(`${user.name}のエルゴ記録${totalCount}件を${groups.length}メニュー別に出力しました`, 'success');
-    }
-
-    // 個人体重CSV
-    function exportPersonalWeightCSV() {
-        const user = getSelectedExportUser();
-        if (!user) return;
-        const history = user.weightHistory || [];
-        if (history.length === 0) {
-            showToast(`${user.name}の体重記録がありません`, 'info');
-            return;
-        }
-
-        const items = history.map(w => ({ date: w.date, row: [w.date || '', w.weight || ''] }));
-        const filtered = filterByDateRange(items, 'date').map(i => i.row);
-        if (filtered.length === 0) {
-            showToast(`該当期間の体重記録がありません`, 'info');
-            return;
-        }
-
-        const headers = ['日付', '体重(kg)'];
-        downloadCSV(`${user.name}_体重_${formatDate(new Date())}.csv`, headers, filtered);
-        showToast(`${user.name}の体重記録${filtered.length}件を出力しました`, 'success');
-    }
-
-    // 個人スケジュールCSV
-    function exportPersonalScheduleCSV() {
-        const user = getSelectedExportUser();
-        if (!user) return;
-        const all = (state.schedules || []).filter(s => s.userId === user.id);
-        const filtered = filterByDateRange(all, 'date');
-        if (filtered.length === 0) {
-            showToast(`${user.name}の練習履歴がありません`, 'info');
-            return;
-        }
-
-        const boatName = (id) => {
-            const b = (state.boats || []).find(b => b.id === id);
-            return b ? b.name : '';
-        };
-
-        const headers = ['日付', '時間帯', '種目', '艇種', '船名', 'クルーメンバー', 'メモ'];
-        const rows = filtered
-            .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
-            .map(s => [
-                s.date,
-                s.timeSlot || '',
-                s.scheduleType || '',
-                s.boatType || '',
-                boatName(s.boatId),
-                (s.crewIds || []).map(getUserName).join(' / '),
-                s.memo || ''
-            ]);
-
-        downloadCSV(`${user.name}_練習_${formatDate(new Date())}.csv`, headers, rows);
-        showToast(`${user.name}の練習履歴${rows.length}件を出力しました`, 'success');
-    }
-
-    // 個人全データCSV（1ファイルに複数セクション）
-    function exportPersonalAllCSV() {
-        const user = getSelectedExportUser();
-        if (!user) return;
-
-        const bom = '\uFEFF';
-        const escape = (v) => {
-            const s = String(v == null ? '' : v);
-            return s.includes(',') || s.includes('"') || s.includes('\n')
-                ? '"' + s.replace(/"/g, '""') + '"'
-                : s;
-        };
-        const toLine = (arr) => arr.map(escape).join(',');
-
-        let lines = [];
-        lines.push(`${user.name} 個人レポート（${formatDate(new Date())}）`);
-        lines.push(`学年: ${user.grade || '-'}年 / 性別: ${user.gender || '-'} / ロール: ${user.role || '-'}`);
-        lines.push('');
-
-        // エルゴ（メニュー別）
-        const ergo = filterByDateRange(
-            (state.ergoRecords || []).filter(r => r.userId === user.id), 'date'
-        );
-        const ergoGroups = groupErgoByMenu(ergo);
-        lines.push('=== エルゴ記録（メニュー別） ===');
-        ergoGroups.forEach(g => {
-            const sorted = g.records.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-            let bestTime = null;
-            sorted.forEach(r => {
-                const t = r.time || r.formattedTime || '';
-                if (t && (!bestTime || t < bestTime)) bestTime = t;
-            });
-            lines.push(`--- ${getCategoryLabel(g.cat)} / ${g.menu}（${sorted.length}件）---`);
-            lines.push(toLine(['日付', 'タイム', '距離(m)', '平均ペース', '平均心拍', 'ベスト']));
-            sorted.forEach(r => {
-                const t = r.time || r.formattedTime || '';
-                lines.push(toLine([
-                    r.date || '', t, r.distance || '',
-                    r.avgPace || '', r.avgHeartRate || '',
-                    t && t === bestTime ? '★' : ''
-                ]));
-            });
-            if (bestTime) lines.push(`ベスト: ${bestTime}`);
-            lines.push('');
-        });
-        lines.push(`エルゴ合計: ${ergo.length}件 / ${ergoGroups.length}メニュー`);
-        lines.push('');
-
-        // 体重
-        const weight = user.weightHistory || [];
-        const wFiltered = filterByDateRange(
-            weight.map(w => ({ date: w.date, w })), 'date'
-        ).map(i => i.w);
-        lines.push('=== 体重記録 ===');
-        lines.push(toLine(['日付', '体重(kg)']));
-        wFiltered.forEach(w => { lines.push(toLine([w.date || '', w.weight || ''])); });
-        lines.push(`合計: ${wFiltered.length}件`);
-        lines.push('');
-
-        // スケジュール
-        const sched = filterByDateRange(
-            (state.schedules || []).filter(s => s.userId === user.id), 'date'
-        ).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-        const boatName = (id) => { const b = (state.boats || []).find(b => b.id === id); return b ? b.name : ''; };
-        lines.push('=== 練習履歴 ===');
-        lines.push(toLine(['日付', '時間帯', '種目', '艇種', '船名', 'メモ']));
-        sched.forEach(s => {
+        lines.push(`【${getCategoryLabel(g.cat)}】${g.menu}（${sorted.length}件）`);
+        lines.push(toLine(['日付', 'タイム', '距離(m)', '平均ペース(/500m)', '平均心拍', 'メモ', 'ベスト']));
+        sorted.forEach(r => {
+            const t = r.time || r.formattedTime || '';
+            const isBest = t && t === bestTime ? '★' : '';
             lines.push(toLine([
-                s.date, s.timeSlot || '', s.scheduleType || '',
-                s.boatType || '', boatName(s.boatId), s.memo || ''
+                r.date || '', t, r.distance || '',
+                r.avgPace || '', r.avgHeartRate || '',
+                r.memo || '', isBest
             ]));
         });
-        lines.push(`合計: ${sched.length}件`);
+        if (bestTime) lines.push(`ベスト: ${bestTime}`);
+        lines.push('');
+        totalCount += sorted.length;
+    });
 
-        const csv = bom + lines.join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `${user.name}_全データ_${formatDate(new Date())}.csv`;
-        link.click();
-        URL.revokeObjectURL(link.href);
-        showToast(`${user.name}の全データを出力しました`, 'success');
+    lines.push(`全${groups.length}メニュー / 合計${totalCount}件`);
+
+    const csv = bom + lines.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${user.name}_エルゴ_${formatDate(new Date())}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    showToast(`${user.name}のエルゴ記録${totalCount}件を${groups.length}メニュー別に出力しました`, 'success');
+}
+
+// 個人体重CSV
+function exportPersonalWeightCSV() {
+    const user = getSelectedExportUser();
+    if (!user) return;
+    const history = user.weightHistory || [];
+    if (history.length === 0) {
+        showToast(`${user.name}の体重記録がありません`, 'info');
+        return;
     }
 
-    // 全員エルゴ一括CSV（メンバー名で列を分けて推移比較しやすく）
-    function exportAllMembersErgoCSV() {
-        const records = state.ergoRecords || [];
-        const filtered = filterByDateRange(records, 'date');
-        if (filtered.length === 0) {
-            showToast('エルゴ記録がありません', 'info');
-            return;
-        }
-
-        const headers = ['日付', '氏名', '学年', 'カテゴリ', 'メニュー', 'タイム', '距離(m)', '平均ペース(/500m)', '平均心拍'];
-        // メンバー別にソート
-        const rows = filtered
-            .sort((a, b) => {
-                const nameA = getUserName(a.userId);
-                const nameB = getUserName(b.userId);
-                if (nameA !== nameB) return nameA.localeCompare(nameB);
-                return (a.date || '').localeCompare(b.date || '');
-            })
-            .map(r => {
-                const u = (state.users || []).find(u => u.id === r.userId);
-                return [
-                    r.date || '',
-                    getUserName(r.userId),
-                    u?.grade || '',
-                    r.category || r.workoutType || '',
-                    r.menuKey || '',
-                    r.time || r.formattedTime || '',
-                    r.distance || '',
-                    r.avgPace || '',
-                    r.avgHeartRate || ''
-                ];
-            });
-
-        downloadCSV(`全員エルゴ_${formatDate(new Date())}.csv`, headers, rows);
-        showToast(`${rows.length}件のエルゴ記録を出力しました（メンバー別ソート）`, 'success');
+    const items = history.map(w => ({ date: w.date, row: [w.date || '', w.weight || ''] }));
+    const filtered = filterByDateRange(items, 'date').map(i => i.row);
+    if (filtered.length === 0) {
+        showToast(`該当期間の体重記録がありません`, 'info');
+        return;
     }
+
+    const headers = ['日付', '体重(kg)'];
+    downloadCSV(`${user.name}_体重_${formatDate(new Date())}.csv`, headers, filtered);
+    showToast(`${user.name}の体重記録${filtered.length}件を出力しました`, 'success');
+}
+
+// 個人スケジュールCSV
+function exportPersonalScheduleCSV() {
+    const user = getSelectedExportUser();
+    if (!user) return;
+    const all = (state.schedules || []).filter(s => s.userId === user.id);
+    const filtered = filterByDateRange(all, 'date');
+    if (filtered.length === 0) {
+        showToast(`${user.name}の練習履歴がありません`, 'info');
+        return;
+    }
+
+    const boatName = (id) => {
+        const b = (state.boats || []).find(b => b.id === id);
+        return b ? b.name : '';
+    };
+
+    const headers = ['日付', '時間帯', '種目', '艇種', '船名', 'クルーメンバー', 'メモ'];
+    const rows = filtered
+        .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+        .map(s => [
+            s.date,
+            s.timeSlot || '',
+            s.scheduleType || '',
+            s.boatType || '',
+            boatName(s.boatId),
+            (s.crewIds || []).map(getUserName).join(' / '),
+            s.memo || ''
+        ]);
+
+    downloadCSV(`${user.name}_練習_${formatDate(new Date())}.csv`, headers, rows);
+    showToast(`${user.name}の練習履歴${rows.length}件を出力しました`, 'success');
+}
+
+// 個人全データCSV（1ファイルに複数セクション）
+function exportPersonalAllCSV() {
+    const user = getSelectedExportUser();
+    if (!user) return;
+
+    const bom = '\uFEFF';
+    const escape = (v) => {
+        const s = String(v == null ? '' : v);
+        return s.includes(',') || s.includes('"') || s.includes('\n')
+            ? '"' + s.replace(/"/g, '""') + '"'
+            : s;
+    };
+    const toLine = (arr) => arr.map(escape).join(',');
+
+    let lines = [];
+    lines.push(`${user.name} 個人レポート（${formatDate(new Date())}）`);
+    lines.push(`学年: ${user.grade || '-'}年 / 性別: ${user.gender || '-'} / ロール: ${user.role || '-'}`);
+    lines.push('');
+
+    // エルゴ（メニュー別）
+    const ergo = filterByDateRange(
+        (state.ergoRecords || []).filter(r => r.userId === user.id), 'date'
+    );
+    const ergoGroups = groupErgoByMenu(ergo);
+    lines.push('=== エルゴ記録（メニュー別） ===');
+    ergoGroups.forEach(g => {
+        const sorted = g.records.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+        let bestTime = null;
+        sorted.forEach(r => {
+            const t = r.time || r.formattedTime || '';
+            if (t && (!bestTime || t < bestTime)) bestTime = t;
+        });
+        lines.push(`--- ${getCategoryLabel(g.cat)} / ${g.menu}（${sorted.length}件）---`);
+        lines.push(toLine(['日付', 'タイム', '距離(m)', '平均ペース', '平均心拍', 'ベスト']));
+        sorted.forEach(r => {
+            const t = r.time || r.formattedTime || '';
+            lines.push(toLine([
+                r.date || '', t, r.distance || '',
+                r.avgPace || '', r.avgHeartRate || '',
+                t && t === bestTime ? '★' : ''
+            ]));
+        });
+        if (bestTime) lines.push(`ベスト: ${bestTime}`);
+        lines.push('');
+    });
+    lines.push(`エルゴ合計: ${ergo.length}件 / ${ergoGroups.length}メニュー`);
+    lines.push('');
+
+    // 体重
+    const weight = user.weightHistory || [];
+    const wFiltered = filterByDateRange(
+        weight.map(w => ({ date: w.date, w })), 'date'
+    ).map(i => i.w);
+    lines.push('=== 体重記録 ===');
+    lines.push(toLine(['日付', '体重(kg)']));
+    wFiltered.forEach(w => { lines.push(toLine([w.date || '', w.weight || ''])); });
+    lines.push(`合計: ${wFiltered.length}件`);
+    lines.push('');
+
+    // スケジュール
+    const sched = filterByDateRange(
+        (state.schedules || []).filter(s => s.userId === user.id), 'date'
+    ).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const boatName = (id) => { const b = (state.boats || []).find(b => b.id === id); return b ? b.name : ''; };
+    lines.push('=== 練習履歴 ===');
+    lines.push(toLine(['日付', '時間帯', '種目', '艇種', '船名', 'メモ']));
+    sched.forEach(s => {
+        lines.push(toLine([
+            s.date, s.timeSlot || '', s.scheduleType || '',
+            s.boatType || '', boatName(s.boatId), s.memo || ''
+        ]));
+    });
+    lines.push(`合計: ${sched.length}件`);
+
+    const csv = bom + lines.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${user.name}_全データ_${formatDate(new Date())}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    showToast(`${user.name}の全データを出力しました`, 'success');
+}
+
+// 全員エルゴ一括CSV（メンバー名で列を分けて推移比較しやすく）
+function exportAllMembersErgoCSV() {
+    const records = state.ergoRecords || [];
+    const filtered = filterByDateRange(records, 'date');
+    if (filtered.length === 0) {
+        showToast('エルゴ記録がありません', 'info');
+        return;
+    }
+
+    const headers = ['日付', '氏名', '学年', 'カテゴリ', 'メニュー', 'タイム', '距離(m)', '平均ペース(/500m)', '平均心拍'];
+    // メンバー別にソート
+    const rows = filtered
+        .sort((a, b) => {
+            const nameA = getUserName(a.userId);
+            const nameB = getUserName(b.userId);
+            if (nameA !== nameB) return nameA.localeCompare(nameB);
+            return (a.date || '').localeCompare(b.date || '');
+        })
+        .map(r => {
+            const u = (state.users || []).find(u => u.id === r.userId);
+            return [
+                r.date || '',
+                getUserName(r.userId),
+                u?.grade || '',
+                r.category || r.workoutType || '',
+                r.menuKey || '',
+                r.time || r.formattedTime || '',
+                r.distance || '',
+                r.avgPace || '',
+                r.avgHeartRate || ''
+            ];
+        });
+
+    downloadCSV(`全員エルゴ_${formatDate(new Date())}.csv`, headers, rows);
+    showToast(`${rows.length}件のエルゴ記録を出力しました（メンバー別ソート）`, 'success');
+}
