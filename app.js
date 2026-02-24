@@ -9759,7 +9759,32 @@ function onExportMemberChange() {
     if (preview) preview.style.display = 'block';
 }
 
-// 個人エルゴCSV
+// カテゴリの日本語表示
+function getCategoryLabel(cat) {
+    const map = { 'distance': '距離', 'time': 'タイム', 'interval': 'インターバル' };
+    return map[cat] || cat || '不明';
+}
+
+// エルゴ記録をメニュー別にグループ化するヘルパー
+function groupErgoByMenu(records) {
+    const catOrder = ['distance', 'time', 'interval'];
+    const groups = {};
+    records.forEach(r => {
+        const cat = r.category || r.workoutType || 'other';
+        const menu = r.menuKey || '不明';
+        const key = `${cat}|||${menu}`;
+        if (!groups[key]) groups[key] = { cat, menu, records: [] };
+        groups[key].records.push(r);
+    });
+    // カテゴリ順 → メニュー名順にソート
+    return Object.values(groups).sort((a, b) => {
+        const ai = catOrder.indexOf(a.cat); const bi = catOrder.indexOf(b.cat);
+        if (ai !== bi) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+        return (a.menu || '').localeCompare(b.menu || '');
+    });
+}
+
+// 個人エルゴCSV（メニュー別セクション形式）
 function exportPersonalErgoCSV() {
     const user = getSelectedExportUser();
     if (!user) return;
@@ -9770,22 +9795,57 @@ function exportPersonalErgoCSV() {
         return;
     }
 
-    const headers = ['日付', 'カテゴリ', 'メニュー', 'タイム', '距離(m)', '平均ペース(/500m)', '平均心拍', 'メモ'];
-    const rows = filtered
-        .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
-        .map(r => [
-            r.date || '',
-            r.category || r.workoutType || '',
-            r.menuKey || '',
-            r.time || r.formattedTime || '',
-            r.distance || '',
-            r.avgPace || '',
-            r.avgHeartRate || '',
-            r.memo || ''
-        ]);
+    const bom = '\uFEFF';
+    const escape = (v) => {
+        const s = String(v == null ? '' : v);
+        return s.includes(',') || s.includes('"') || s.includes('\n')
+            ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const toLine = (arr) => arr.map(escape).join(',');
 
-    downloadCSV(`${user.name}_エルゴ_${formatDate(new Date())}.csv`, headers, rows);
-    showToast(`${user.name}のエルゴ記録${rows.length}件を出力しました`, 'success');
+    const lines = [];
+    lines.push(`${user.name} エルゴ記録（${formatDate(new Date())}）`);
+    lines.push(`学年: ${user.grade || '-'}年 / 性別: ${user.gender || '-'}`);
+    lines.push('');
+
+    const groups = groupErgoByMenu(filtered);
+    let totalCount = 0;
+
+    groups.forEach(g => {
+        const sorted = g.records.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+        // ベストタイムを特定
+        let bestTime = null;
+        sorted.forEach(r => {
+            const t = r.time || r.formattedTime || '';
+            if (t && (!bestTime || t < bestTime)) bestTime = t;
+        });
+
+        lines.push(`【${getCategoryLabel(g.cat)}】${g.menu}（${sorted.length}件）`);
+        lines.push(toLine(['日付', 'タイム', '距離(m)', '平均ペース(/500m)', '平均心拍', 'メモ', 'ベスト']));
+        sorted.forEach(r => {
+            const t = r.time || r.formattedTime || '';
+            const isBest = t && t === bestTime ? '★' : '';
+            lines.push(toLine([
+                r.date || '', t, r.distance || '',
+                r.avgPace || '', r.avgHeartRate || '',
+                r.memo || '', isBest
+            ]));
+        });
+        if (bestTime) lines.push(`ベスト: ${bestTime}`);
+        lines.push('');
+        totalCount += sorted.length;
+    });
+
+    lines.push(`全${groups.length}メニュー / 合計${totalCount}件`);
+
+    const csv = bom + lines.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${user.name}_エルゴ_${formatDate(new Date())}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    showToast(`${user.name}のエルゴ記録${totalCount}件を${groups.length}メニュー別に出力しました`, 'success');
 }
 
 // 個人体重CSV
@@ -9862,20 +9922,33 @@ function exportPersonalAllCSV() {
     lines.push(`学年: ${user.grade || '-'}年 / 性別: ${user.gender || '-'} / ロール: ${user.role || '-'}`);
     lines.push('');
 
-    // エルゴ
+    // エルゴ（メニュー別）
     const ergo = filterByDateRange(
         (state.ergoRecords || []).filter(r => r.userId === user.id), 'date'
-    ).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-    lines.push('=== エルゴ記録 ===');
-    lines.push(toLine(['日付', 'カテゴリ', 'メニュー', 'タイム', '距離(m)', '平均ペース', '平均心拍']));
-    ergo.forEach(r => {
-        lines.push(toLine([
-            r.date || '', r.category || r.workoutType || '', r.menuKey || '',
-            r.time || r.formattedTime || '', r.distance || '',
-            r.avgPace || '', r.avgHeartRate || ''
-        ]));
+    );
+    const ergoGroups = groupErgoByMenu(ergo);
+    lines.push('=== エルゴ記録（メニュー別） ===');
+    ergoGroups.forEach(g => {
+        const sorted = g.records.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+        let bestTime = null;
+        sorted.forEach(r => {
+            const t = r.time || r.formattedTime || '';
+            if (t && (!bestTime || t < bestTime)) bestTime = t;
+        });
+        lines.push(`--- ${getCategoryLabel(g.cat)} / ${g.menu}（${sorted.length}件）---`);
+        lines.push(toLine(['日付', 'タイム', '距離(m)', '平均ペース', '平均心拍', 'ベスト']));
+        sorted.forEach(r => {
+            const t = r.time || r.formattedTime || '';
+            lines.push(toLine([
+                r.date || '', t, r.distance || '',
+                r.avgPace || '', r.avgHeartRate || '',
+                t && t === bestTime ? '★' : ''
+            ]));
+        });
+        if (bestTime) lines.push(`ベスト: ${bestTime}`);
+        lines.push('');
     });
-    lines.push(`合計: ${ergo.length}件`);
+    lines.push(`エルゴ合計: ${ergo.length}件 / ${ergoGroups.length}メニュー`);
     lines.push('');
 
     // 体重
