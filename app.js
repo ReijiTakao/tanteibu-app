@@ -4278,6 +4278,12 @@ function renderPracticeNotesList() {
             if (typeLabel === SCHEDULE_TYPES.BOAT && note.rowingDistance) {
                 menuInfoParts.push(`${(note.rowingDistance / 1000).toFixed(1)}km`);
             }
+            if (typeLabel === SCHEDULE_TYPES.BOAT && note.windDirection) {
+                const windEmoji = { '順風': '↗️', '逆風': '↙️', '横風': '↔️', '無風': '🔵' };
+                let windText = (windEmoji[note.windDirection] || '') + note.windDirection;
+                if (note.windStrength) windText += `(${note.windStrength})`;
+                menuInfoParts.push(windText);
+            }
             if (typeLabel === SCHEDULE_TYPES.RUN && note.runDistance) {
                 menuInfoParts.push(`${note.runDistance}km`);
             }
@@ -4389,6 +4395,29 @@ function openPracticeNoteModal(noteId) {
     } else {
         distanceGroup.classList.add('hidden');
         document.getElementById('practice-note-distance').value = '';
+    }
+    // 風況入力（乗艇時のみ表示）
+    const windGroup = document.getElementById('wind-condition-group');
+    if (schedule && schedule.scheduleType === SCHEDULE_TYPES.BOAT) {
+        windGroup.classList.remove('hidden');
+        // 風向きトグル復元
+        document.querySelectorAll('.wind-dir-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.value === (note.windDirection || ''));
+            btn.onclick = () => {
+                document.querySelectorAll('.wind-dir-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            };
+        });
+        // 風力トグル復元
+        document.querySelectorAll('.wind-str-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.value === (note.windStrength || ''));
+            btn.onclick = () => {
+                document.querySelectorAll('.wind-str-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            };
+        });
+    } else {
+        windGroup.classList.add('hidden');
     }
 
     // 乗艇メニュー（乗艇時のみ表示）
@@ -4628,6 +4657,15 @@ function savePracticeNote() {
     const rowingMenuGroup = document.getElementById('rowing-menu-group');
     if (rowingMenuGroup && !rowingMenuGroup.classList.contains('hidden')) {
         note.rowingMenus = getRowingMenuData();
+    }
+
+    // 風況を保存
+    const windGroup = document.getElementById('wind-condition-group');
+    if (windGroup && !windGroup.classList.contains('hidden')) {
+        const activeDir = document.querySelector('.wind-dir-btn.active');
+        const activeStr = document.querySelector('.wind-str-btn.active');
+        note.windDirection = activeDir ? activeDir.dataset.value : null;
+        note.windStrength = activeStr ? activeStr.dataset.value : null;
     }
 
     note.updatedAt = new Date().toISOString();
