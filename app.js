@@ -7054,14 +7054,34 @@ function renderBoatsList() {
     const orgColors = { '男子部': '#3b82f6', '女子部': '#ec4899', '医学部': '#10b981', 'OB': '#f59e0b' };
     const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
     const boatTypeLabels = { '1x': 'シングル', '2x': 'ダブル', '2-': 'ペア', '4x': 'クォード', '4+': '付きフォア', '4-': 'なしフォア', '8+': 'エイト' };
-    const typeOrder = ['8+', '4+', '4-', '4x', '2-', '2x', '1x'];
+    const typeOrder = ['8+', '4+', '4-/4x', '2-/2x', '1x'];
+    const groupLabels = {
+        '8+': 'エイト',
+        '4+': '付きフォア',
+        '4-/4x': 'なしフォア / クォード',
+        '2-/2x': 'ペア / ダブル',
+        '1x': 'シングル'
+    };
+    const groupColors = {
+        '8+': '#dc2626',
+        '4+': '#0284c7',
+        '4-/4x': '#0ea5e9',
+        '2-/2x': '#8b5cf6',
+        '1x': '#6366f1'
+    };
+    // 艇種→グループキーのマッピング
+    const typeToGroup = {
+        '8+': '8+', '4+': '4+', '4-': '4-/4x', '4x': '4-/4x',
+        '2-': '2-/2x', '2x': '2-/2x', '1x': '1x'
+    };
 
-    // 種類別にグループ化
+    // グループ別にまとめる
     const grouped = {};
     boats.forEach(b => {
         const type = b.type || 'その他';
-        if (!grouped[type]) grouped[type] = [];
-        grouped[type].push(b);
+        const groupKey = typeToGroup[type] || 'その他';
+        if (!grouped[groupKey]) grouped[groupKey] = [];
+        grouped[groupKey].push(b);
     });
 
     // 順序通りにレンダリング
@@ -7075,6 +7095,11 @@ function renderBoatsList() {
         const statusIcon = statusText === '使用可能' ? '🟢' : statusText === '故障' ? '🔴' : statusText === '修理中' ? '🟠' : '🟡';
         const orgLabel = b.organization || '';
         const orgBadge = orgLabel ? `<span style="background:${orgColors[orgLabel] || '#6b7280'};color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">${orgLabel}</span>` : '';
+
+        // 個別の艇種バッジ（グループ内で区別するため）
+        const btColor = boatTypeColors[b.type] || '#6b7280';
+        const btLabel = boatTypeLabels[b.type] || b.type || '';
+        const typeBadge = b.type ? `<span style="background:${btColor};color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">${b.type}</span>` : '';
 
         const isConvertible = isConvertibleBoat(b.type);
         const riggingMode = getBoatRiggingMode(b);
@@ -7097,6 +7122,7 @@ function renderBoatsList() {
                 <div style="display:flex;justify-content:space-between;align-items:center;">
                     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1;">
                         <span style="font-weight:700;font-size:14px;color:var(--text-primary);">${b.name}</span>
+                        ${typeBadge}
                         ${orgBadge}
                     </div>
                     <div style="font-size:12px;font-weight:600;white-space:nowrap;">${statusIcon} ${statusText}</div>
@@ -7107,18 +7133,18 @@ function renderBoatsList() {
             </div>`;
     };
 
-    container.innerHTML = sortedTypes.map(type => {
-        const btColor = boatTypeColors[type] || '#6b7280';
-        const label = boatTypeLabels[type] || type;
-        const count = grouped[type].length;
+    container.innerHTML = sortedTypes.map(groupKey => {
+        const gColor = groupColors[groupKey] || '#6b7280';
+        const gLabel = groupLabels[groupKey] || groupKey;
+        const count = grouped[groupKey].length;
         return `
             <div style="margin-bottom:16px;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid ${btColor};">
-                    <span style="background:${btColor};color:#fff;padding:3px 10px;border-radius:8px;font-size:13px;font-weight:700;">${type}</span>
-                    <span style="font-weight:700;font-size:14px;color:var(--text-primary);">${label}</span>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid ${gColor};">
+                    <span style="background:${gColor};color:#fff;padding:3px 10px;border-radius:8px;font-size:13px;font-weight:700;">${groupKey}</span>
+                    <span style="font-weight:700;font-size:14px;color:var(--text-primary);">${gLabel}</span>
                     <span style="font-size:12px;color:var(--text-muted);">(${count}艇)</span>
                 </div>
-                ${grouped[type].map(renderCard).join('')}
+                ${grouped[groupKey].map(renderCard).join('')}
             </div>`;
     }).join('');
 }
@@ -7178,6 +7204,7 @@ function renderOarsList() {
 
     const orgColors = { '男子部': '#3b82f6', '女子部': '#ec4899', '医学部': '#10b981', 'OB': '#f59e0b' };
     const boatTypeLabels = { '1x': 'シングル', '2x': 'ダブル', '2-': 'ペア', '4x': 'クォード', '4+': '付きフォア', '4-': 'なしフォア', '8+': 'エイト' };
+    const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
 
     // スイープ / スカル / その他 に分類
     const sweepOars = sortOars(oars.filter(o => isOarSweep(o)));
@@ -7204,7 +7231,8 @@ function renderOarsList() {
         let lastBoatBadge = '';
         if (lastBoat) {
             const btLabel = boatTypeLabels[lastBoat.type] || lastBoat.type || '';
-            lastBoatBadge = `<span style="background:#7c3aed;color:#fff;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;" title="最後に使用: ${lastBoat.name} (${lastBoat.date})">${btLabel}${lastBoat.type ? ' ' + lastBoat.type : ''}</span>`;
+            const btColor = boatTypeColors[lastBoat.type] || '#6b7280';
+            lastBoatBadge = `<span style="background:${btColor};color:#fff;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;" title="最後に使用: ${lastBoat.name} (${lastBoat.date})">${btLabel}${lastBoat.type ? ' ' + lastBoat.type : ''}</span>`;
         }
 
         // オール長のモード表示（スイープならペア/フォア/エイト、スカルならシングル/ダブル/クォード）
