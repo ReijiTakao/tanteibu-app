@@ -1078,6 +1078,7 @@ function switchTab(tabId) {
             renderWeeklyPracticeSummary();
         }
         if (tabId === 'settings') renderSettings();
+        if (tabId === 'data-export') populateExportMemberSelect();
     } catch (error) {
         console.error(`Tab init error (${tabId}):`, error);
     }
@@ -9668,4 +9669,284 @@ function exportMembersCSV() {
 
     downloadCSV(`members_${formatDate(new Date())}.csv`, headers, rows);
     showToast(`${rows.length}名のメンバーをCSV出力しました`, 'success');
+}
+
+// =========================================
+// 個人レポート
+// =========================================
+
+function populateExportMemberSelect() {
+    const sel = document.getElementById('export-member-select');
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = '<option value="">-- 選択してください --</option>';
+    const users = (state.users || []).filter(u => u.approvalStatus === '承認済み');
+    users.sort((a, b) => (a.grade || 0) - (b.grade || 0) || (a.name || '').localeCompare(b.name || ''));
+    users.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.id;
+        opt.textContent = `${u.name}（${u.grade || '?'}年・${u.role || ''}）`;
+        sel.appendChild(opt);
+    });
+    if (current) sel.value = current;
+}
+
+function getSelectedExportUser() {
+    const sel = document.getElementById('export-member-select');
+    const uid = sel?.value;
+    if (!uid) { showToast('メンバーを選択してください', 'info'); return null; }
+    const user = (state.users || []).find(u => u.id === uid);
+    if (!user) { showToast('メンバーが見つかりません', 'error'); return null; }
+    return user;
+}
+
+function onExportMemberChange() {
+    const sel = document.getElementById('export-member-select');
+    const preview = document.getElementById('personal-report-preview');
+    const summary = document.getElementById('personal-report-summary');
+    const uid = sel?.value;
+
+    if (!uid) {
+        if (preview) preview.style.display = 'none';
+        return;
+    }
+
+    const user = (state.users || []).find(u => u.id === uid);
+    if (!user) return;
+
+    // データ集計
+    const ergoCount = (state.ergoRecords || []).filter(r => r.userId === uid).length;
+    const scheduleCount = (state.schedules || []).filter(s => s.userId === uid).length;
+    const weightCount = (user.weightHistory || []).length;
+    const latestWeight = weightCount > 0 ? user.weightHistory[weightCount - 1] : null;
+
+    // エルゴベスト（2000mがあれば表示）
+    const ergo2k = (state.ergoRecords || []).filter(r =>
+        r.userId === uid && (r.menuKey === '2000m' || r.distance == 2000)
+    );
+    let best2k = '';
+    if (ergo2k.length > 0) {
+        const sorted = ergo2k.sort((a, b) => {
+            const ta = a.time || a.formattedTime || '99:99';
+            const tb = b.time || b.formattedTime || '99:99';
+            return ta.localeCompare(tb);
+        });
+        best2k = sorted[0].time || sorted[0].formattedTime || '';
+    }
+
+    summary.innerHTML = `
+        <div style="font-weight:700;font-size:16px;margin-bottom:8px;">${user.name}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div style="background:var(--bg-light);padding:8px 10px;border-radius:8px;text-align:center;">
+                <div style="font-size:20px;font-weight:700;color:var(--accent-color);">${ergoCount}</div>
+                <div style="font-size:11px;color:var(--text-muted);">エルゴ記録</div>
+            </div>
+            <div style="background:var(--bg-light);padding:8px 10px;border-radius:8px;text-align:center;">
+                <div style="font-size:20px;font-weight:700;color:#f59e0b;">${scheduleCount}</div>
+                <div style="font-size:11px;color:var(--text-muted);">練習予定</div>
+            </div>
+            <div style="background:var(--bg-light);padding:8px 10px;border-radius:8px;text-align:center;">
+                <div style="font-size:20px;font-weight:700;color:#10b981;">${latestWeight ? latestWeight.weight + 'kg' : '-'}</div>
+                <div style="font-size:11px;color:var(--text-muted);">最新体重${latestWeight ? ' (' + latestWeight.date + ')' : ''}</div>
+            </div>
+            <div style="background:var(--bg-light);padding:8px 10px;border-radius:8px;text-align:center;">
+                <div style="font-size:20px;font-weight:700;color:#8b5cf6;">${best2k || '-'}</div>
+                <div style="font-size:11px;color:var(--text-muted);">2000m ベスト</div>
+            </div>
+        </div>
+    `;
+
+    if (preview) preview.style.display = 'block';
+}
+
+// 個人エルゴCSV
+function exportPersonalErgoCSV() {
+    const user = getSelectedExportUser();
+    if (!user) return;
+    const all = (state.ergoRecords || []).filter(r => r.userId === user.id);
+    const filtered = filterByDateRange(all, 'date');
+    if (filtered.length === 0) {
+        showToast(`${user.name}のエルゴ記録がありません`, 'info');
+        return;
+    }
+
+    const headers = ['日付', 'カテゴリ', 'メニュー', 'タイム', '距離(m)', '平均ペース(/500m)', '平均心拍', 'メモ'];
+    const rows = filtered
+        .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+        .map(r => [
+            r.date || '',
+            r.category || r.workoutType || '',
+            r.menuKey || '',
+            r.time || r.formattedTime || '',
+            r.distance || '',
+            r.avgPace || '',
+            r.avgHeartRate || '',
+            r.memo || ''
+        ]);
+
+    downloadCSV(`${user.name}_エルゴ_${formatDate(new Date())}.csv`, headers, rows);
+    showToast(`${user.name}のエルゴ記録${rows.length}件を出力しました`, 'success');
+}
+
+// 個人体重CSV
+function exportPersonalWeightCSV() {
+    const user = getSelectedExportUser();
+    if (!user) return;
+    const history = user.weightHistory || [];
+    if (history.length === 0) {
+        showToast(`${user.name}の体重記録がありません`, 'info');
+        return;
+    }
+
+    const items = history.map(w => ({ date: w.date, row: [w.date || '', w.weight || ''] }));
+    const filtered = filterByDateRange(items, 'date').map(i => i.row);
+    if (filtered.length === 0) {
+        showToast(`該当期間の体重記録がありません`, 'info');
+        return;
+    }
+
+    const headers = ['日付', '体重(kg)'];
+    downloadCSV(`${user.name}_体重_${formatDate(new Date())}.csv`, headers, filtered);
+    showToast(`${user.name}の体重記録${filtered.length}件を出力しました`, 'success');
+}
+
+// 個人スケジュールCSV
+function exportPersonalScheduleCSV() {
+    const user = getSelectedExportUser();
+    if (!user) return;
+    const all = (state.schedules || []).filter(s => s.userId === user.id);
+    const filtered = filterByDateRange(all, 'date');
+    if (filtered.length === 0) {
+        showToast(`${user.name}の練習履歴がありません`, 'info');
+        return;
+    }
+
+    const boatName = (id) => {
+        const b = (state.boats || []).find(b => b.id === id);
+        return b ? b.name : '';
+    };
+
+    const headers = ['日付', '時間帯', '種目', '艇種', '船名', 'クルーメンバー', 'メモ'];
+    const rows = filtered
+        .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+        .map(s => [
+            s.date,
+            s.timeSlot || '',
+            s.scheduleType || '',
+            s.boatType || '',
+            boatName(s.boatId),
+            (s.crewIds || []).map(getUserName).join(' / '),
+            s.memo || ''
+        ]);
+
+    downloadCSV(`${user.name}_練習_${formatDate(new Date())}.csv`, headers, rows);
+    showToast(`${user.name}の練習履歴${rows.length}件を出力しました`, 'success');
+}
+
+// 個人全データCSV（1ファイルに複数セクション）
+function exportPersonalAllCSV() {
+    const user = getSelectedExportUser();
+    if (!user) return;
+
+    const bom = '\uFEFF';
+    const escape = (v) => {
+        const s = String(v == null ? '' : v);
+        return s.includes(',') || s.includes('"') || s.includes('\n')
+            ? '"' + s.replace(/"/g, '""') + '"'
+            : s;
+    };
+    const toLine = (arr) => arr.map(escape).join(',');
+
+    let lines = [];
+    lines.push(`${user.name} 個人レポート（${formatDate(new Date())}）`);
+    lines.push(`学年: ${user.grade || '-'}年 / 性別: ${user.gender || '-'} / ロール: ${user.role || '-'}`);
+    lines.push('');
+
+    // エルゴ
+    const ergo = filterByDateRange(
+        (state.ergoRecords || []).filter(r => r.userId === user.id), 'date'
+    ).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    lines.push('=== エルゴ記録 ===');
+    lines.push(toLine(['日付', 'カテゴリ', 'メニュー', 'タイム', '距離(m)', '平均ペース', '平均心拍']));
+    ergo.forEach(r => {
+        lines.push(toLine([
+            r.date || '', r.category || r.workoutType || '', r.menuKey || '',
+            r.time || r.formattedTime || '', r.distance || '',
+            r.avgPace || '', r.avgHeartRate || ''
+        ]));
+    });
+    lines.push(`合計: ${ergo.length}件`);
+    lines.push('');
+
+    // 体重
+    const weight = user.weightHistory || [];
+    const wFiltered = filterByDateRange(
+        weight.map(w => ({ date: w.date, w })), 'date'
+    ).map(i => i.w);
+    lines.push('=== 体重記録 ===');
+    lines.push(toLine(['日付', '体重(kg)']));
+    wFiltered.forEach(w => { lines.push(toLine([w.date || '', w.weight || ''])); });
+    lines.push(`合計: ${wFiltered.length}件`);
+    lines.push('');
+
+    // スケジュール
+    const sched = filterByDateRange(
+        (state.schedules || []).filter(s => s.userId === user.id), 'date'
+    ).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const boatName = (id) => { const b = (state.boats || []).find(b => b.id === id); return b ? b.name : ''; };
+    lines.push('=== 練習履歴 ===');
+    lines.push(toLine(['日付', '時間帯', '種目', '艇種', '船名', 'メモ']));
+    sched.forEach(s => {
+        lines.push(toLine([
+            s.date, s.timeSlot || '', s.scheduleType || '',
+            s.boatType || '', boatName(s.boatId), s.memo || ''
+        ]));
+    });
+    lines.push(`合計: ${sched.length}件`);
+
+    const csv = bom + lines.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${user.name}_全データ_${formatDate(new Date())}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    showToast(`${user.name}の全データを出力しました`, 'success');
+}
+
+// 全員エルゴ一括CSV（メンバー名で列を分けて推移比較しやすく）
+function exportAllMembersErgoCSV() {
+    const records = state.ergoRecords || [];
+    const filtered = filterByDateRange(records, 'date');
+    if (filtered.length === 0) {
+        showToast('エルゴ記録がありません', 'info');
+        return;
+    }
+
+    const headers = ['日付', '氏名', '学年', 'カテゴリ', 'メニュー', 'タイム', '距離(m)', '平均ペース(/500m)', '平均心拍'];
+    // メンバー別にソート
+    const rows = filtered
+        .sort((a, b) => {
+            const nameA = getUserName(a.userId);
+            const nameB = getUserName(b.userId);
+            if (nameA !== nameB) return nameA.localeCompare(nameB);
+            return (a.date || '').localeCompare(b.date || '');
+        })
+        .map(r => {
+            const u = (state.users || []).find(u => u.id === r.userId);
+            return [
+                r.date || '',
+                getUserName(r.userId),
+                u?.grade || '',
+                r.category || r.workoutType || '',
+                r.menuKey || '',
+                r.time || r.formattedTime || '',
+                r.distance || '',
+                r.avgPace || '',
+                r.avgHeartRate || ''
+            ];
+        });
+
+    downloadCSV(`全員エルゴ_${formatDate(new Date())}.csv`, headers, rows);
+    showToast(`${rows.length}件のエルゴ記録を出力しました（メンバー別ソート）`, 'success');
 }
