@@ -1069,6 +1069,39 @@
                 <div class="crew-info-card" id="crew-detail-info">
                     <!-- メンバー情報など -->
                 </div>
+
+                <!-- YouTube再生リスト -->
+                <div class="form-group" style="margin:12px 0;">
+                    <label style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                        <span style="font-size:16px;">🎬</span> YouTube再生リスト
+                    </label>
+                    <div id="crew-playlist-display" style="display:none;">
+                        <a id="crew-playlist-link" href="#" target="_blank"
+                            style="display:flex;align-items:center;gap:8px;padding:12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:10px;text-decoration:none;color:#e0e0e0;transition:background 0.2s;">
+                            <span style="font-size:24px;">▶️</span>
+                            <div style="flex:1;">
+                                <div style="font-size:14px;font-weight:600;color:#fff;">再生リストを開く</div>
+                                <div id="crew-playlist-url-display"
+                                    style="font-size:11px;color:#888;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:250px;">
+                                </div>
+                            </div>
+                            <span style="color:#555;">↗</span>
+                        </a>
+                        <button id="crew-playlist-edit-btn" class="secondary-btn small-btn"
+                            style="margin-top:6px;width:100%;">URLを変更</button>
+                    </div>
+                    <div id="crew-playlist-input-group">
+                        <div style="display:flex;gap:6px;">
+                            <input type="url" id="crew-playlist-url" placeholder="YouTubeの再生リストURLを貼り付け"
+                                style="flex:1;padding:10px;border:1px solid rgba(255,255,255,0.1);border-radius:8px;background:rgba(255,255,255,0.05);color:#e0e0e0;font-size:13px;">
+                            <button id="save-playlist-btn" class="primary-btn"
+                                style="white-space:nowrap;padding:10px 16px;">保存</button>
+                        </div>
+                        <p style="font-size:11px;color:#666;margin-top:4px;">例:
+                            https://youtube.com/playlist?list=PLxxxxxx</p>
+                    </div>
+                </div>
+
                 <div class="section-title">練習履歴・ノート</div>
                 <div id="crew-history-list" class="history-list">
                     <!-- 履歴リスト -->
@@ -1221,16 +1254,6 @@
                 <div class="form-group hidden" id="crew-member-select-group">
                     <label>メンバー</label>
                     <div id="crew-member-select-list"></div>
-                </div>
-                <div class="form-group">
-                    <label>動画URL (YouTubeなど)</label>
-                    <div class="video-input-container">
-                        <textarea id="crew-note-video-bulk" rows="3"
-                            placeholder="動画のURLリストや、URLを含むメッセージをここに貼り付けてください。自動で抽出します。"></textarea>
-                        <button id="extract-videos-btn" class="secondary-btn small-btn">URL抽出・追加</button>
-                    </div>
-                    <div id="video-list" class="video-list"></div>
-                    <div id="video-preview-container" class="video-preview-container"></div>
                 </div>
                 <div class="form-group">
                     <label>振り返り・日記</label>

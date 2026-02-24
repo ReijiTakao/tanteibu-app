@@ -8694,6 +8694,13 @@ function extractCrewsFromSchedules() {
     }
 
     state.crews = Array.from(crewMap.values()).sort((a, b) => new Date(b.lastPractice) - new Date(a.lastPractice));
+
+    // playlistUrlをLocalStorageから復元
+    const savedPlaylists = DB.load('crews_playlist') || [];
+    savedPlaylists.forEach(p => {
+        const crew = state.crews.find(c => c.hash === p.hash);
+        if (crew && p.playlistUrl) crew.playlistUrl = p.playlistUrl;
+    });
 }
 
 // スケジュールから自動でクルーノートを作成または更新
@@ -8994,13 +9001,11 @@ function openCrewDetail(hash) {
 
     historyList.innerHTML = historyItems.length ? historyItems.map(n => {
         const d = formatDisplayDate(n.date);
-        const videoCount = n.videoUrls?.length || 0;
         const contentPreview = n.content ? n.content.substring(0, 50) + (n.content.length > 50 ? '…' : '') : '';
         return `<div class="history-card" onclick="openCrewNoteEdit('${hash}', '${n.date}')">
             <div class="history-card-header">
                 <span class="history-card-date">${d.month}/${d.day}（${d.weekday}）</span>
                 <div class="history-card-badges">
-                    ${videoCount > 0 ? `<span class="history-badge video-badge">📹 ${videoCount}</span>` : ''}
                 </div>
             </div>
             ${contentPreview ? `<div class="history-card-content">${contentPreview}</div>` : '<div class="history-card-empty">タップして記録を確認</div>'}
@@ -9009,6 +9014,51 @@ function openCrewDetail(hash) {
 
     addBtn.onclick = () => {
         openCrewNoteEdit(hash, formatDate(new Date()));
+    };
+
+    // --- YouTube再生リスト管理 ---
+    const playlistDisplay = document.getElementById('crew-playlist-display');
+    const playlistInputGroup = document.getElementById('crew-playlist-input-group');
+    const playlistUrlInput = document.getElementById('crew-playlist-url');
+    const playlistLink = document.getElementById('crew-playlist-link');
+    const playlistUrlDisplay = document.getElementById('crew-playlist-url-display');
+    const savePlaylistBtn = document.getElementById('save-playlist-btn');
+    const editPlaylistBtn = document.getElementById('crew-playlist-edit-btn');
+
+    const showPlaylistState = (url) => {
+        if (url) {
+            playlistDisplay.style.display = 'block';
+            playlistInputGroup.style.display = 'none';
+            playlistLink.href = url;
+            playlistUrlDisplay.textContent = url;
+        } else {
+            playlistDisplay.style.display = 'none';
+            playlistInputGroup.style.display = 'block';
+            playlistUrlInput.value = '';
+        }
+    };
+
+    showPlaylistState(crew.playlistUrl || '');
+
+    savePlaylistBtn.onclick = () => {
+        const url = playlistUrlInput.value.trim();
+        if (!url) {
+            showToast('URLを入力してください', 'error');
+            return;
+        }
+        // crewオブジェクトに保存
+        crew.playlistUrl = url;
+        // crewNotes内の該当crewHashのノートにもplaylistUrlを付与（同期用）
+        DB.save('crews_playlist', state.crews.map(c => ({ hash: c.hash, playlistUrl: c.playlistUrl })).filter(c => c.playlistUrl));
+        showPlaylistState(url);
+        showToast('再生リストを保存しました', 'success');
+    };
+
+    editPlaylistBtn.onclick = () => {
+        playlistDisplay.style.display = 'none';
+        playlistInputGroup.style.display = 'block';
+        playlistUrlInput.value = crew.playlistUrl || '';
+        playlistUrlInput.focus();
     };
 
     modal.classList.remove('hidden');
@@ -9110,17 +9160,13 @@ function renderCrewMemberReflections(crew) {
 function openCrewNoteEdit(hash, date) {
     const modal = document.getElementById('crew-note-modal');
     const dateInput = document.getElementById('crew-note-date');
-    const videoBulkInput = document.getElementById('crew-note-video-bulk');
-    const videoList = document.getElementById('video-list');
     const contentInput = document.getElementById('crew-note-content');
     const memberSelectGroup = document.getElementById('crew-member-select-group');
     const boatSelectGroup = document.getElementById('crew-boat-select-group');
-    const previewContainer = document.getElementById('video-preview-container');
 
     let note = null;
     let memberIds = [];
     let boatType = '1x';
-    let currentVideoUrls = []; // 編集中の一時保存
 
     if (hash) {
         // 既存クルーのノート（編集または新規日付）
@@ -9143,84 +9189,6 @@ function openCrewNoteEdit(hash, date) {
 
     dateInput.value = date;
     contentInput.value = note?.content || '';
-
-    // データ移行用: videoUrl(旧)があれば videoUrls(新)へ
-    if (note?.videoUrl && (!note.videoUrls || note.videoUrls.length === 0)) {
-        currentVideoUrls = [note.videoUrl];
-    } else {
-        currentVideoUrls = note?.videoUrls ? [...note.videoUrls] : [];
-    }
-
-    if (videoBulkInput) videoBulkInput.value = '';
-
-    // 動画リスト描画関数
-    const renderVideos = () => {
-        if (!videoList) return;
-        videoList.innerHTML = currentVideoUrls.map((url, index) => `
-            <div class="video-list-item">
-                <span class="video-url-text">${url}</span>
-                <button class="delete-video-btn" data-index="${index}">×</button>
-            </div>
-        `).join('');
-
-        // プレビューも更新
-        if (previewContainer) {
-            previewContainer.innerHTML = currentVideoUrls.map(url => {
-                let videoId = null;
-                if (url.includes('youtube.com/watch?v=')) {
-                    videoId = url.split('v=')[1]?.split('&')[0];
-                } else if (url.includes('youtu.be/')) {
-                    videoId = url.split('youtu.be/')[1];
-                }
-
-                if (videoId) {
-                    return `<div class="video-preview-item">
-                        <iframe src="https://www.youtube.com/embed/${videoId}" allowfullscreen></iframe>
-                    </div>`;
-                } else {
-                    return `<div class="video-preview-item no-embed">
-                        <a href="${url}" target="_blank">🔗 動画を開く</a>
-                    </div>`;
-                }
-            }).join('');
-        }
-
-        // 削除ボタンイベント
-        if (videoList) {
-            videoList.querySelectorAll('.delete-video-btn').forEach(btn => {
-                btn.onclick = (e) => { // onclickに変更 (removeEventListener回避)
-                    const idx = parseInt(e.target.dataset.index);
-                    currentVideoUrls.splice(idx, 1);
-                    renderVideos();
-                };
-            });
-        }
-    };
-
-    renderVideos();
-
-    // URL抽出ボタン
-    const extractBtn = document.getElementById('extract-videos-btn');
-    if (extractBtn) {
-        extractBtn.onclick = () => {
-            const text = videoBulkInput.value;
-            const urls = text.match(/https?:\/\/[^\s]+/g);
-            if (urls) {
-                let addedCount = 0;
-                urls.forEach(url => {
-                    if (!currentVideoUrls.includes(url)) {
-                        currentVideoUrls.push(url);
-                        addedCount++;
-                    }
-                });
-                videoBulkInput.value = ''; // クリア
-                renderVideos();
-                showToast(`${addedCount}件のURLを追加しました`, 'success');
-            } else {
-                showToast('URLが見つかりませんでした', 'info');
-            }
-        };
-    }
 
     // 保存処理
     document.getElementById('save-crew-note-btn').onclick = () => {
@@ -9252,7 +9220,7 @@ function openCrewNoteEdit(hash, date) {
             memberIds: memberIds,
             boatType: boatType,
             content: newContent,
-            videoUrls: currentVideoUrls, // 配列で保存
+            videoUrls: [], // 動画はクルー単位の再生リストに移行
             authorId: state.currentUser.id
         });
 
