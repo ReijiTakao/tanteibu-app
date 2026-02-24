@@ -590,6 +590,106 @@
                 </div>
             </div>
 
+            <!-- データエクスポートタブ -->
+            <div id="tab-data-export" class="tab-content hidden">
+                <h2 class="tab-title">📥 データエクスポート</h2>
+                <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">
+                    各データをCSV形式でダウンロードし、スプレッドシートで分析できます。</p>
+
+                <!-- 日付範囲フィルタ -->
+                <div
+                    style="background:var(--bg-white);border-radius:12px;padding:14px;margin-bottom:16px;border:1px solid var(--border-color);">
+                    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px;">📅 期間指定（任意）</label>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                        <input type="date" id="export-date-from"
+                            style="flex:1;min-width:120px;padding:8px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-light);color:var(--text-primary);font-size:13px;">
+                        <span style="color:var(--text-muted);">〜</span>
+                        <input type="date" id="export-date-to"
+                            style="flex:1;min-width:120px;padding:8px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-light);color:var(--text-primary);font-size:13px;">
+                    </div>
+                    <p style="font-size:11px;color:var(--text-muted);margin-top:4px;">未指定の場合は全データを出力します</p>
+                </div>
+
+                <!-- エクスポートカード -->
+                <div style="display:flex;flex-direction:column;gap:12px;">
+
+                    <!-- スケジュール -->
+                    <div
+                        style="background:var(--bg-white);border-radius:12px;padding:16px;border:1px solid var(--border-color);">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div>
+                                <div style="font-weight:700;font-size:15px;">📅 練習スケジュール</div>
+                                <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+                                    全メンバーの練習予定（日付・時間帯・種目・艇・クルー）</div>
+                            </div>
+                            <button onclick="exportSchedulesCSV()" class="primary-btn"
+                                style="white-space:nowrap;padding:8px 16px;font-size:13px;">CSV出力</button>
+                        </div>
+                        <div id="export-schedule-count" style="font-size:11px;color:var(--text-muted);margin-top:8px;">
+                        </div>
+                    </div>
+
+                    <!-- エルゴ記録 -->
+                    <div
+                        style="background:var(--bg-white);border-radius:12px;padding:16px;border:1px solid var(--border-color);">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div>
+                                <div style="font-weight:700;font-size:15px;">🏋️ エルゴ記録</div>
+                                <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+                                    全メンバーのエルゴデータ（種目・タイム・距離・スプリット）</div>
+                            </div>
+                            <button onclick="exportErgoCSV()" class="primary-btn"
+                                style="white-space:nowrap;padding:8px 16px;font-size:13px;">CSV出力</button>
+                        </div>
+                        <div id="export-ergo-count" style="font-size:11px;color:var(--text-muted);margin-top:8px;">
+                        </div>
+                    </div>
+
+                    <!-- 体重記録 -->
+                    <div
+                        style="background:var(--bg-white);border-radius:12px;padding:16px;border:1px solid var(--border-color);">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div>
+                                <div style="font-weight:700;font-size:15px;">⚖️ 体重記録</div>
+                                <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">全メンバーの体重推移データ</div>
+                            </div>
+                            <button onclick="exportWeightCSV()" class="primary-btn"
+                                style="white-space:nowrap;padding:8px 16px;font-size:13px;">CSV出力</button>
+                        </div>
+                        <div id="export-weight-count" style="font-size:11px;color:var(--text-muted);margin-top:8px;">
+                        </div>
+                    </div>
+
+                    <!-- 設備一覧 -->
+                    <div
+                        style="background:var(--bg-white);border-radius:12px;padding:16px;border:1px solid var(--border-color);">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div>
+                                <div style="font-weight:700;font-size:15px;">🚣 設備一覧</div>
+                                <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">船・オールの一覧と状態</div>
+                            </div>
+                            <button onclick="exportEquipmentCSV()" class="primary-btn"
+                                style="white-space:nowrap;padding:8px 16px;font-size:13px;">CSV出力</button>
+                        </div>
+                    </div>
+
+                    <!-- メンバー一覧 -->
+                    <div
+                        style="background:var(--bg-white);border-radius:12px;padding:16px;border:1px solid var(--border-color);">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div>
+                                <div style="font-weight:700;font-size:15px;">👥 メンバー一覧</div>
+                                <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">部員名簿（氏名・学年・ロール・性別）
+                                </div>
+                            </div>
+                            <button onclick="exportMembersCSV()" class="primary-btn"
+                                style="white-space:nowrap;padding:8px 16px;font-size:13px;">CSV出力</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
             <!-- 7. 設定タブ -->
             <div id="tab-settings" class="tab-content hidden">
                 <h2 class="tab-title">設定</h2>
@@ -609,8 +709,7 @@
                                 <option value="コーチ">コーチ</option>
                                 <option value="Cox">Cox</option>
                                 <option value="漕手">漕手</option>
-                                <option value="マネージャー" disabled>マネージャー (Coming Soon)</option>
-                                <option value="データ班" disabled>データ班 (Coming Soon)</option>
+                                <option value="データ班">データ班</option>
                             </select>
                         </div>
                         <div class="settings-item">
@@ -782,6 +881,10 @@
             <button class="nav-item" data-tab="crew-note" data-roles="rower,cox,admin,coach">
                 <span class="nav-icon">📖</span>
                 <span class="nav-label">ノート</span>
+            </button>
+            <button class="nav-item" data-tab="data-export" data-roles="data,admin">
+                <span class="nav-icon">📥</span>
+                <span class="nav-label">データ</span>
             </button>
             <button class="nav-item" data-tab="settings" data-roles="all">
                 <span class="nav-icon">⚙️</span>
