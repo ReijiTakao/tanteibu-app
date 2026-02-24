@@ -1,6 +1,6 @@
 // Service Worker for 端艇部管理 PWA
 // バージョンを更新するとキャッシュが自動リフレッシュされます
-const CACHE_VERSION = 'tanteibu-v21';
+const CACHE_VERSION = 'tanteibu-v22';
 const CACHE_NAME = CACHE_VERSION;
 
 // クライアントからの更新要求を受信
@@ -17,6 +17,7 @@ const STATIC_ASSETS = [
     '/styles.css',
     '/app.js',
     '/supabase-config.js',
+    '/guide.html',
     '/manifest.json',
     '/icons/icon-192.png',
     '/icons/icon-512.png'

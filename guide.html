@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>使い方ガイド - 端艇部管理</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: #0a0a1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .guide-header {
+            background: linear-gradient(135deg, #1a1a3e 0%, #0d0d2b 100%);
+            padding: 16px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            color: #e0e0e0;
+            font-size: 18px;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .back-btn:active {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .guide-header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .guide-hero {
+            padding: 28px 20px 20px;
+            text-align: center;
+            background: linear-gradient(180deg, #0d0d2b 0%, #0a0a1a 100%);
+        }
+
+        .guide-hero .app-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .guide-hero h2 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+
+        .guide-hero p {
+            font-size: 13px;
+            color: #888;
+            line-height: 1.6;
+        }
+
+        .guide-container {
+            padding: 0 16px 32px;
+        }
+
+        .guide-toc {
+            margin: 16px 0 24px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 14px;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .guide-toc h3 {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .toc-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            cursor: pointer;
+            transition: opacity 0.2s;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .toc-item:last-child {
+            border-bottom: none;
+        }
+
+        .toc-item:active {
+            opacity: 0.6;
+        }
+
+        .toc-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .toc-item span {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .guide-section {
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            overflow: hidden;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+            user-select: none;
+        }
+
+        .section-header:active {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .section-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .section-title {
+            flex: 1;
+        }
+
+        .section-title h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .section-title p {
+            font-size: 12px;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        .section-chevron {
+            color: #555;
+            font-size: 12px;
+            transition: transform 0.3s;
+        }
+
+        .guide-section.open .section-chevron {
+            transform: rotate(90deg);
+        }
+
+        .section-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+        }
+
+        .guide-section.open .section-body {
+            max-height: 3000px;
+        }
+
+        .section-content {
+            padding: 0 16px 16px;
+        }
+
+        .step {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .step-num {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .step-content h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e0e0e0;
+            margin-bottom: 4px;
+        }
+
+        .step-content p {
+            font-size: 13px;
+            color: #999;
+            line-height: 1.7;
+        }
+
+        .tip-box {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 10px;
+            padding: 12px;
+            margin-top: 12px;
+        }
+
+        .tip-box .tip-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #818cf8;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .tip-box p {
+            font-size: 12px;
+            color: #a0a0c0;
+            line-height: 1.6;
+        }
+
+        .badge-demo {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .install-steps {
+            margin-top: 12px;
+        }
+
+        .install-steps .device-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #e0e0e0;
+            margin: 12px 0 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .install-steps ol {
+            padding-left: 20px;
+            font-size: 13px;
+            color: #999;
+            line-height: 1.8;
+        }
+
+        .faq-item {
+            margin-bottom: 14px;
+        }
+
+        .faq-item .q {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e0e0e0;
+            margin-bottom: 4px;
+        }
+
+        .faq-item .a {
+            font-size: 13px;
+            color: #999;
+            line-height: 1.7;
+        }
+
+        /* Color themes for sections */
+        .bg-blue {
+            background: rgba(59, 130, 246, 0.15);
+        }
+
+        .bg-green {
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        .bg-purple {
+            background: rgba(139, 92, 246, 0.15);
+        }
+
+        .bg-orange {
+            background: rgba(245, 158, 11, 0.15);
+        }
+
+        .bg-pink {
+            background: rgba(236, 72, 153, 0.15);
+        }
+
+        .bg-teal {
+            background: rgba(20, 184, 166, 0.15);
+        }
+
+        .bg-red {
+            background: rgba(239, 68, 68, 0.15);
+        }
+
+        .bg-indigo {
+            background: rgba(99, 102, 241, 0.15);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="guide-header">
+        <button class="back-btn" onclick="history.back()">←</button>
+        <h1>📖 使い方ガイド</h1>
+    </div>
+
+    <div class="guide-hero">
+        <div class="app-icon">🚣</div>
+        <h2>端艇部管理アプリ</h2>
+        <p>練習予定・設備・エルゴ記録・クルーノートを<br>チーム全体で一括管理するアプリです</p>
+    </div>
+
+    <div class="guide-container">
+
+        <!-- 目次 -->
+        <div class="guide-toc">
+            <h3>📋 目次</h3>
+            <a class="toc-item" href="#install"><span class="toc-icon bg-blue">📲</span><span>インストール方法</span></a>
+            <a class="toc-item" href="#login"><span class="toc-icon bg-green">🔐</span><span>ログイン・初期設定</span></a>
+            <a class="toc-item" href="#schedule"><span class="toc-icon bg-purple">📅</span><span>練習予定の入力</span></a>
+            <a class="toc-item" href="#boat"><span class="toc-icon bg-orange">🚣</span><span>乗艇練習の登録</span></a>
+            <a class="toc-item" href="#overview"><span class="toc-icon bg-teal">👥</span><span>全体スケジュール確認</span></a>
+            <a class="toc-item" href="#ergo"><span class="toc-icon bg-pink">🏋️</span><span>エルゴ記録</span></a>
+            <a class="toc-item" href="#equip"><span class="toc-icon bg-red">⚙️</span><span>設備管理</span></a>
+            <a class="toc-item" href="#faq"><span class="toc-icon bg-indigo">❓</span><span>よくある質問</span></a>
+        </div>
+
+        <!-- インストール -->
+        <div class="guide-section" id="install">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-icon bg-blue">📲</div>
+                <div class="section-title">
+                    <h3>インストール方法</h3>
+                    <p>ホーム画面に追加する手順</p>
+                </div>
+                <span class="section-chevron">▶</span>
+            </div>
+            <div class="section-body">
+                <div class="section-content">
+                    <p style="font-size:13px;color:#999;margin-bottom:8px;">このアプリはPWA（Progressive Web
+                        App）です。ブラウザからホーム画面に追加すると、ネイティブアプリのように使えます。</p>
+
+                    <div class="install-steps">
+                        <div class="device-label">🍎 iPhoneの場合</div>
+                        <ol>
+                            <li>Safariでアプリを開く</li>
+                            <li>画面下部の <strong>共有ボタン（□↑）</strong> をタップ</li>
+                            <li>「<strong>ホーム画面に追加</strong>」を選択</li>
+                            <li>「追加」をタップして完了！</li>
+                        </ol>
+
+                        <div class="device-label">🤖 Androidの場合</div>
+                        <ol>
+                            <li>Chromeでアプリを開く</li>
+                            <li>画面上部に表示される<strong>「インストール」バナー</strong>をタップ</li>
+                            <li>または右上の <strong>⋮メニュー → 「アプリをインストール」</strong></li>
+                            <li>「インストール」をタップして完了！</li>
+                        </ol>
+                    </div>
+
+                    <div class="tip-box">
+                        <div class="tip-label">💡 ポイント</div>
+                        <p>ホーム画面から起動すると全画面表示になり、通常のアプリと同じ感覚で使えます。オフラインでも基本機能は動作します。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ログイン -->
+        <div class="guide-section" id="login">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-icon bg-green">🔐</div>
+                <div class="section-title">
+                    <h3>ログイン・初期設定</h3>
+                    <p>アカウント作成と基本設定</p>
+                </div>
+                <span class="section-chevron">▶</span>
+            </div>
+            <div class="section-body">
+                <div class="section-content">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-content">
+                            <h4>新規登録</h4>
+                            <p>ログイン画面で「新規登録」をタップし、氏名を入力して登録します。管理者の承認後にログインできます。</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-content">
+                            <h4>プロフィール設定</h4>
+                            <p>設定タブ（⚙️）で以下を設定してください：</p>
+                            <p>• <strong>権限</strong>：漕手 / コックス / コーチ / マネージャー<br>
+                                • <strong>学年</strong>：1〜4年<br>
+                                • <strong>性別</strong>：男 / 女<br>
+                                • <strong>サイド</strong>：B（バウサイド）/ S（ストロークサイド）</p>
+                        </div>
+                    </div>
+
+                    <div class="tip-box">
+                        <div class="tip-label">💡 デモモード</div>
+                        <p>ログイン画面の「🧪 デモモード」をタップすると、データを保存せずに機能を試すことができます。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 練習予定 -->
+        <div class="guide-section" id="schedule">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-icon bg-purple">📅</div>
+                <div class="section-title">
+                    <h3>練習予定の入力</h3>
+                    <p>午前・午後の予定を登録</p>
+                </div>
+                <span class="section-chevron">▶</span>
+            </div>
+            <div class="section-body">
+                <div class="section-content">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-content">
+                            <h4>日付と時間帯を選ぶ</h4>
+                            <p>入力タブ（📅）のカレンダーから「午前」または「午後」をタップします。</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-content">
+                            <h4>練習種別を選ぶ</h4>
+                            <p>上部のボタンから種別を選びます：</p>
+                            <p>🚣 <strong>乗艇</strong> / 🏋️ <strong>エルゴ</strong> / 💪 <strong>ウエイト</strong> / 🏃
+                                <strong>ラン</strong> / ❌ <strong>参加不可</strong> / 🏖️ <strong>OFF</strong></p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-content">
+                            <h4>詳細を入力して保存</h4>
+                            <p>開始時間やメモなどを入力し、「保存」をタップ。カレンダーに反映されます。</p>
+                        </div>
+                    </div>
+
+                    <div class="tip-box">
+                        <div class="tip-label">💡 予定の変更・削除</div>
+                        <p>登録済みの枠をタップすると編集画面が開きます。画面下部の「削除」ボタンで削除できます。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 乗艇練習 -->
+        <div class="guide-section" id="boat">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-icon bg-orange">🚣</div>
+                <div class="section-title">
+                    <h3>乗艇練習の登録</h3>
+                    <p>船・オール・クルーの設定</p>
+                </div>
+                <span class="section-chevron">▶</span>
+            </div>
+            <div class="section-body">
+                <div class="section-content">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-content">
+                            <h4>艇種を選ぶ</h4>
+                            <p>1x / 2x / 2- / 4x / 4+ / 8+ から艇種を選びます。選んだ艇種に合った船とオールが自動でフィルタされます。</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-content">
+                            <h4>船とオールを選ぶ</h4>
+                            <p>🟢(使用可能) / 🔴(故障)
+                                のバッジ付きで状態が確認できます。スカルは<strong>セット単位</strong>、スイープは<strong>本単位</strong>で必要数が表示されます。</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-content">
+                            <h4>クルーを編成する</h4>
+                            <p>各シート（B/2/3/…/S/Cox）をタップして、メンバーを検索・割り当てます。自分もシートに割り当てできます。</p>
+                        </div>
+                    </div>
+
+                    <div class="tip-box">
+                        <div class="tip-label">🔄 前回の乗艇を読み込む</div>
+                        <p>艇種選択の横にある「🔄 前回の乗艇を読み込む」ボタンで、直近の乗艇データ（船・オール・クルー全て）を一括復元できます。同じクルーで繰り返し乗る時に便利です。</p>
+                    </div>
+
+                    <div class="tip-box" style="margin-top:8px;">
+                        <div class="tip-label">👥 クルー自動登録</div>
+                        <p>保存時、クルーメンバー全員に同じスケジュールが自動登録されます。既に予定がある場合は確認ダイアログが表示されます。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 全体スケジュール -->
+        <div class="guide-section" id="overview">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-icon bg-teal">👥</div>
+                <div class="section-title">
+                    <h3>全体スケジュール確認</h3>
+                    <p>チーム全員の予定を一覧表示</p>
+                </div>
+                <span class="section-chevron">▶</span>
+            </div>
+            <div class="section-body">
+                <div class="section-content">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-content">
+                            <h4>全体タブを開く</h4>
+                            <p>下部ナビの「全体」タブをタップすると、選択日のチーム全員の予定が表示されます。</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-content">
+                            <h4>スケジュールの見方</h4>
+                            <p>午前・午後ごとに、時間別→種別別 でグループ表示されます。乗艇はクルー単位でまとまり、誰がどの船に乗るか一目でわかります。</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-content">
+                            <h4>未登録者の確認</h4>
+                            <p>「未登録」セクションにまだ予定を入力していないメンバーが表示されます。登録の声かけに活用してください。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- エルゴ記録 -->
+        <div class="guide-section" id="ergo">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-icon bg-pink">🏋️</div>
+                <div class="section-title">
+                    <h3>エルゴ記録</h3>
+                    <p>エルゴデータとランキング</p>
+                </div>
+                <span class="section-chevron">▶</span>
+            </div>
+            <div class="section-body">
+                <div class="section-content">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-content">
+                            <h4>自動記録</h4>
+                            <p>エルゴ練習のスケジュールを保存すると、エルゴ記録が自動作成されます。スプリットやIDT（理想タイム）も計算されます。</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-content">
+                            <h4>ランキング確認</h4>
+                            <p>エルゴタブでカテゴリ（距離/タイム/インターバル）→メニューを選ぶと、チーム内ランキングと自分のベスト記録が表示されます。</p>
+                        </div>
+                    </div>
+
+                    <div class="tip-box">
+                        <div class="tip-label">🔗 Concept2連携</div>
+                        <p>設定タブからConcept2のアクセストークンを登録すると、Concept2 Logbookのデータが自動同期されます。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 設備管理 -->
+        <div class="guide-section" id="equip">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-icon bg-red">⚙️</div>
+                <div class="section-title">
+                    <h3>設備管理</h3>
+                    <p>船・オールの状態管理</p>
+                </div>
+                <span class="section-chevron">▶</span>
+            </div>
+            <div class="section-body">
+                <div class="section-content">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-content">
+                            <h4>設備一覧を確認</h4>
+                            <p>設備タブで船・オールの一覧と状態（🟢使用可能/🔴故障/🟠修理中）が確認できます。オールはスイープ・スカルで分類表示されます。</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-content">
+                            <h4>状態を変更する</h4>
+                            <p>設備をタップして詳細画面を開き、ステータスを変更できます（管理者権限が必要です）。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- よくある質問 -->
+        <div class="guide-section" id="faq">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-icon bg-indigo">❓</div>
+                <div class="section-title">
+                    <h3>よくある質問</h3>
+                    <p>困った時はこちら</p>
+                </div>
+                <span class="section-chevron">▶</span>
+            </div>
+            <div class="section-body">
+                <div class="section-content">
+                    <div class="faq-item">
+                        <div class="q">Q. データは他の人にも見える？</div>
+                        <div class="a">A. スケジュールは全体タブで全員に表示されます。個人のエルゴ記録はランキングに反映されます。練習ノートは自分のみ閲覧・編集できます。</div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="q">Q. 機種変更してもデータは残る？</div>
+                        <div class="a">A. はい。データはSupabase（クラウド）に同期されているので、同じアカウントでログインすればデータが復元されます。</div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="q">Q. オフラインでも使える？</div>
+                        <div class="a">A. 基本機能は使えます。オフライン時の変更はオンライン復帰後に自動同期されます。</div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="q">Q. アプリが更新されない</div>
+                        <div class="a">A. 設定タブの「更新確認」ボタンをタップするか、アプリを完全に閉じて再起動してください。</div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="q">Q. ログインできない</div>
+                        <div class="a">A. 新規登録後は管理者の承認が必要です。しばらく待ってから再度お試しください。</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function toggleSection(header) {
+            const section = header.closest('.guide-section');
+            section.classList.toggle('open');
+        }
+
+        // 目次クリックでセクションを開く
+        document.querySelectorAll('.toc-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const href = item.getAttribute('href');
+                const section = document.querySelector(href);
+                if (section) {
+                    section.classList.add('open');
+                    setTimeout(() => {
+                        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 100);
+                }
+            });
+        });
+    </script>
+
+</body>
+
+</html>
