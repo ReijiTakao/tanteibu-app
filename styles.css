@@ -5037,6 +5037,28 @@ textarea {
     transition: transform 0.1s ease;
     border-left: 3px solid var(--primary-color);
     box-shadow: var(--shadow-sm);
+    position: relative;
+}
+
+.crew-note-delete-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    opacity: 0.4;
+    transition: opacity 0.2s;
+    padding: 2px 4px;
+    border-radius: 4px;
+    z-index: 2;
+}
+
+.crew-note-delete-btn:hover,
+.crew-note-delete-btn:active {
+    opacity: 1;
+    background: rgba(239, 68, 68, 0.1);
 }
 
 .history-card:active {

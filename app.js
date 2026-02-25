@@ -9503,6 +9503,50 @@ function saveCrewNote(noteData) {
     return note;
 }
 
+// クルーノート削除
+function deleteCrewNote(noteId, crewHash) {
+    const note = state.crewNotes.find(n => n.id === noteId);
+    if (!note) return;
+
+    const d = formatDisplayDate(note.date);
+    if (!confirm(`${d.month}/${d.day}（${d.weekday}）のクルーノートを削除しますか？\nこの操作は元に戻せません。`)) {
+        return;
+    }
+
+    // state.crewNotesから削除
+    state.crewNotes = state.crewNotes.filter(n => n.id !== noteId);
+    DB.save('crew_notes', state.crewNotes);
+
+    // Supabase削除
+    if (DB.useSupabase && window.SupabaseConfig?.isReady()) {
+        try {
+            window.SupabaseConfig.getClient()
+                .from('crew_notes')
+                .delete()
+                .eq('id', noteId)
+                .then(() => { });
+        } catch (e) { /* ignore */ }
+    }
+
+    // 練習ノートからのリンク解除
+    state.practiceNotes.forEach(pn => {
+        if (pn.crewNoteId === noteId) {
+            pn.crewNoteId = null;
+        }
+    });
+    DB.save('practice_notes', state.practiceNotes);
+
+    // クルーリスト再構築
+    extractCrewsFromSchedules();
+
+    showToast('クルーノートを削除しました', 'success');
+
+    // モーダルをリフレッシュ
+    if (crewHash) {
+        openCrewDetail(crewHash);
+    }
+}
+
 // UIロジック: クルーノート
 
 let isCrewNoteInitialized = false;
@@ -9681,6 +9725,7 @@ function openCrewDetail(hash) {
                 </div>
             </div>
             ${contentPreview ? `<div class="history-card-content">${contentPreview}</div>` : '<div class="history-card-empty">タップして記録を確認</div>'}
+            <button class="crew-note-delete-btn" onclick="event.stopPropagation();deleteCrewNote('${n.id}','${hash}')" title="削除">🗑️</button>
         </div>`;
     }).join('') : '<div class="empty-state"><p>ノート履歴がありません</p></div>';
 
