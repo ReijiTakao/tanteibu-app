@@ -4213,7 +4213,7 @@ function renderMyPracticeDashboard() {
 
     // --- 3. カレンダーヒートマップ ---
     if (!dashCalMonth) dashCalMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const calendarHtml = renderDashCalendar(mySchedules, dashCalMonth, todayStr);
+    // calendarHtml is now rendered inline with summary
 
     // ヘッダー（常時表示、タップで開閉）
     const summaryBadges = summaryInfo.items.slice(0, 3).map(item =>
@@ -4244,23 +4244,7 @@ function renderMyPracticeDashboard() {
                 </div>
             </div>
 
-            <div class="my-dash-summary">
-                <div class="my-dash-summary-header">
-                    <div class="my-dash-summary-title">📊 ${today.getMonth() + 1}月のサマリー</div>
-                    <div class="my-dash-summary-days">${summaryInfo.activeDays}日 / ${summaryInfo.totalDays}日</div>
-                </div>
-                <div class="my-dash-summary-grid">
-                    ${summaryInfo.items.map(item => `
-                        <div class="my-dash-summary-item ${item.cls}">
-                            <div class="my-dash-summary-item-count">${item.count}</div>
-                            <div class="my-dash-summary-item-label">${item.icon} ${item.label}</div>
-                            <div class="my-dash-summary-item-diff ${item.diffCls}">${item.diffText}</div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-
-            ${calendarHtml}
+            ${renderDashCalendarWithSummary(mySchedules, dashCalMonth, todayStr, summaryInfo, today)}
         </div>
     `;
 
@@ -4411,8 +4395,8 @@ function calcMonthlySummary(schedules, today) {
     return { items, activeDays: activeDates.size, totalDays };
 }
 
-// カレンダーヒートマップ描画（午前/午後分離・背景色・タップ詳細）
-function renderDashCalendar(schedules, viewMonth, todayStr) {
+// カレンダー＋サマリー統合ウィジェット
+function renderDashCalendarWithSummary(schedules, viewMonth, todayStr, summaryInfo, today) {
     const year = viewMonth.getFullYear();
     const month = viewMonth.getMonth();
     const firstDay = new Date(year, month, 1);
@@ -4420,13 +4404,13 @@ function renderDashCalendar(schedules, viewMonth, todayStr) {
     const startDow = (firstDay.getDay() + 6) % 7; // 月曜始まり
 
     const typeInfo = {
-        [SCHEDULE_TYPES.BOAT]: { cls: 'boat', short: '乗', icon: '🚣' },
-        [SCHEDULE_TYPES.ERGO]: { cls: 'ergo', short: 'エ', icon: '🏋️' },
-        [SCHEDULE_TYPES.WEIGHT]: { cls: 'weight', short: 'ウ', icon: '💪' },
-        [SCHEDULE_TYPES.RUN]: { cls: 'run', short: 'ラ', icon: '🏃' },
-        [SCHEDULE_TYPES.BANCHA]: { cls: 'bancha', short: '伴', icon: '🚴' },
-        [SCHEDULE_TYPES.OFF]: { cls: 'off', short: '休', icon: '🏖️' },
-        [SCHEDULE_TYPES.ABSENT]: { cls: 'absent', short: '✕', icon: '❌' }
+        [SCHEDULE_TYPES.BOAT]: { cls: 'boat', short: '🚣', icon: '🚣' },
+        [SCHEDULE_TYPES.ERGO]: { cls: 'ergo', short: '🏋️', icon: '🏋️' },
+        [SCHEDULE_TYPES.WEIGHT]: { cls: 'weight', short: '💪', icon: '💪' },
+        [SCHEDULE_TYPES.RUN]: { cls: 'run', short: '🏃', icon: '🏃' },
+        [SCHEDULE_TYPES.BANCHA]: { cls: 'bancha', short: '🚴', icon: '🚴' },
+        [SCHEDULE_TYPES.OFF]: { cls: 'off', short: '🏖️', icon: '🏖️' },
+        [SCHEDULE_TYPES.ABSENT]: { cls: 'absent', short: '❌', icon: '❌' }
     };
 
     // 日付 → { am: [{type, reason}], pm: [{type, reason}], distance: number }
@@ -4457,12 +4441,12 @@ function renderDashCalendar(schedules, viewMonth, todayStr) {
         });
     }
 
-    // セル用ヘルパー: スケジュール種別→ミニラベル
+    // セル用ヘルパー: スケジュール種別→絵文字
     function slotHtml(entries) {
         if (!entries || entries.length === 0) return '<span class="cal-slot-empty">-</span>';
         return entries.map(e => {
             const info = typeInfo[e.type] || { cls: '', short: '?', icon: '?' };
-            return `<span class="cal-slot-label ${info.cls}">${info.short}</span>`;
+            return `<span class="cal-slot-emoji">${info.short}</span>`;
         }).join('');
     }
 
@@ -4490,60 +4474,39 @@ function renderDashCalendar(schedules, viewMonth, todayStr) {
 
     const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
 
-    // 詳細ポップアップ用JS（インラインイベント）
-    const detailScript = `
-        document.querySelectorAll('.my-dash-cal-day.has-data').forEach(el => {
-            el.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const d = this.dataset.date;
-                const existing = document.getElementById('cal-detail-popup');
-                if (existing) existing.remove();
-                const popup = document.createElement('div');
-                popup.id = 'cal-detail-popup';
-                popup.className = 'cal-detail-popup';
-                const parts = d.split('-');
-                popup.innerHTML = '<b>' + parseInt(parts[1]) + '/' + parseInt(parts[2]) + '</b> の予定<br>' + this.getAttribute('data-detail');
-                popup.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;background:var(--bg-card,#1e1e2e);border:1px solid rgba(255,255,255,0.15);border-radius:12px;padding:12px 16px;font-size:12px;color:var(--text-primary,#fff);box-shadow:0 8px 24px rgba(0,0,0,0.5);max-width:280px;text-align:center;';
-                document.body.appendChild(popup);
-                setTimeout(() => popup.remove(), 3000);
-            });
-        });
-    `;
-
-    // data-detail属性を各セルに追加するための処理（renderMyPracticeDashboard側で実行）
-    // 代わりに、イベントリスナーで直接stateから取得する方式に
-    const calendarHtml = `
-        <div class="my-dash-calendar">
-            <div class="my-dash-cal-header">
-                <div class="my-dash-cal-title">🗓️ ${year}年 ${monthNames[month]}</div>
-                <div class="my-dash-cal-nav">
-                    <button id="dash-cal-prev">◀</button>
-                    <button id="dash-cal-next">▶</button>
-                </div>
-            </div>
-            <div class="my-dash-cal-weekdays">
-                <span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span><span>日</span>
-            </div>
-            <div class="my-dash-cal-grid">${cells}</div>
-            <div class="my-dash-cal-legend">
-                <div class="my-dash-cal-legend-item"><span class="cal-slot-label boat" style="font-size:9px;">乗</span>乗艇</div>
-                <div class="my-dash-cal-legend-item"><span class="cal-slot-label ergo" style="font-size:9px;">エ</span>エルゴ</div>
-                <div class="my-dash-cal-legend-item"><span class="cal-slot-label weight" style="font-size:9px;">ウ</span>ウェイト</div>
-                <div class="my-dash-cal-legend-item"><span class="cal-slot-label run" style="font-size:9px;">ラ</span>ラン</div>
-                <div class="my-dash-cal-legend-item"><span class="cal-slot-label off" style="font-size:9px;">休</span>OFF</div>
-                <div class="my-dash-cal-legend-item"><span class="cal-slot-label absent" style="font-size:9px;">✕</span>不可</div>
-            </div>
-            <div style="display:flex;justify-content:center;gap:12px;margin-top:4px;font-size:9px;color:var(--text-muted,#888);">
-                <span>上段=午前</span><span>下段=午後</span>
-            </div>
+    // サマリーグリッドHTML
+    const summaryGridHtml = summaryInfo.items.map(item => `
+        <div class="my-dash-summary-item ${item.cls}">
+            <div class="my-dash-summary-item-count">${item.count}</div>
+            <div class="my-dash-summary-item-label">${item.icon} ${item.label}</div>
+            <div class="my-dash-summary-item-diff ${item.diffCls}">${item.diffText}</div>
         </div>
-    `;
+    `).join('');
 
     // dateMapをグローバルに一時保存（タップ詳細表示用）
     window._dashCalDateMap = dateMap;
     window._dashCalTypeInfo = typeInfo;
 
-    return calendarHtml;
+    return `
+        <div class="my-dash-calendar">
+            <div class="my-dash-cal-header">
+                <div class="my-dash-cal-title">📊 ${year}年 ${monthNames[month]}</div>
+                <div class="my-dash-cal-nav">
+                    <span class="my-dash-summary-days">${summaryInfo.activeDays}日 / ${summaryInfo.totalDays}日</span>
+                    <button id="dash-cal-prev">◀</button>
+                    <button id="dash-cal-next">▶</button>
+                </div>
+            </div>
+            <div class="my-dash-summary-grid">${summaryGridHtml}</div>
+            <div class="my-dash-cal-weekdays">
+                <span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span><span>日</span>
+            </div>
+            <div class="my-dash-cal-grid">${cells}</div>
+            <div style="display:flex;justify-content:center;gap:12px;margin-top:4px;font-size:9px;color:var(--text-muted,#888);">
+                <span>上段=午前</span><span>下段=午後</span>
+            </div>
+        </div>
+    `;
 }
 
 function renderWeeklyPracticeSummary() {
