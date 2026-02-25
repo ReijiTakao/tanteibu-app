@@ -4312,7 +4312,7 @@ function renderPracticeNotesList() {
                     cardBodyHtml += `<div class="pn-card-menu-chips">`;
                     note.rowingMenus.forEach(m => {
                         const label = m.intensity || (m.mode === 'onoff' ? 'On/Off' : '通常');
-                        const intensityClass = m.intensity === 'UT' ? 'ut' : m.intensity === 'TP' ? 'tp' : m.intensity === '短力' ? 'power' : m.intensity === 'レースペース' ? 'race' : 'default';
+                        const intensityClass = m.intensity === 'UT' ? 'ut' : m.intensity === 'TP' ? 'tp' : m.intensity === '短力' ? 'power' : (m.intensity === 'RP' || m.intensity === 'レースペース') ? 'race' : 'default';
                         let detail = '';
                         if (m.mode === 'onoff') {
                             detail = `${m.onDist}on/${m.offDist}off`;
@@ -5074,7 +5074,7 @@ function addRowingMenuItem(mode, rate, distance, avgTime, onDist, offDist, wind,
                 <option value="UT" ${intensityVal === 'UT' ? 'selected' : ''}>🔵 UT</option>
                 <option value="TP" ${intensityVal === 'TP' ? 'selected' : ''}>🟢 TP</option>
                 <option value="短力" ${intensityVal === '短力' ? 'selected' : ''}>🟠 短力</option>
-                <option value="レースペース" ${intensityVal === 'レースペース' ? 'selected' : ''}>🔴 レースペース</option>
+                <option value="RP" ${intensityVal === 'RP' || intensityVal === 'レースペース' ? 'selected' : ''}>🔴 RP</option>
             </select>
             <select class="rm-wind" style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid #d1d5db;background:var(--bg-white);color:var(--text-primary);">
                 <option value="" ${!windVal ? 'selected' : ''}>🌬️ 風</option>

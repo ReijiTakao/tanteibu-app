@@ -5234,12 +5234,11 @@ textarea {
 
 .pn-menu-chip-detail {
     font-weight: 400;
-    opacity: 0.85;
+    color: var(--text-primary);
 }
 
 .pn-menu-chip-ut {
-    background: rgba(59, 130, 246, 0.12);
-    color: #2563eb;
+    background: rgba(59, 130, 246, 0.08);
 }
 
 .pn-menu-chip-ut .pn-menu-chip-label {
@@ -5247,8 +5246,7 @@ textarea {
 }
 
 .pn-menu-chip-tp {
-    background: rgba(34, 197, 94, 0.12);
-    color: #16a34a;
+    background: rgba(34, 197, 94, 0.08);
 }
 
 .pn-menu-chip-tp .pn-menu-chip-label {
@@ -5256,8 +5254,7 @@ textarea {
 }
 
 .pn-menu-chip-power {
-    background: rgba(249, 115, 22, 0.12);
-    color: #ea580c;
+    background: rgba(249, 115, 22, 0.08);
 }
 
 .pn-menu-chip-power .pn-menu-chip-label {
@@ -5265,8 +5262,7 @@ textarea {
 }
 
 .pn-menu-chip-race {
-    background: rgba(239, 68, 68, 0.12);
-    color: #dc2626;
+    background: rgba(239, 68, 68, 0.08);
 }
 
 .pn-menu-chip-race .pn-menu-chip-label {
