@@ -4799,6 +4799,79 @@ textarea {
     color: #059669;
 }
 
+/* 今週の練習 - 自分セクション */
+.wps-my-section {
+    margin-bottom: 8px;
+}
+
+.wps-my-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-color, #6366f1);
+    margin-bottom: 4px;
+}
+
+/* 今週の練習 - チーム全員セクション */
+.wps-team-section {
+    margin-top: 8px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    padding-top: 8px;
+}
+
+.wps-team-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px 0;
+    user-select: none;
+}
+
+.wps-team-toggle {
+    font-size: 10px;
+    color: var(--text-muted, #999);
+    transition: transform 0.2s;
+}
+
+.wps-team-list {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.wps-member-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px 8px;
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 8px;
+}
+
+.wps-member-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.wps-member-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.wps-member-badges .wps-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 6px;
+}
+
 /* =========================================
    メンバー振り返り一覧 (クルーノート詳細内)
    ========================================= */

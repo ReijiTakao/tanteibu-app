@@ -4188,7 +4188,7 @@ function updateMileageWeekSummary() {
     summary.textContent = `今週 ${km}km`;
 }
 
-// 週間練習サマリーウィジェット
+// 週間練習サマリーウィジェット（全部員表示対応）
 function renderWeeklyPracticeSummary() {
     const container = document.getElementById('weekly-practice-summary');
     if (!container || !state.currentUser) return;
@@ -4207,8 +4207,7 @@ function renderWeeklyPracticeSummary() {
         weekDays.push(d.toISOString().slice(0, 10));
     }
 
-    // タイプ別集計
-    const typeCounts = {};
+    // タイプ設定
     const typeConfig = {
         [SCHEDULE_TYPES.BOAT]: { icon: '🚣', label: '乗艇', cls: 'boat' },
         [SCHEDULE_TYPES.ERGO]: { icon: '🏋️', label: 'エルゴ', cls: 'ergo' },
@@ -4219,28 +4218,67 @@ function renderWeeklyPracticeSummary() {
         [SCHEDULE_TYPES.ABSENT]: { icon: '❌', label: '不可', cls: 'absent' }
     };
 
-    state.schedules
-        .filter(s => s.userId === state.currentUser.id && weekDays.includes(s.date))
-        .forEach(s => {
-            typeCounts[s.scheduleType] = (typeCounts[s.scheduleType] || 0) + 1;
-        });
+    // 全ユーザーの今週のスケジュールを集計
+    const weekSchedules = state.schedules.filter(s => weekDays.includes(s.date));
 
-    // バッジ生成（参加不可は除外）
-    let badgesHtml = '';
-    Object.entries(typeCounts).forEach(([type, count]) => {
-        if (type === SCHEDULE_TYPES.ABSENT) return;
-        const cfg = typeConfig[type] || { icon: '📋', label: type, cls: '' };
-        badgesHtml += `<span class="wps-badge ${cfg.cls}">${cfg.icon} ${cfg.label} ${count}</span>`;
+    // ユーザー別に集計する関数
+    function getUserBadges(userId) {
+        const typeCounts = {};
+        weekSchedules
+            .filter(s => s.userId === userId)
+            .forEach(s => {
+                typeCounts[s.scheduleType] = (typeCounts[s.scheduleType] || 0) + 1;
+            });
+
+        let badgesHtml = '';
+        Object.entries(typeCounts).forEach(([type, count]) => {
+            if (type === SCHEDULE_TYPES.ABSENT) return;
+            const cfg = typeConfig[type] || { icon: '📋', label: type, cls: '' };
+            badgesHtml += `<span class="wps-badge ${cfg.cls}">${cfg.icon} ${cfg.label} ${count}</span>`;
+        });
+        return badgesHtml;
+    }
+
+    // 自分のバッジ
+    const myBadges = getUserBadges(state.currentUser.id);
+
+    // アクティブユーザー一覧（自分以外）
+    const activeUsers = state.users.filter(u =>
+        u.approvalStatus === '承認済み' &&
+        u.status !== '退部' &&
+        !u.isDemo &&
+        u.id !== state.currentUser.id
+    ).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    // 他の部員のサマリー
+    let memberRows = '';
+    activeUsers.forEach(u => {
+        const badges = getUserBadges(u.id);
+        if (!badges) return; // 今週スケジュールがない人はスキップ
+        memberRows += `<div class="wps-member-row">
+            <span class="wps-member-name">${u.name}</span>
+            <div class="wps-member-badges">${badges}</div>
+        </div>`;
     });
 
-    if (!badgesHtml) {
+    if (!myBadges && !memberRows) {
         container.innerHTML = '';
         return;
     }
 
     container.innerHTML = `
         <div class="wps-title">📊 今週の練習</div>
-        <div class="wps-badges">${badgesHtml}</div>
+        ${myBadges ? `<div class="wps-my-section">
+            <div class="wps-my-label">自分</div>
+            <div class="wps-badges">${myBadges}</div>
+        </div>` : ''}
+        ${memberRows ? `<div class="wps-team-section">
+            <div class="wps-team-header" onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('.wps-team-toggle').textContent=this.nextElementSibling.classList.contains('hidden')?'▶':'▼'">
+                <span>👥 チーム全員</span>
+                <span class="wps-team-toggle">▶</span>
+            </div>
+            <div class="wps-team-list hidden">${memberRows}</div>
+        </div>` : ''}
     `;
 }
 
