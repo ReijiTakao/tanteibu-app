@@ -5191,6 +5191,135 @@ textarea {
 }
 
 /* =========================================
+   練習ノート一覧カード改善
+   ========================================= */
+/* 乗艇: 距離表示 */
+.pn-card-distance {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--primary-color);
+    line-height: 1.2;
+    margin-bottom: 4px;
+}
+
+.pn-card-distance-unit {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-left: 2px;
+}
+
+/* 乗艇: メニューチップ */
+.pn-card-menu-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+.pn-menu-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    background: rgba(100, 116, 139, 0.08);
+    color: var(--text-secondary);
+}
+
+.pn-menu-chip-label {
+    font-weight: 700;
+}
+
+.pn-menu-chip-detail {
+    font-weight: 400;
+    opacity: 0.85;
+}
+
+.pn-menu-chip-ut {
+    background: rgba(59, 130, 246, 0.12);
+    color: #2563eb;
+}
+
+.pn-menu-chip-ut .pn-menu-chip-label {
+    color: #2563eb;
+}
+
+.pn-menu-chip-tp {
+    background: rgba(34, 197, 94, 0.12);
+    color: #16a34a;
+}
+
+.pn-menu-chip-tp .pn-menu-chip-label {
+    color: #16a34a;
+}
+
+.pn-menu-chip-power {
+    background: rgba(249, 115, 22, 0.12);
+    color: #ea580c;
+}
+
+.pn-menu-chip-power .pn-menu-chip-label {
+    color: #ea580c;
+}
+
+.pn-menu-chip-race {
+    background: rgba(239, 68, 68, 0.12);
+    color: #dc2626;
+}
+
+.pn-menu-chip-race .pn-menu-chip-label {
+    color: #dc2626;
+}
+
+/* 乗艇: 風情報 */
+.pn-card-wind {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+/* エルゴ: レコード表示 */
+.pn-card-ergo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-bottom: 6px;
+}
+
+.pn-card-ergo-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    padding: 3px 0;
+}
+
+.pn-card-ergo-dist {
+    font-weight: 700;
+    color: var(--text-primary);
+    min-width: 55px;
+}
+
+.pn-card-ergo-time {
+    color: var(--text-secondary);
+}
+
+.pn-card-ergo-split {
+    color: var(--accent-color);
+    font-weight: 600;
+    font-size: 11px;
+}
+
+/* メモ（乗艇・エルゴ用） */
+.pn-card-memo {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+/* =========================================
    練習記録フィルターバー
    ========================================= */
 .pn-filter-bar {

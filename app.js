@@ -4273,49 +4273,86 @@ function renderPracticeNotesList() {
             else if (typeLabel === SCHEDULE_TYPES.WEIGHT) badgeClass = 'weight';
             else if (typeLabel === SCHEDULE_TYPES.RUN) badgeClass = 'run';
 
-            // 練習メニュー情報を組み立て
-            let menuInfoParts = [];
-            if (typeLabel === SCHEDULE_TYPES.BOAT && note.rowingDistance) {
-                menuInfoParts.push(`${(note.rowingDistance / 1000).toFixed(1)}km`);
-            }
-            if (typeLabel === SCHEDULE_TYPES.BOAT && note.rowingMenus && note.rowingMenus.length > 0) {
-                const winds = [...new Set(note.rowingMenus.map(m => m.wind).filter(Boolean))];
-                if (winds.length > 0) {
-                    const windEmoji = { '順風': '↗️', '逆風': '↙️', '横風': '↔️', '無風': '🔵', '順逆両方': '⇅' };
-                    const windText = winds.map(w => (windEmoji[w] || '') + w).join('/');
-                    menuInfoParts.push(windText);
+            // === カードボディの中身を種別ごとに構築 ===
+            let cardBodyHtml = '';
+
+            if (typeLabel === SCHEDULE_TYPES.BOAT) {
+                // --- 乗艇カード ---
+                // 距離を大きく表示
+                if (note.rowingDistance) {
+                    cardBodyHtml += `<div class="pn-card-distance">${(note.rowingDistance / 1000).toFixed(1)}<span class="pn-card-distance-unit">km</span></div>`;
+                }
+                // メニューのカテゴリ+距離をチップ表示
+                if (note.rowingMenus && note.rowingMenus.length > 0) {
+                    cardBodyHtml += `<div class="pn-card-menu-chips">`;
+                    note.rowingMenus.forEach(m => {
+                        const label = m.intensity || (m.mode === 'onoff' ? 'On/Off' : '通常');
+                        const intensityClass = m.intensity === 'UT' ? 'ut' : m.intensity === 'TP' ? 'tp' : m.intensity === '短力' ? 'power' : m.intensity === 'レースペース' ? 'race' : 'default';
+                        let detail = '';
+                        if (m.mode === 'onoff') {
+                            detail = `${m.onDist}on/${m.offDist}off`;
+                            if (m.distance) detail += ` ${m.distance}m`;
+                        } else {
+                            if (m.distance) detail += `${m.distance}m`;
+                            if (m.rate) detail += (detail ? ' ' : '') + `rt${m.rate}`;
+                        }
+                        if (m.avgTime) detail += (detail ? ' ' : '') + `Ave${m.avgTime}`;
+                        cardBodyHtml += `<span class="pn-menu-chip pn-menu-chip-${intensityClass}"><span class="pn-menu-chip-label">${label}</span>${detail ? `<span class="pn-menu-chip-detail">${detail}</span>` : ''}</span>`;
+                    });
+                    cardBodyHtml += `</div>`;
+                    // 風情報
+                    const winds = [...new Set(note.rowingMenus.map(m => m.wind).filter(Boolean))];
+                    if (winds.length > 0) {
+                        const windEmoji = { '順風': '↗️', '逆風': '↙️', '横風': '↔️', '無風': '🔵', '順逆両方': '⇅' };
+                        cardBodyHtml += `<div class="pn-card-wind">${winds.map(w => (windEmoji[w] || '') + w).join(' / ')}</div>`;
+                    }
+                }
+            } else if (typeLabel === SCHEDULE_TYPES.ERGO) {
+                // --- エルゴカード ---
+                if (hasErgo) {
+                    cardBodyHtml += `<div class="pn-card-ergo-list">`;
+                    note.ergoRecordIds.forEach(recId => {
+                        const rec = state.ergoRecords.find(r => r.id === recId);
+                        if (rec) {
+                            const distLabel = rec.distance ? `${rec.distance}m` : '';
+                            const timeLabel2 = rec.timeDisplay || '';
+                            const splitLabel = rec.split ? `${rec.split}/500m` : '';
+                            const rateLabel = rec.strokeRate ? `${rec.strokeRate}spm` : '';
+                            cardBodyHtml += `<div class="pn-card-ergo-item">
+                                <span class="pn-card-ergo-dist">${distLabel}</span>
+                                <span class="pn-card-ergo-time">${timeLabel2}</span>
+                                ${splitLabel ? `<span class="pn-card-ergo-split">${splitLabel}</span>` : ''}
+                            </div>`;
+                        }
+                    });
+                    cardBodyHtml += `</div>`;
+                } else {
+                    cardBodyHtml += `<p class="pn-menu-info" style="color:var(--text-muted);">エルゴデータ未紐付け</p>`;
+                }
+            } else {
+                // --- その他（ウエイト/ラン等）：従来通り ---
+                let menuInfoParts = [];
+                if (typeLabel === SCHEDULE_TYPES.RUN && note.runDistance) {
+                    menuInfoParts.push(`${note.runDistance}km`);
+                }
+                if (typeLabel === SCHEDULE_TYPES.WEIGHT && note.weightBodyPart) {
+                    menuInfoParts.push(note.weightBodyPart);
+                }
+                if (hasWeight) {
+                    menuInfoParts.push(`${note.weightMenus.length}種目`);
+                }
+                if (schedule?.memo) {
+                    menuInfoParts.push(schedule.memo);
+                }
+                if (menuInfoParts.length > 0) {
+                    cardBodyHtml += `<p class="pn-menu-info">${menuInfoParts.join(' / ')}</p>`;
                 }
             }
-            if (typeLabel === SCHEDULE_TYPES.RUN && note.runDistance) {
-                menuInfoParts.push(`${note.runDistance}km`);
+
+            // メモ（全タイプ共通、乗艇・エルゴ以外で表示済みなのでスキップ）
+            if ((typeLabel === SCHEDULE_TYPES.BOAT || typeLabel === SCHEDULE_TYPES.ERGO) && schedule?.memo) {
+                cardBodyHtml += `<div class="pn-card-memo">📋 ${schedule.memo}</div>`;
             }
-            if (typeLabel === SCHEDULE_TYPES.WEIGHT && note.weightBodyPart) {
-                menuInfoParts.push(note.weightBodyPart);
-            }
-            if (hasWeight) {
-                menuInfoParts.push(`${note.weightMenus.length}種目`);
-            }
-            const hasRowingMenu = note.rowingMenus && note.rowingMenus.length > 0;
-            if (hasRowingMenu) {
-                const menuSummary = note.rowingMenus.map(m => {
-                    const parts = [];
-                    if (m.intensity) parts.push(m.intensity);
-                    if (m.mode === 'onoff') {
-                        parts.push(`${m.onDist}on${m.offDist}off`);
-                    } else if (m.rate) {
-                        parts.push(`rt${m.rate}`);
-                    }
-                    return parts.join(' ');
-                }).join(', ');
-                menuInfoParts.push(menuSummary);
-            }
-            if (hasErgo) {
-                menuInfoParts.push('エルゴデータ');
-            }
-            if (schedule?.memo) {
-                menuInfoParts.push(schedule.memo);
-            }
-            const menuInfoText = menuInfoParts.length > 0 ? menuInfoParts.join(' / ') : '';
 
             html += `
                 <div class="pn-card" data-note-id="${note.id}">
@@ -4324,7 +4361,7 @@ function renderPracticeNotesList() {
                         <span class="pn-time">${timeLabel}</span>
                     </div>
                     <div class="pn-card-body">
-                        ${menuInfoText ? `<p class="pn-menu-info">${menuInfoText}</p>` : ''}
+                        ${cardBodyHtml}
                         <div class="pn-tags">
                             ${hasReflection ? '<span class="pn-tag">📝 振り返りあり</span>' : '<span class="pn-tag pn-tag-empty">振り返りを書く</span>'}
                             ${note.crewNoteId ? '<span class="pn-tag">🚣 クルー</span>' : ''}
