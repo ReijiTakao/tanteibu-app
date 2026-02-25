@@ -4298,8 +4298,14 @@ function renderPracticeNotesList() {
             const hasRowingMenu = note.rowingMenus && note.rowingMenus.length > 0;
             if (hasRowingMenu) {
                 const menuSummary = note.rowingMenus.map(m => {
-                    if (m.mode === 'onoff') return `${m.onDist}on${m.offDist}off`;
-                    return `rt${m.rate}`;
+                    const parts = [];
+                    if (m.intensity) parts.push(m.intensity);
+                    if (m.mode === 'onoff') {
+                        parts.push(`${m.onDist}on${m.offDist}off`);
+                    } else if (m.rate) {
+                        parts.push(`rt${m.rate}`);
+                    }
+                    return parts.join(' ');
                 }).join(', ');
                 menuInfoParts.push(menuSummary);
             }
@@ -4340,20 +4346,62 @@ function renderPracticeNotesList() {
     });
 }
 
-// 練習ノートモーダルを開く
+// 練習ノートモーダルを開く（閲覧モード）
 function openPracticeNoteModal(noteId) {
     const note = state.practiceNotes.find(n => n.id === noteId);
     if (!note) return;
 
-    const schedule = state.schedules.find(s => s.id === note.scheduleId);
     const modal = document.getElementById('practice-note-modal');
+    modal.dataset.noteId = noteId;
 
-    const summaryEl = document.getElementById('practice-note-summary');
+    // 閲覧モードで開く
+    document.getElementById('practice-note-read-body').classList.remove('hidden');
+    document.getElementById('practice-note-read-footer').classList.remove('hidden');
+    document.getElementById('practice-note-edit-body').classList.add('hidden');
+    document.getElementById('practice-note-edit-footer').classList.add('hidden');
+
+    const schedule = state.schedules.find(s => s.id === note.scheduleId);
     const display = formatDisplayDate(note.date);
     const typeLabel = schedule?.scheduleType || '不明';
     const timeLabel = schedule?.startTime || note.timeSlot || '';
     const memoText = schedule?.memo ? `<div class="pn-memo">📋 ${schedule.memo}</div>` : '';
 
+    // 閲覧モードのサマリー
+    document.getElementById('practice-note-read-summary').innerHTML = `
+        <div class="pn-summary-header">
+            <span class="pn-summary-date">${display.month}/${display.day} (${display.weekday})</span>
+            <span class="slot-type-badge">${typeLabel}</span>
+            ${timeLabel ? `<span class="pn-summary-time">${timeLabel}</span>` : ''}
+        </div>
+        ${memoText}
+    `;
+
+    // 閲覧ビューを描画
+    renderPracticeNoteReadView(note, schedule);
+    modal.classList.remove('hidden');
+}
+
+// 閲覧モード → 編集モードに切り替え
+function switchPracticeNoteToEdit() {
+    const modal = document.getElementById('practice-note-modal');
+    const noteId = modal.dataset.noteId;
+    const note = state.practiceNotes.find(n => n.id === noteId);
+    if (!note) return;
+
+    // モード切り替え
+    document.getElementById('practice-note-read-body').classList.add('hidden');
+    document.getElementById('practice-note-read-footer').classList.add('hidden');
+    document.getElementById('practice-note-edit-body').classList.remove('hidden');
+    document.getElementById('practice-note-edit-footer').classList.remove('hidden');
+
+    // 編集フォームを初期化
+    const schedule = state.schedules.find(s => s.id === note.scheduleId);
+    const display = formatDisplayDate(note.date);
+    const typeLabel = schedule?.scheduleType || '不明';
+    const timeLabel = schedule?.startTime || note.timeSlot || '';
+    const memoText = schedule?.memo ? `<div class="pn-memo">📋 ${schedule.memo}</div>` : '';
+
+    const summaryEl = document.getElementById('practice-note-summary');
     summaryEl.innerHTML = `
         <div class="pn-summary-header">
             <span class="pn-summary-date">${display.month}/${display.day} (${display.weekday})</span>
@@ -4425,7 +4473,6 @@ function openPracticeNoteModal(noteId) {
     const schedType = schedule?.scheduleType || note.scheduleType || '';
     if (schedType === SCHEDULE_TYPES.WEIGHT) {
         weightPartGroup.classList.remove('hidden');
-        // トグルボタンの選択状態を復元
         document.querySelectorAll('.weight-part-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.value === (note.weightBodyPart || ''));
             btn.addEventListener('click', () => {
@@ -4445,9 +4492,144 @@ function openPracticeNoteModal(noteId) {
     } else {
         weightGroup.classList.add('hidden');
     }
+}
 
-    modal.dataset.noteId = noteId;
-    modal.classList.remove('hidden');
+// 練習ノート閲覧モードのビューをレンダリング
+function renderPracticeNoteReadView(note, schedule) {
+    const container = document.getElementById('practice-note-read-view');
+    let html = '';
+    const schedType = schedule?.scheduleType || note.scheduleType || '';
+
+    // 振り返り
+    if (note.reflection && note.reflection.trim()) {
+        html += `
+            <div class="pn-rv-section">
+                <div class="pn-rv-label">📝 振り返り</div>
+                <div class="pn-rv-text">${note.reflection.replace(/\n/g, '<br>')}</div>
+            </div>
+        `;
+    } else {
+        html += `
+            <div class="pn-rv-section">
+                <div class="pn-rv-label">📝 振り返り</div>
+                <div class="pn-rv-empty">まだ書いていません</div>
+            </div>
+        `;
+    }
+
+    // 漕いだ距離（乗艇）
+    if (schedType === SCHEDULE_TYPES.BOAT && note.rowingDistance) {
+        html += `
+            <div class="pn-rv-section">
+                <div class="pn-rv-label">🏅 漕いだ距離</div>
+                <div class="pn-rv-value">${(note.rowingDistance / 1000).toFixed(1)} km <span class="pn-rv-sub">(${note.rowingDistance.toLocaleString()}m)</span></div>
+            </div>
+        `;
+    }
+
+    // 乗艇メニュー
+    if (schedType === SCHEDULE_TYPES.BOAT && note.rowingMenus && note.rowingMenus.length > 0) {
+        html += `<div class="pn-rv-section"><div class="pn-rv-label">🚣 練習メニュー</div>`;
+        note.rowingMenus.forEach((m, i) => {
+            const intensityBadge = m.intensity ? `<span class="pn-rv-intensity pn-rv-intensity-${m.intensity === 'UT' ? 'ut' : m.intensity === 'TP' ? 'tp' : m.intensity === '短力' ? 'power' : 'race'}">${m.intensity}</span>` : '';
+            const windBadge = m.wind ? `<span class="pn-rv-wind">${m.wind}</span>` : '';
+            if (m.mode === 'onoff') {
+                html += `<div class="pn-rv-menu-card">
+                    <div class="pn-rv-menu-header">${intensityBadge} On/Off ${windBadge}</div>
+                    <div class="pn-rv-menu-detail">On ${m.onDist}m / Off ${m.offDist}m${m.rate ? ` | rt${m.rate}` : ''}${m.distance ? ` | 合計${m.distance}m` : ''}${m.avgTime ? ` | Ave ${m.avgTime}` : ''}</div>
+                </div>`;
+            } else {
+                html += `<div class="pn-rv-menu-card">
+                    <div class="pn-rv-menu-header">${intensityBadge} 通常 ${windBadge}</div>
+                    <div class="pn-rv-menu-detail">${m.rate ? `rt${m.rate}` : ''}${m.distance ? ` | ${m.distance}m` : ''}${m.avgTime ? ` | Ave ${m.avgTime}` : ''}</div>
+                </div>`;
+            }
+        });
+        html += `</div>`;
+    }
+
+    // ラン距離
+    if (schedType === SCHEDULE_TYPES.RUN && note.runDistance) {
+        html += `
+            <div class="pn-rv-section">
+                <div class="pn-rv-label">🏃 走った距離</div>
+                <div class="pn-rv-value">${note.runDistance} km</div>
+            </div>
+        `;
+    }
+
+    // ウエイト部位
+    if (schedType === SCHEDULE_TYPES.WEIGHT && note.weightBodyPart) {
+        html += `
+            <div class="pn-rv-section">
+                <div class="pn-rv-label">💪 トレーニング部位</div>
+                <div class="pn-rv-value">${note.weightBodyPart}</div>
+            </div>
+        `;
+    }
+
+    // ウエイトメニュー
+    if (schedType === SCHEDULE_TYPES.WEIGHT && note.weightMenus && note.weightMenus.length > 0) {
+        html += `<div class="pn-rv-section"><div class="pn-rv-label">💪 ウェイトメニュー</div>`;
+        note.weightMenus.forEach(m => {
+            html += `<div class="pn-rv-weight-card"><div class="pn-rv-weight-name">${m.exercise}</div>`;
+            if (m.sets && Array.isArray(m.sets)) {
+                html += `<div class="pn-rv-weight-sets">`;
+                m.sets.forEach((s, i) => {
+                    html += `<div class="pn-rv-weight-set"><span class="pn-rv-set-num">${i + 1}</span> ${s.weight}kg × ${s.reps}回</div>`;
+                });
+                html += `</div>`;
+            } else {
+                // 旧形式
+                const count = (typeof m.sets === 'number' && m.sets > 0) ? m.sets : 1;
+                html += `<div class="pn-rv-weight-sets"><div class="pn-rv-weight-set">${m.weight}kg × ${m.reps}回 × ${count}セット</div></div>`;
+            }
+            html += `</div>`;
+        });
+        html += `</div>`;
+    }
+
+    // エルゴデータ
+    if (note.ergoRecordIds && note.ergoRecordIds.length > 0) {
+        html += `<div class="pn-rv-section"><div class="pn-rv-label">📊 エルゴデータ</div>`;
+        note.ergoRecordIds.forEach(recId => {
+            const rec = state.ergoRecords.find(r => r.id === recId);
+            if (rec) {
+                const distLabel = rec.distance ? `${rec.distance}m` : '?m';
+                const timeLabel = rec.timeDisplay || '?';
+                const splitLabel = rec.split ? `${rec.split}/500m` : '';
+                html += `<div class="pn-rv-ergo-item" onclick="navigateToErgoRecord('${recId}')">
+                    📊 ${distLabel} — ${timeLabel} ${splitLabel ? `(${splitLabel})` : ''} <span class="pn-rv-ergo-arrow">→</span>
+                </div>`;
+            }
+        });
+        html += `</div>`;
+    }
+
+    // クルーノート
+    if (note.crewNoteId) {
+        const crewNote = state.crews.find(c => c.id === note.crewNoteId);
+        if (crewNote) {
+            const members = (crewNote.memberIds || []).map(id => {
+                const u = state.users.find(u => u.id === id);
+                return u ? u.name : '?';
+            }).join(', ');
+            html += `
+                <div class="pn-rv-section">
+                    <div class="pn-rv-label">🚣 クルーノート</div>
+                    <div class="pn-rv-crew-link" onclick="openCrewNoteFromLink('${crewNote.id}')">
+                        ${crewNote.boatType || ''} — ${members} <span class="pn-rv-ergo-arrow">→</span>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    if (!html) {
+        html = '<div class="pn-rv-empty" style="text-align:center;padding:20px;">まだ何も入力されていません<br>✏️ 編集ボタンから入力できます</div>';
+    }
+
+    container.innerHTML = html;
 }
 
 // エルゴデータタブに遷移して指定レコードを表示
@@ -4652,7 +4834,14 @@ function savePracticeNote() {
         shareRowingMenuToCrew(note);
     }
 
-    modal.classList.add('hidden');
+    // 保存後、閲覧モードに切り替え
+    const schedule = state.schedules.find(s => s.id === note.scheduleId);
+    document.getElementById('practice-note-read-body').classList.remove('hidden');
+    document.getElementById('practice-note-read-footer').classList.remove('hidden');
+    document.getElementById('practice-note-edit-body').classList.add('hidden');
+    document.getElementById('practice-note-edit-footer').classList.add('hidden');
+    renderPracticeNoteReadView(note, schedule);
+
     renderPracticeNotesList();
     showToast('保存しました', 'success');
 }
@@ -4684,14 +4873,53 @@ function deletePracticeNote() {
 }
 
 // =========================================
-// ウェイトメニュー管理
+// ウェイトメニュー管理（複数セット対応）
 // =========================================
 
-function addWeightMenuItem(exercise, weight, reps, sets) {
+function addWeightMenuSetRow(setsContainer, weight, reps) {
+    const setIdx = setsContainer.querySelectorAll('.wm-set-row').length + 1;
+    const row = document.createElement('div');
+    row.className = 'wm-set-row';
+    row.innerHTML = `
+        <span class="wm-set-label">${setIdx}</span>
+        <div class="wm-field">
+            <input type="number" class="wm-weight" placeholder="kg" min="0" step="0.5" value="${weight || ''}">
+        </div>
+        <span class="wm-set-x">×</span>
+        <div class="wm-field">
+            <input type="number" class="wm-reps" placeholder="回" min="0" value="${reps || ''}">
+        </div>
+        <button type="button" class="wm-set-remove" onclick="removeWeightSetRow(this)">✕</button>
+    `;
+    setsContainer.appendChild(row);
+}
+
+function removeWeightSetRow(btn) {
+    const container = btn.closest('.wm-sets-container');
+    btn.closest('.wm-set-row').remove();
+    // セット番号を振り直す
+    container.querySelectorAll('.wm-set-row').forEach((row, i) => {
+        row.querySelector('.wm-set-label').textContent = i + 1;
+    });
+}
+
+function addWeightMenuSetFromPrev(btn) {
+    const item = btn.closest('.weight-menu-item');
+    const container = item.querySelector('.wm-sets-container');
+    const rows = container.querySelectorAll('.wm-set-row');
+    let prevWeight = '', prevReps = '';
+    if (rows.length > 0) {
+        const lastRow = rows[rows.length - 1];
+        prevWeight = lastRow.querySelector('.wm-weight')?.value || '';
+        prevReps = lastRow.querySelector('.wm-reps')?.value || '';
+    }
+    addWeightMenuSetRow(container, prevWeight, prevReps);
+}
+
+function addWeightMenuItem(exercise, setsArray) {
     const list = document.getElementById('weight-menu-list');
     if (!list) return;
 
-    const idx = list.querySelectorAll('.weight-menu-item').length;
     const item = document.createElement('div');
     item.className = 'weight-menu-item';
     item.innerHTML = `
@@ -4699,22 +4927,18 @@ function addWeightMenuItem(exercise, weight, reps, sets) {
             <input type="text" class="wm-exercise" placeholder="種目名 (例: ベンチプレス)" value="${exercise || ''}">
             <button type="button" class="wm-remove-btn" onclick="this.closest('.weight-menu-item').remove()">✕</button>
         </div>
-        <div class="wm-detail-row">
-            <div class="wm-field">
-                <label>重さ(kg)</label>
-                <input type="number" class="wm-weight" placeholder="0" min="0" step="0.5" value="${weight || ''}">
-            </div>
-            <div class="wm-field">
-                <label>回数</label>
-                <input type="number" class="wm-reps" placeholder="0" min="0" value="${reps || ''}">
-            </div>
-            <div class="wm-field">
-                <label>セット</label>
-                <input type="number" class="wm-sets" placeholder="0" min="0" value="${sets || ''}">
-            </div>
-        </div>
+        <div class="wm-sets-container"></div>
+        <button type="button" class="wm-add-set-btn" onclick="addWeightMenuSetFromPrev(this)">＋ セット追加</button>
     `;
     list.appendChild(item);
+
+    const container = item.querySelector('.wm-sets-container');
+    if (setsArray && setsArray.length > 0) {
+        setsArray.forEach(s => addWeightMenuSetRow(container, s.weight, s.reps));
+    } else {
+        // 新規は1セット空行
+        addWeightMenuSetRow(container, '', '');
+    }
 }
 
 function renderWeightMenuItems(items) {
@@ -4722,9 +4946,21 @@ function renderWeightMenuItems(items) {
     if (!list) return;
     list.innerHTML = '';
     if (items && items.length > 0) {
-        items.forEach(m => addWeightMenuItem(m.exercise, m.weight, m.reps, m.sets));
+        items.forEach(m => {
+            // 旧形式（weight/reps/sets）の後方互換
+            if (m.sets && Array.isArray(m.sets)) {
+                addWeightMenuItem(m.exercise, m.sets);
+            } else {
+                // 旧形式: weight, reps, sets(数値) → 配列に変換
+                const count = (typeof m.sets === 'number' && m.sets > 0) ? m.sets : 1;
+                const setsArray = [];
+                for (let i = 0; i < count; i++) {
+                    setsArray.push({ weight: m.weight || '', reps: m.reps || '' });
+                }
+                addWeightMenuItem(m.exercise, setsArray);
+            }
+        });
     } else {
-        // 空なら1行追加
         addWeightMenuItem();
     }
 }
@@ -4734,11 +4970,17 @@ function getWeightMenuData() {
     const data = [];
     items.forEach(item => {
         const exercise = item.querySelector('.wm-exercise')?.value?.trim();
-        const weight = parseFloat(item.querySelector('.wm-weight')?.value) || 0;
-        const reps = parseInt(item.querySelector('.wm-reps')?.value) || 0;
-        const sets = parseInt(item.querySelector('.wm-sets')?.value) || 0;
-        if (exercise) {
-            data.push({ exercise, weight, reps, sets });
+        if (!exercise) return;
+        const sets = [];
+        item.querySelectorAll('.wm-set-row').forEach(row => {
+            const weight = parseFloat(row.querySelector('.wm-weight')?.value) || 0;
+            const reps = parseInt(row.querySelector('.wm-reps')?.value) || 0;
+            if (weight || reps) {
+                sets.push({ weight, reps });
+            }
+        });
+        if (sets.length > 0) {
+            data.push({ exercise, sets });
         }
     });
     return data;
@@ -4748,12 +4990,13 @@ function getWeightMenuData() {
 // 乗艇メニュー入力
 // =========================================
 
-function addRowingMenuItem(mode, rate, distance, avgTime, onDist, offDist, wind) {
+function addRowingMenuItem(mode, rate, distance, avgTime, onDist, offDist, wind, intensity) {
     const list = document.getElementById('rowing-menu-list');
     if (!list) return;
 
     const isOnOff = mode === 'onoff';
     const windVal = wind || '';
+    const intensityVal = intensity || '';
     const item = document.createElement('div');
     item.className = 'rowing-menu-item';
     item.dataset.mode = isOnOff ? 'onoff' : 'normal';
@@ -4764,6 +5007,13 @@ function addRowingMenuItem(mode, rate, distance, avgTime, onDist, offDist, wind)
                 <button type="button" class="rm-mode-btn ${!isOnOff ? 'active' : ''}" data-mode="normal" onclick="switchRowingMenuMode(this)">通常</button>
                 <button type="button" class="rm-mode-btn ${isOnOff ? 'active' : ''}" data-mode="onoff" onclick="switchRowingMenuMode(this)">On/Off</button>
             </div>
+            <select class="rm-intensity" style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid #d1d5db;background:var(--bg-white);color:var(--text-primary);">
+                <option value="" ${!intensityVal ? 'selected' : ''}>🏷️ 強度</option>
+                <option value="UT" ${intensityVal === 'UT' ? 'selected' : ''}>🔵 UT</option>
+                <option value="TP" ${intensityVal === 'TP' ? 'selected' : ''}>🟢 TP</option>
+                <option value="短力" ${intensityVal === '短力' ? 'selected' : ''}>🟠 短力</option>
+                <option value="レースペース" ${intensityVal === 'レースペース' ? 'selected' : ''}>🔴 レースペース</option>
+            </select>
             <select class="rm-wind" style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid #d1d5db;background:var(--bg-white);color:var(--text-primary);">
                 <option value="" ${!windVal ? 'selected' : ''}>🌬️ 風</option>
                 <option value="無風" ${windVal === '無風' ? 'selected' : ''}>🔵 無風</option>
@@ -4828,7 +5078,7 @@ function renderRowingMenuItems(items) {
     if (!list) return;
     list.innerHTML = '';
     if (items && items.length > 0) {
-        items.forEach(m => addRowingMenuItem(m.mode, m.rate, m.distance, m.avgTime, m.onDist, m.offDist, m.wind));
+        items.forEach(m => addRowingMenuItem(m.mode, m.rate, m.distance, m.avgTime, m.onDist, m.offDist, m.wind, m.intensity));
     }
 }
 
@@ -4838,6 +5088,7 @@ function getRowingMenuData() {
     items.forEach(item => {
         const mode = item.dataset.mode || 'normal';
         const wind = item.querySelector('.rm-wind')?.value || '';
+        const intensity = item.querySelector('.rm-intensity')?.value || '';
         if (mode === 'onoff') {
             const onDist = parseInt(item.querySelector('.rm-on')?.value) || 0;
             const offDist = parseInt(item.querySelector('.rm-off')?.value) || 0;
@@ -4845,14 +5096,14 @@ function getRowingMenuData() {
             const distance = parseInt(item.querySelector('.rm-distance-onoff')?.value) || 0;
             const avgTime = item.querySelector('.rm-avgtime-onoff')?.value?.trim() || '';
             if (onDist || offDist || rate || distance) {
-                data.push({ mode: 'onoff', onDist, offDist, rate, distance, avgTime, wind });
+                data.push({ mode: 'onoff', onDist, offDist, rate, distance, avgTime, wind, intensity });
             }
         } else {
             const rate = parseInt(item.querySelector('.rm-rate')?.value) || 0;
             const distance = parseInt(item.querySelector('.rm-distance')?.value) || 0;
             const avgTime = item.querySelector('.rm-avgtime')?.value?.trim() || '';
             if (rate || distance) {
-                data.push({ mode: 'normal', rate, distance, avgTime, wind });
+                data.push({ mode: 'normal', rate, distance, avgTime, wind, intensity });
             }
         }
     });

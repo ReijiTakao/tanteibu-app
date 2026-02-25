@@ -4958,7 +4958,7 @@ textarea {
 }
 
 /* =========================================
-   ウェイトメニュー入力
+   ウェイトメニュー入力（複数セット対応）
    ========================================= */
 .weight-menu-list {
     display: flex;
@@ -5004,9 +5004,70 @@ textarea {
     background: rgba(239, 68, 68, 0.1);
 }
 
-.wm-detail-row {
+.wm-sets-container {
     display: flex;
-    gap: 8px;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.wm-set-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+}
+
+.wm-set-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-color);
+    min-width: 18px;
+    text-align: center;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 4px;
+    padding: 2px 4px;
+}
+
+.wm-set-x {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.wm-set-remove {
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: color 0.15s;
+}
+
+.wm-set-remove:hover,
+.wm-set-remove:active {
+    color: #ef4444;
+}
+
+.wm-add-set-btn {
+    background: none;
+    border: 1px dashed #ccc;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.15s ease;
+}
+
+.wm-add-set-btn:active {
+    background: rgba(59, 130, 246, 0.06);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
 }
 
 .wm-field {
@@ -5161,4 +5222,190 @@ textarea {
 
 .pn-filter-btn:active {
     transform: scale(0.95);
+}
+
+/* =========================================
+   練習ノート 閲覧モード
+   ========================================= */
+.pn-rv-section {
+    margin-bottom: 16px;
+}
+
+.pn-rv-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.pn-rv-text {
+    background: var(--bg-secondary);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+}
+
+.pn-rv-empty {
+    color: var(--text-muted);
+    font-size: 13px;
+    font-style: italic;
+    padding: 8px 0;
+}
+
+.pn-rv-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    padding: 4px 0;
+}
+
+.pn-rv-sub {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-muted);
+}
+
+/* 乗艇メニューカード（閲覧） */
+.pn-rv-menu-card {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    border-left: 3px solid var(--accent-color);
+}
+
+.pn-rv-menu-header {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.pn-rv-menu-detail {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.pn-rv-intensity {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.pn-rv-intensity-ut {
+    background: #3b82f6;
+}
+
+.pn-rv-intensity-tp {
+    background: #22c55e;
+}
+
+.pn-rv-intensity-power {
+    background: #f97316;
+}
+
+.pn-rv-intensity-race {
+    background: #ef4444;
+}
+
+.pn-rv-wind {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 600;
+    background: rgba(100, 116, 139, 0.1);
+    color: var(--text-secondary);
+}
+
+/* ウエイトメニューカード（閲覧） */
+.pn-rv-weight-card {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+}
+
+.pn-rv-weight-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.pn-rv-weight-sets {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.pn-rv-weight-set {
+    font-size: 13px;
+    color: var(--text-secondary);
+    padding-left: 4px;
+}
+
+.pn-rv-set-num {
+    display: inline-block;
+    min-width: 16px;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent-color);
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 3px;
+    padding: 1px 3px;
+    margin-right: 4px;
+}
+
+/* エルゴリンク（閲覧） */
+.pn-rv-ergo-item {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 4px;
+    font-size: 13px;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background 0.15s;
+}
+
+.pn-rv-ergo-item:active {
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.pn-rv-ergo-arrow {
+    color: var(--accent-color);
+    font-weight: 700;
+}
+
+/* クルーノートリンク（閲覧） */
+.pn-rv-crew-link {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background 0.15s;
+}
+
+.pn-rv-crew-link:active {
+    background: rgba(59, 130, 246, 0.1);
 }

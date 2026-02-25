@@ -1275,7 +1275,24 @@
                 <h3 id="practice-note-title">練習ノート</h3>
                 <button id="practice-note-close" class="modal-close">×</button>
             </div>
-            <div class="modal-body">
+
+            <!-- ===== 閲覧モード ===== -->
+            <div class="modal-body" id="practice-note-read-body">
+                <!-- 練習サマリー -->
+                <div id="practice-note-read-summary" class="practice-note-summary"></div>
+                <!-- 閲覧用コンテンツ（JSで動的生成） -->
+                <div id="practice-note-read-view"></div>
+            </div>
+            <div class="modal-footer" id="practice-note-read-footer"
+                style="display: flex; justify-content: space-between; align-items: center;">
+                <button id="delete-practice-note-btn-read" class="danger-btn"
+                    style="font-size: 13px; padding: 8px 16px;" onclick="deletePracticeNote()">🗑 削除</button>
+                <button id="practice-note-edit-btn" class="primary-btn" onclick="switchPracticeNoteToEdit()">✏️
+                    編集</button>
+            </div>
+
+            <!-- ===== 編集モード ===== -->
+            <div class="modal-body hidden" id="practice-note-edit-body">
                 <!-- 練習サマリー（自動表示） -->
                 <div id="practice-note-summary" class="practice-note-summary">
                     <!-- JSで動的生成 -->
@@ -1351,7 +1368,8 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="modal-footer hidden" id="practice-note-edit-footer"
+                style="display: flex; justify-content: space-between; align-items: center;">
                 <button id="delete-practice-note-btn" class="danger-btn" style="font-size: 13px; padding: 8px 16px;"
                     onclick="deletePracticeNote()">🗑 削除</button>
                 <button id="save-practice-note-btn" class="primary-btn">保存</button>
