@@ -4746,6 +4746,67 @@ textarea {
     margin-bottom: 16px;
 }
 
+/* --- 折りたたみヘッダー --- */
+.my-dash-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(249, 115, 22, 0.1));
+    border: 1px solid rgba(239, 68, 68, 0.15);
+    border-radius: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.my-dash-header:active {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(249, 115, 22, 0.18));
+}
+
+.my-dash-header-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.my-dash-header-fire {
+    font-size: 18px;
+}
+
+.my-dash-header-streak {
+    font-size: 18px;
+    font-weight: 800;
+    color: #f97316;
+}
+
+.my-dash-header-streak small {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary, #aaa);
+}
+
+.my-dash-header-label {
+    font-size: 10px;
+    color: var(--text-muted, #888);
+}
+
+.my-dash-header-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.my-dash-header-arrow {
+    font-size: 10px;
+    color: var(--text-muted, #888);
+    margin-left: 4px;
+}
+
+.my-dash-body {
+    margin-top: 12px;
+}
+
 /* --- ストリークウィジェット --- */
 .my-dash-streak {
     background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(249, 115, 22, 0.12));

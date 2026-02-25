@@ -4194,6 +4194,7 @@ function updateMileageWeekSummary() {
 // マイ練習ダッシュボード
 // =========================================
 let dashCalMonth = null; // カレンダー表示月
+let dashExpanded = false; // 折りたたみ状態
 
 function renderMyPracticeDashboard() {
     const container = document.getElementById('my-practice-dashboard');
@@ -4214,42 +4215,66 @@ function renderMyPracticeDashboard() {
     if (!dashCalMonth) dashCalMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const calendarHtml = renderDashCalendar(mySchedules, dashCalMonth, todayStr);
 
+    // ヘッダー（常時表示、タップで開閉）
+    const summaryBadges = summaryInfo.items.slice(0, 3).map(item =>
+        `<span style="font-size:11px;color:var(--text-muted,#888);">${item.icon}${item.count}</span>`
+    ).join(' ');
+
     container.innerHTML = `
-        <div class="my-dash-streak">
-            <div class="my-dash-streak-fire">${streakInfo.current > 0 ? '🔥' : '💪'}</div>
-            <div class="my-dash-streak-info">
-                <div class="my-dash-streak-count">${streakInfo.current}<span>日目</span></div>
-                <div class="my-dash-streak-label">体調不良なし継続中</div>
+        <div class="my-dash-header" id="my-dash-toggle">
+            <div class="my-dash-header-left">
+                <span class="my-dash-header-fire">${streakInfo.current > 0 ? '🔥' : '💪'}</span>
+                <span class="my-dash-header-streak">${streakInfo.current}<small>日目</small></span>
+                <span class="my-dash-header-label">体調不良なし</span>
             </div>
-            <div class="my-dash-streak-best">
-                最長記録<br><b>${streakInfo.best}日</b>
-            </div>
-        </div>
-
-        <div class="my-dash-summary">
-            <div class="my-dash-summary-header">
-                <div class="my-dash-summary-title">📊 ${today.getMonth() + 1}月のサマリー</div>
-                <div class="my-dash-summary-days">${summaryInfo.activeDays}日 / ${summaryInfo.totalDays}日</div>
-            </div>
-            <div class="my-dash-summary-grid">
-                ${summaryInfo.items.map(item => `
-                    <div class="my-dash-summary-item ${item.cls}">
-                        <div class="my-dash-summary-item-count">${item.count}</div>
-                        <div class="my-dash-summary-item-label">${item.icon} ${item.label}</div>
-                        <div class="my-dash-summary-item-diff ${item.diffCls}">${item.diffText}</div>
-                    </div>
-                `).join('')}
+            <div class="my-dash-header-right">
+                ${summaryBadges}
+                <span class="my-dash-header-arrow">${dashExpanded ? '▲' : '▼'}</span>
             </div>
         </div>
+        <div class="my-dash-body ${dashExpanded ? '' : 'hidden'}" id="my-dash-body">
+            <div class="my-dash-streak">
+                <div class="my-dash-streak-fire">${streakInfo.current > 0 ? '🔥' : '💪'}</div>
+                <div class="my-dash-streak-info">
+                    <div class="my-dash-streak-count">${streakInfo.current}<span>日目</span></div>
+                    <div class="my-dash-streak-label">体調不良なし継続中</div>
+                </div>
+                <div class="my-dash-streak-best">
+                    最長記録<br><b>${streakInfo.best}日</b>
+                </div>
+            </div>
 
-        ${calendarHtml}
+            <div class="my-dash-summary">
+                <div class="my-dash-summary-header">
+                    <div class="my-dash-summary-title">📊 ${today.getMonth() + 1}月のサマリー</div>
+                    <div class="my-dash-summary-days">${summaryInfo.activeDays}日 / ${summaryInfo.totalDays}日</div>
+                </div>
+                <div class="my-dash-summary-grid">
+                    ${summaryInfo.items.map(item => `
+                        <div class="my-dash-summary-item ${item.cls}">
+                            <div class="my-dash-summary-item-count">${item.count}</div>
+                            <div class="my-dash-summary-item-label">${item.icon} ${item.label}</div>
+                            <div class="my-dash-summary-item-diff ${item.diffCls}">${item.diffText}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            ${calendarHtml}
+        </div>
     `;
+
+    // 折りたたみトグル
+    document.getElementById('my-dash-toggle').onclick = () => {
+        dashExpanded = !dashExpanded;
+        renderMyPracticeDashboard();
+    };
 
     // カレンダーナビゲーション
     const prevBtn = container.querySelector('#dash-cal-prev');
     const nextBtn = container.querySelector('#dash-cal-next');
-    if (prevBtn) prevBtn.onclick = () => { dashCalMonth.setMonth(dashCalMonth.getMonth() - 1); renderMyPracticeDashboard(); };
-    if (nextBtn) nextBtn.onclick = () => { dashCalMonth.setMonth(dashCalMonth.getMonth() + 1); renderMyPracticeDashboard(); };
+    if (prevBtn) prevBtn.onclick = (e) => { e.stopPropagation(); dashCalMonth.setMonth(dashCalMonth.getMonth() - 1); renderMyPracticeDashboard(); };
+    if (nextBtn) nextBtn.onclick = (e) => { e.stopPropagation(); dashCalMonth.setMonth(dashCalMonth.getMonth() + 1); renderMyPracticeDashboard(); };
 }
 
 // 体調不良なしストリーク計算
@@ -4260,22 +4285,28 @@ function calcHealthStreak(schedules, todayStr) {
         if (s.absenceReason === '体調不良') sickDates.add(s.date);
     });
 
-    // 今日から遡って体調不良がない連続日数
+    // スケジュールが1件もなければストリーク0
+    if (schedules.length === 0) return { current: 0, best: 0 };
+
+    // 最初のスケジュール日を取得（ストリーク起点）
+    const sortedDates = schedules.map(s => s.date).sort();
+    const firstScheduleDate = sortedDates[0];
+
+    // 今日から遡って体調不良がない連続日数（最初のスケジュール日まで）
     let current = 0;
     const d = new Date(todayStr);
-    for (let i = 0; i < 365; i++) {
+    const firstDate = new Date(firstScheduleDate);
+    while (d >= firstDate) {
         const dateStr = d.toISOString().slice(0, 10);
         if (sickDates.has(dateStr)) break;
         current++;
         d.setDate(d.getDate() - 1);
     }
 
-    // 最長記録: すべての日付を走査
-    const allDates = [...sickDates].sort();
+    // 最長記録: 体調不良が一度もなければcurrentがbest
     let best = current;
-    if (allDates.length > 0) {
-        // 最初の記録日から今日までを走査
-        const firstDate = new Date(allDates[0]);
+    const allSickDates = [...sickDates].sort();
+    if (allSickDates.length > 0) {
         const lastDate = new Date(todayStr);
         let streak = 0;
         const cursor = new Date(firstDate);
