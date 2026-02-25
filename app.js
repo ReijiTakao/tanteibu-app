@@ -4321,8 +4321,8 @@ function renderPracticeNotesList() {
                             if (m.distance) detail += `${m.distance}m`;
                             if (m.rate) detail += (detail ? ' ' : '') + `rt${m.rate}`;
                         }
-                        if (m.avgTime) detail += (detail ? ' ' : '') + `Ave${m.avgTime}`;
                         if (m.sets && m.sets > 1) detail += (detail ? ' ' : '') + `×${m.sets}`;
+                        if (m.avgTime) detail += (detail ? ' ' : '') + `Ave${m.avgTime}`;
                         cardBodyHtml += `<span class="pn-menu-chip pn-menu-chip-${intensityClass}"><span class="pn-menu-chip-label">${label}</span>${detail ? `<span class="pn-menu-chip-detail">${detail}</span>` : ''}</span>`;
                     });
                     cardBodyHtml += `</div>`;
@@ -4599,12 +4599,12 @@ function renderPracticeNoteReadView(note, schedule) {
             if (m.mode === 'onoff') {
                 html += `<div class="pn-rv-menu-card">
                     <div class="pn-rv-menu-header">${intensityBadge} On/Off ${windBadge}</div>
-                    <div class="pn-rv-menu-detail">On ${m.onDist}m / Off ${m.offDist}m${m.rate ? ` | rt${m.rate}` : ''}${m.distance ? ` | 合計${m.distance}m` : ''}${m.avgTime ? ` | Ave ${m.avgTime}` : ''}${m.sets && m.sets > 1 ? ` | ×${m.sets}` : ''}</div>
+                    <div class="pn-rv-menu-detail">On ${m.onDist}m / Off ${m.offDist}m${m.rate ? ` | rt${m.rate}` : ''}${m.distance ? ` | 合計${m.distance}m` : ''}${m.sets && m.sets > 1 ? ` | ×${m.sets}` : ''}${m.avgTime ? ` | Ave ${m.avgTime}` : ''}</div>
                 </div>`;
             } else {
                 html += `<div class="pn-rv-menu-card">
                     <div class="pn-rv-menu-header">${intensityBadge} 通常 ${windBadge}</div>
-                    <div class="pn-rv-menu-detail">${m.rate ? `rt${m.rate}` : ''}${m.distance ? ` | ${m.distance}m` : ''}${m.avgTime ? ` | Ave ${m.avgTime}` : ''}${m.sets && m.sets > 1 ? ` | ×${m.sets}` : ''}</div>
+                    <div class="pn-rv-menu-detail">${m.rate ? `rt${m.rate}` : ''}${m.distance ? ` | ${m.distance}m` : ''}${m.sets && m.sets > 1 ? ` | ×${m.sets}` : ''}${m.avgTime ? ` | Ave ${m.avgTime}` : ''}</div>
                 </div>`;
             }
         });
@@ -7966,6 +7966,90 @@ async function syncProfileToSupabase(updates) {
 }
 
 /**
+ * 管理者パスコード入力モーダル（prompt()の代替）
+ */
+function showAdminPasscodeModal(roleSelect, previousRole, newRole) {
+    // セレクトを即座に元に戻す（モーダル表示中）
+    roleSelect.value = previousRole;
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;';
+    overlay.innerHTML = `
+        <div style="background:var(--bg-card, #1e1e2e);border-radius:16px;padding:24px;width:min(320px,90vw);box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+            <h3 style="margin:0 0 8px;font-size:16px;color:var(--text-primary, #fff);">🔑 管理者パスコード</h3>
+            <p style="margin:0 0 16px;font-size:13px;color:var(--text-muted, #888);">管理者権限を取得するにはパスコードを入力してください</p>
+            <input type="text" id="admin-passcode-input" placeholder="パスコードを入力"
+                style="width:100%;padding:10px 12px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;font-size:14px;background:var(--bg-input, #2a2a3e);color:var(--text-primary, #fff);box-sizing:border-box;"
+                autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <div style="display:flex;gap:8px;margin-top:16px;">
+                <button id="admin-passcode-cancel" style="flex:1;padding:10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;background:transparent;color:var(--text-primary, #fff);font-size:14px;cursor:pointer;">キャンセル</button>
+                <button id="admin-passcode-confirm" style="flex:1;padding:10px;border:none;border-radius:8px;background:#6366f1;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">確認</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const input = document.getElementById('admin-passcode-input');
+    const confirmBtn = document.getElementById('admin-passcode-confirm');
+    const cancelBtn = document.getElementById('admin-passcode-cancel');
+
+    // 自動フォーカス（少し遅延でモバイル対応）
+    setTimeout(() => input.focus(), 100);
+
+    const cleanup = () => {
+        overlay.remove();
+    };
+
+    const doConfirm = () => {
+        const adminPasscode = DB.load('admin_passcode') || 'tanteibu';
+        const inputCode = input.value.trim();
+        if (inputCode !== adminPasscode) {
+            showToast('パスコードが正しくありません', 'error');
+            cleanup();
+            return;
+        }
+        cleanup();
+        // 権限変更を実行
+        roleSelect.value = newRole;
+        state.currentUser.role = newRole;
+        DB.save('current_user', state.currentUser);
+        const idx = state.users.findIndex(u => u.id === state.currentUser.id);
+        if (idx !== -1) {
+            state.users[idx] = state.currentUser;
+            DB.save('users', state.users);
+        }
+        document.getElementById('user-role').textContent = newRole;
+        const masterSection = document.getElementById('master-settings');
+        if (canEditMaster(state.currentUser)) {
+            masterSection?.classList.remove('hidden');
+        } else {
+            masterSection?.classList.add('hidden');
+        }
+        const passcodeSection = document.getElementById('admin-passcode-settings');
+        if (passcodeSection) {
+            if (newRole === ROLES.ADMIN) {
+                passcodeSection.classList.remove('hidden');
+            } else {
+                passcodeSection.classList.add('hidden');
+            }
+        }
+        syncProfileToSupabase({ role: newRole });
+        applyRoleBasedTabs();
+        showToast('権限を変更しました', 'success');
+    };
+
+    confirmBtn.addEventListener('click', doConfirm);
+    cancelBtn.addEventListener('click', cleanup);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') doConfirm();
+        if (e.key === 'Escape') cleanup();
+    });
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) cleanup();
+    });
+}
+
+/**
  * 設定画面の描画
  */
 function renderSettings() {
@@ -7985,20 +8069,9 @@ function renderSettings() {
 
             // 管理者への変更はパスコード認証が必要
             if (newRole === ROLES.ADMIN && previousRole !== ROLES.ADMIN) {
-                const adminPasscode = DB.load('admin_passcode') || 'tanteibu';
-                const inputCode = prompt('管理者パスコードを入力してください：');
-
-                if (inputCode === null) {
-                    // キャンセルの場合は元に戻す
-                    roleSelect.value = previousRole;
-                    return;
-                }
-
-                if (inputCode !== adminPasscode) {
-                    showToast('パスコードが正しくありません', 'error');
-                    roleSelect.value = previousRole;
-                    return;
-                }
+                // カスタムパスコード入力モーダルを表示
+                showAdminPasscodeModal(roleSelect, previousRole, newRole);
+                return;
             }
 
             // 権限を変更
