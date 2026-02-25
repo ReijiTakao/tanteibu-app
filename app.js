@@ -732,7 +732,7 @@ const DB = {
                     timeDisplay: '20:00.0',
                     split: formatSplit(1200, distance),
                     strokeRate: 24 + Math.floor(Math.random() * 4),
-                    menuKey: '20分',
+                    menuKey: '20min',
                     category: 'time',
                     source: 'Concept2'
                 });
@@ -765,7 +765,7 @@ const DB = {
                 timeDisplay: '30:00.0',
                 split: formatSplit(1800, dist30),
                 strokeRate: 22 + Math.floor(Math.random() * 4),
-                menuKey: '30分',
+                menuKey: '30min',
                 category: 'time',
                 source: 'Concept2'
             });
@@ -831,7 +831,7 @@ const DB = {
                 distance: 2800 + Math.floor(Math.random() * 200),
                 time: 600,
                 workoutType: 'FixedTimeInterval',
-                intervalDisplay: '1分×10',
+                intervalDisplay: '1min×10',
                 averageSPM: 32 + Math.floor(Math.random() * 4),
                 splits: [],
                 intervals: intervals1min,
@@ -847,7 +847,7 @@ const DB = {
                 timeDisplay: '10:00.0',
                 split: '-',
                 strokeRate: 32 + Math.floor(Math.random() * 4),
-                menuKey: '1分×10',
+                menuKey: '1min×10',
                 category: 'interval',
                 source: 'Concept2'
             });
@@ -1216,24 +1216,24 @@ const CONCEPT2_API = {
         { key: '6000m', type: 'distance', min: 6000, max: 6000 },
         { key: '10000m', type: 'distance', min: 10000, max: 10000 },
         // タイムベースのメニュー（秒で指定、誤差0）
-        { key: '20秒', type: 'time', min: 20, max: 20 },
-        { key: '30秒', type: 'time', min: 30, max: 30 },
-        { key: '1分', type: 'time', min: 60, max: 60 },
-        { key: '2分', type: 'time', min: 120, max: 120 },
-        { key: '3分', type: 'time', min: 180, max: 180 },
-        { key: '4分', type: 'time', min: 240, max: 240 },
-        { key: '5分', type: 'time', min: 300, max: 300 },
-        { key: '6分', type: 'time', min: 360, max: 360 },
-        { key: '7分', type: 'time', min: 420, max: 420 },
-        { key: '8分', type: 'time', min: 480, max: 480 },
-        { key: '9分', type: 'time', min: 540, max: 540 },
-        { key: '10分', type: 'time', min: 600, max: 600 },
-        { key: '12分', type: 'time', min: 720, max: 720 },
-        { key: '15分', type: 'time', min: 900, max: 900 },
-        { key: '20分', type: 'time', min: 1200, max: 1200 },
-        { key: '30分', type: 'time', min: 1800, max: 1800 },
-        { key: '40分', type: 'time', min: 2400, max: 2400 },
-        { key: '60分', type: 'time', min: 3600, max: 3600 },
+        { key: '20sec', type: 'time', min: 20, max: 20 },
+        { key: '30sec', type: 'time', min: 30, max: 30 },
+        { key: '1min', type: 'time', min: 60, max: 60 },
+        { key: '2min', type: 'time', min: 120, max: 120 },
+        { key: '3min', type: 'time', min: 180, max: 180 },
+        { key: '4min', type: 'time', min: 240, max: 240 },
+        { key: '5min', type: 'time', min: 300, max: 300 },
+        { key: '6min', type: 'time', min: 360, max: 360 },
+        { key: '7min', type: 'time', min: 420, max: 420 },
+        { key: '8min', type: 'time', min: 480, max: 480 },
+        { key: '9min', type: 'time', min: 540, max: 540 },
+        { key: '10min', type: 'time', min: 600, max: 600 },
+        { key: '12min', type: 'time', min: 720, max: 720 },
+        { key: '15min', type: 'time', min: 900, max: 900 },
+        { key: '20min', type: 'time', min: 1200, max: 1200 },
+        { key: '30min', type: 'time', min: 1800, max: 1800 },
+        { key: '40min', type: 'time', min: 2400, max: 2400 },
+        { key: '60min', type: 'time', min: 3600, max: 3600 },
     ]
 };
 
@@ -1714,6 +1714,31 @@ function classifyErgoSessions(reclassify = false) {
         // CONCEPT2_API.classificationRulesを使用
         const rules = CONCEPT2_API.classificationRules;
 
+        // === 既存データの日本語menuKeyを英語に自動マイグレーション ===
+        const jpToEn = (key) => {
+            if (!key) return key;
+            return key
+                .replace(/(\d+)分/g, '$1min')
+                .replace(/(\d+)秒/g, '$1sec');
+        };
+        let migrated = false;
+        state.ergoRecords.forEach(r => {
+            if (r.menuKey && (/\d+分/.test(r.menuKey) || /\d+秒/.test(r.menuKey))) {
+                r.menuKey = jpToEn(r.menuKey);
+                migrated = true;
+            }
+        });
+        state.ergoSessions.forEach(s => {
+            if (s.menuKey && (/\d+分/.test(s.menuKey) || /\d+秒/.test(s.menuKey))) {
+                s.menuKey = jpToEn(s.menuKey);
+                migrated = true;
+            }
+        });
+        if (migrated) {
+            DB.save('ergo_records', state.ergoRecords);
+            DB.save('ergo_sessions', state.ergoSessions);
+        }
+
         const userRaw = state.ergoRaw.filter(r => r.userId === state.currentUser.id);
 
         // 再分類の場合は既存データをクリア
@@ -1772,7 +1797,7 @@ function classifyErgoSessions(reclassify = false) {
                     }
                     // レストタイムを取得
                     const restTime = firstInterval.rest_time ? Math.round(firstInterval.rest_time / 10) : 0;
-                    const restStr = restTime > 0 ? (restTime >= 60 ? `r${Math.floor(restTime / 60)}分${restTime % 60 > 0 ? (restTime % 60 + '秒') : ''}` : `r${restTime}秒`) : '';
+                    const restStr = restTime > 0 ? (restTime >= 60 ? `r${Math.floor(restTime / 60)}min${restTime % 60 > 0 ? (restTime % 60 + 's') : ''}` : `r${restTime}s`) : '';
                     if (intMenuKey) {
                         menuKey = `${intMenuKey}×${raw.intervals.length}${restStr ? ' ' + restStr : ''}`;
                     } else {
@@ -1956,7 +1981,7 @@ function classifyConcept2Result(result) {
             }
             // レストタイム
             const restTime = first.rest_time ? Math.round(first.rest_time / 10) : 0;
-            const restStr = restTime > 0 ? (restTime >= 60 ? `r${Math.floor(restTime / 60)}分${restTime % 60 > 0 ? (restTime % 60 + '秒') : ''}` : `r${restTime}秒`) : '';
+            const restStr = restTime > 0 ? (restTime >= 60 ? `r${Math.floor(restTime / 60)}min${restTime % 60 > 0 ? (restTime % 60 + 's') : ''}` : `r${restTime}s`) : '';
             if (intMenuKey) {
                 intervalDisplay = `${intMenuKey}×${intervals.length}${restStr ? ' ' + restStr : ''}`;
             } else {
@@ -1964,9 +1989,9 @@ function classifyConcept2Result(result) {
                     intervalDisplay = `${intDist}m×${intervals.length}${restStr ? ' ' + restStr : ''}`;
                 } else if (intTimeSec > 0) {
                     if (intTimeSec >= 60) {
-                        intervalDisplay = `${Math.round(intTimeSec / 60)}分×${intervals.length}${restStr ? ' ' + restStr : ''}`;
+                        intervalDisplay = `${Math.round(intTimeSec / 60)}min×${intervals.length}${restStr ? ' ' + restStr : ''}`;
                     } else {
-                        intervalDisplay = `${intTimeSec}秒×${intervals.length}${restStr ? ' ' + restStr : ''}`;
+                        intervalDisplay = `${intTimeSec}sec×${intervals.length}${restStr ? ' ' + restStr : ''}`;
                     }
                 }
             }
@@ -5503,7 +5528,7 @@ function getIntervalSubtypeFromMenuKey(menuKey, sampleRecord) {
     if (/\d+m×\d+/.test(menuKey)) {
         return { label: '距離', class: 'distance-based' };
     }
-    if (/\d+(分|min)×\d+/.test(menuKey) || /\d+sec×\d+/.test(menuKey)) {
+    if (/\d+min×\d+/.test(menuKey) || /\d+sec×\d+/.test(menuKey)) {
         return { label: '時間', class: 'time-based' };
     }
 
