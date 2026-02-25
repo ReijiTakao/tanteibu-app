@@ -4740,6 +4740,315 @@ textarea {
 }
 
 /* =========================================
+   マイ練習ダッシュボード
+   ========================================= */
+.my-practice-dashboard {
+    margin-bottom: 16px;
+}
+
+/* --- ストリークウィジェット --- */
+.my-dash-streak {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(249, 115, 22, 0.12));
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.my-dash-streak-fire {
+    font-size: 36px;
+    line-height: 1;
+    animation: dash-pulse 2s ease-in-out infinite;
+}
+
+@keyframes dash-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.12);
+    }
+}
+
+.my-dash-streak-info {
+    flex: 1;
+}
+
+.my-dash-streak-count {
+    font-size: 28px;
+    font-weight: 800;
+    color: #f97316;
+    line-height: 1.1;
+}
+
+.my-dash-streak-count span {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary, #aaa);
+    margin-left: 4px;
+}
+
+.my-dash-streak-label {
+    font-size: 11px;
+    color: var(--text-muted, #888);
+    margin-top: 2px;
+}
+
+.my-dash-streak-best {
+    font-size: 11px;
+    color: var(--text-muted, #888);
+    text-align: right;
+}
+
+.my-dash-streak-best b {
+    color: #f59e0b;
+}
+
+/* --- 月間サマリー --- */
+.my-dash-summary {
+    background: var(--bg-card, #1e1e2e);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+}
+
+.my-dash-summary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.my-dash-summary-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary, #fff);
+}
+
+.my-dash-summary-days {
+    font-size: 12px;
+    color: var(--text-muted, #888);
+}
+
+.my-dash-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.my-dash-summary-item {
+    text-align: center;
+    padding: 10px 6px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.my-dash-summary-item-count {
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.my-dash-summary-item-label {
+    font-size: 10px;
+    color: var(--text-muted, #888);
+    margin-top: 2px;
+}
+
+.my-dash-summary-item-diff {
+    font-size: 10px;
+    margin-top: 2px;
+}
+
+.my-dash-summary-item-diff.up {
+    color: #22c55e;
+}
+
+.my-dash-summary-item-diff.down {
+    color: #ef4444;
+}
+
+.my-dash-summary-item-diff.same {
+    color: var(--text-muted, #888);
+}
+
+.my-dash-summary-item.boat .my-dash-summary-item-count {
+    color: #60a5fa;
+}
+
+.my-dash-summary-item.ergo .my-dash-summary-item-count {
+    color: #f97316;
+}
+
+.my-dash-summary-item.weight .my-dash-summary-item-count {
+    color: #a78bfa;
+}
+
+.my-dash-summary-item.run .my-dash-summary-item-count {
+    color: #34d399;
+}
+
+.my-dash-summary-item.off .my-dash-summary-item-count {
+    color: #9ca3af;
+}
+
+.my-dash-summary-item.absent .my-dash-summary-item-count {
+    color: #f87171;
+}
+
+/* --- カレンダーヒートマップ --- */
+.my-dash-calendar {
+    background: var(--bg-card, #1e1e2e);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+}
+
+.my-dash-cal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.my-dash-cal-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary, #fff);
+}
+
+.my-dash-cal-nav {
+    display: flex;
+    gap: 8px;
+}
+
+.my-dash-cal-nav button {
+    background: rgba(255, 255, 255, 0.06);
+    border: none;
+    border-radius: 8px;
+    color: var(--text-primary, #fff);
+    padding: 4px 10px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.my-dash-cal-nav button:active {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.my-dash-cal-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    margin-bottom: 4px;
+}
+
+.my-dash-cal-weekdays span {
+    font-size: 10px;
+    color: var(--text-muted, #888);
+    padding: 2px 0;
+}
+
+.my-dash-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+}
+
+.my-dash-cal-day {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: var(--text-secondary, #aaa);
+    position: relative;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.my-dash-cal-day.today {
+    outline: 2px solid rgba(99, 102, 241, 0.5);
+    outline-offset: -2px;
+}
+
+.my-dash-cal-day.empty {
+    background: transparent;
+}
+
+.my-dash-cal-day .cal-dots {
+    display: flex;
+    gap: 2px;
+    margin-top: 2px;
+}
+
+.my-dash-cal-day .cal-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+}
+
+.cal-dot.boat {
+    background: #60a5fa;
+}
+
+.cal-dot.ergo {
+    background: #f97316;
+}
+
+.cal-dot.weight {
+    background: #a78bfa;
+}
+
+.cal-dot.run {
+    background: #34d399;
+}
+
+.cal-dot.bancha {
+    background: #fbbf24;
+}
+
+.cal-dot.off {
+    background: #6b7280;
+}
+
+.cal-dot.absent {
+    background: #ef4444;
+}
+
+/* --- カレンダー凡例 --- */
+.my-dash-cal-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+    justify-content: center;
+}
+
+.my-dash-cal-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    color: var(--text-muted, #888);
+}
+
+.my-dash-cal-legend-item .cal-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+/* =========================================
    週間練習サマリーウィジェット
    ========================================= */
 .weekly-practice-summary {

@@ -1075,6 +1075,7 @@ function switchTab(tabId) {
             renderPracticeNotesList();
             renderMileageRanking();
             updateMileageWeekSummary();
+            renderMyPracticeDashboard();
             renderWeeklyPracticeSummary();
         }
         if (tabId === 'settings') renderSettings();
@@ -4189,6 +4190,232 @@ function updateMileageWeekSummary() {
 }
 
 // 週間練習サマリーウィジェット（全部員表示対応）
+// =========================================
+// マイ練習ダッシュボード
+// =========================================
+let dashCalMonth = null; // カレンダー表示月
+
+function renderMyPracticeDashboard() {
+    const container = document.getElementById('my-practice-dashboard');
+    if (!container || !state.currentUser) return;
+
+    const userId = state.currentUser.id;
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    const mySchedules = state.schedules.filter(s => s.userId === userId);
+
+    // --- 1. 体調不良なしストリーク ---
+    const streakInfo = calcHealthStreak(mySchedules, todayStr);
+
+    // --- 2. 月間サマリー ---
+    const summaryInfo = calcMonthlySummary(mySchedules, today);
+
+    // --- 3. カレンダーヒートマップ ---
+    if (!dashCalMonth) dashCalMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const calendarHtml = renderDashCalendar(mySchedules, dashCalMonth, todayStr);
+
+    container.innerHTML = `
+        <div class="my-dash-streak">
+            <div class="my-dash-streak-fire">${streakInfo.current > 0 ? '🔥' : '💪'}</div>
+            <div class="my-dash-streak-info">
+                <div class="my-dash-streak-count">${streakInfo.current}<span>日目</span></div>
+                <div class="my-dash-streak-label">体調不良なし継続中</div>
+            </div>
+            <div class="my-dash-streak-best">
+                最長記録<br><b>${streakInfo.best}日</b>
+            </div>
+        </div>
+
+        <div class="my-dash-summary">
+            <div class="my-dash-summary-header">
+                <div class="my-dash-summary-title">📊 ${today.getMonth() + 1}月のサマリー</div>
+                <div class="my-dash-summary-days">${summaryInfo.activeDays}日 / ${summaryInfo.totalDays}日</div>
+            </div>
+            <div class="my-dash-summary-grid">
+                ${summaryInfo.items.map(item => `
+                    <div class="my-dash-summary-item ${item.cls}">
+                        <div class="my-dash-summary-item-count">${item.count}</div>
+                        <div class="my-dash-summary-item-label">${item.icon} ${item.label}</div>
+                        <div class="my-dash-summary-item-diff ${item.diffCls}">${item.diffText}</div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+
+        ${calendarHtml}
+    `;
+
+    // カレンダーナビゲーション
+    const prevBtn = container.querySelector('#dash-cal-prev');
+    const nextBtn = container.querySelector('#dash-cal-next');
+    if (prevBtn) prevBtn.onclick = () => { dashCalMonth.setMonth(dashCalMonth.getMonth() - 1); renderMyPracticeDashboard(); };
+    if (nextBtn) nextBtn.onclick = () => { dashCalMonth.setMonth(dashCalMonth.getMonth() + 1); renderMyPracticeDashboard(); };
+}
+
+// 体調不良なしストリーク計算
+function calcHealthStreak(schedules, todayStr) {
+    // 「体調不良」を理由にした日を収集
+    const sickDates = new Set();
+    schedules.forEach(s => {
+        if (s.absenceReason === '体調不良') sickDates.add(s.date);
+    });
+
+    // 今日から遡って体調不良がない連続日数
+    let current = 0;
+    const d = new Date(todayStr);
+    for (let i = 0; i < 365; i++) {
+        const dateStr = d.toISOString().slice(0, 10);
+        if (sickDates.has(dateStr)) break;
+        current++;
+        d.setDate(d.getDate() - 1);
+    }
+
+    // 最長記録: すべての日付を走査
+    const allDates = [...sickDates].sort();
+    let best = current;
+    if (allDates.length > 0) {
+        // 最初の記録日から今日までを走査
+        const firstDate = new Date(allDates[0]);
+        const lastDate = new Date(todayStr);
+        let streak = 0;
+        const cursor = new Date(firstDate);
+        while (cursor <= lastDate) {
+            const cs = cursor.toISOString().slice(0, 10);
+            if (sickDates.has(cs)) {
+                if (streak > best) best = streak;
+                streak = 0;
+            } else {
+                streak++;
+            }
+            cursor.setDate(cursor.getDate() + 1);
+        }
+        if (streak > best) best = streak;
+    }
+
+    return { current, best };
+}
+
+// 月間サマリー計算
+function calcMonthlySummary(schedules, today) {
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const totalDays = today.getDate(); // 今月の経過日数
+
+    // 今月のスケジュール
+    const thisMonthSchedules = schedules.filter(s => {
+        const d = new Date(s.date);
+        return d.getFullYear() === year && d.getMonth() === month;
+    });
+
+    // 先月のスケジュール
+    const lastMonth = new Date(year, month - 1, 1);
+    const lastMonthSchedules = schedules.filter(s => {
+        const d = new Date(s.date);
+        return d.getFullYear() === lastMonth.getFullYear() && d.getMonth() === lastMonth.getMonth();
+    });
+
+    const typeConfig = [
+        { type: SCHEDULE_TYPES.BOAT, icon: '🚣', label: '乗艇', cls: 'boat' },
+        { type: SCHEDULE_TYPES.ERGO, icon: '🏋️', label: 'エルゴ', cls: 'ergo' },
+        { type: SCHEDULE_TYPES.WEIGHT, icon: '💪', label: 'ウェイト', cls: 'weight' },
+        { type: SCHEDULE_TYPES.RUN, icon: '🏃', label: 'ラン', cls: 'run' },
+        { type: SCHEDULE_TYPES.OFF, icon: '🏖️', label: 'OFF', cls: 'off' },
+        { type: SCHEDULE_TYPES.ABSENT, icon: '❌', label: '不可', cls: 'absent' }
+    ];
+
+    const items = typeConfig.map(cfg => {
+        const count = thisMonthSchedules.filter(s => s.scheduleType === cfg.type).length;
+        const lastCount = lastMonthSchedules.filter(s => s.scheduleType === cfg.type).length;
+        const diff = count - lastCount;
+        let diffText = '±0';
+        let diffCls = 'same';
+        if (diff > 0) { diffText = `↑${diff}`; diffCls = 'up'; }
+        else if (diff < 0) { diffText = `↓${Math.abs(diff)}`; diffCls = 'down'; }
+        return { ...cfg, count, diffText, diffCls };
+    }).filter(item => item.count > 0 || item.cls === 'boat' || item.cls === 'ergo');
+
+    // 練習した日数（ユニーク日数）
+    const activeDates = new Set(thisMonthSchedules
+        .filter(s => s.scheduleType !== SCHEDULE_TYPES.ABSENT && s.scheduleType !== SCHEDULE_TYPES.OFF)
+        .map(s => s.date)
+    );
+
+    return { items, activeDays: activeDates.size, totalDays };
+}
+
+// カレンダーヒートマップ描画
+function renderDashCalendar(schedules, viewMonth, todayStr) {
+    const year = viewMonth.getFullYear();
+    const month = viewMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDow = (firstDay.getDay() + 6) % 7; // 月曜始まり
+
+    const typeToCls = {
+        [SCHEDULE_TYPES.BOAT]: 'boat',
+        [SCHEDULE_TYPES.ERGO]: 'ergo',
+        [SCHEDULE_TYPES.WEIGHT]: 'weight',
+        [SCHEDULE_TYPES.RUN]: 'run',
+        [SCHEDULE_TYPES.BANCHA]: 'bancha',
+        [SCHEDULE_TYPES.OFF]: 'off',
+        [SCHEDULE_TYPES.ABSENT]: 'absent'
+    };
+
+    // 日付 → スケジュール種別のマップ
+    const dateMap = {};
+    schedules.forEach(s => {
+        const d = new Date(s.date);
+        if (d.getFullYear() === year && d.getMonth() === month) {
+            if (!dateMap[s.date]) dateMap[s.date] = new Set();
+            if (s.scheduleType) dateMap[s.date].add(s.scheduleType);
+        }
+    });
+
+    // カレンダーセル生成
+    let cells = '';
+    // 空セル（月初の前）
+    for (let i = 0; i < startDow; i++) {
+        cells += '<div class="my-dash-cal-day empty"></div>';
+    }
+    // 日付セル
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isToday = dateStr === todayStr;
+        const types = dateMap[dateStr] || new Set();
+        const dots = [...types].map(t => `<span class="cal-dot ${typeToCls[t] || ''}"></span>`).join('');
+        cells += `<div class="my-dash-cal-day${isToday ? ' today' : ''}">
+            <span>${day}</span>
+            ${dots ? `<div class="cal-dots">${dots}</div>` : ''}
+        </div>`;
+    }
+
+    const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+
+    return `
+        <div class="my-dash-calendar">
+            <div class="my-dash-cal-header">
+                <div class="my-dash-cal-title">🗓️ ${year}年 ${monthNames[month]}</div>
+                <div class="my-dash-cal-nav">
+                    <button id="dash-cal-prev">◀</button>
+                    <button id="dash-cal-next">▶</button>
+                </div>
+            </div>
+            <div class="my-dash-cal-weekdays">
+                <span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span><span>日</span>
+            </div>
+            <div class="my-dash-cal-grid">${cells}</div>
+            <div class="my-dash-cal-legend">
+                <div class="my-dash-cal-legend-item"><span class="cal-dot boat"></span>乗艇</div>
+                <div class="my-dash-cal-legend-item"><span class="cal-dot ergo"></span>エルゴ</div>
+                <div class="my-dash-cal-legend-item"><span class="cal-dot weight"></span>ウェイト</div>
+                <div class="my-dash-cal-legend-item"><span class="cal-dot run"></span>ラン</div>
+                <div class="my-dash-cal-legend-item"><span class="cal-dot off"></span>OFF</div>
+                <div class="my-dash-cal-legend-item"><span class="cal-dot absent"></span>不可</div>
+            </div>
+        </div>
+    `;
+}
+
 function renderWeeklyPracticeSummary() {
     const container = document.getElementById('weekly-practice-summary');
     if (!container || !state.currentUser) return;
