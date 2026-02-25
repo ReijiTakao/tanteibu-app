@@ -4322,6 +4322,7 @@ function renderPracticeNotesList() {
                             if (m.rate) detail += (detail ? ' ' : '') + `rt${m.rate}`;
                         }
                         if (m.avgTime) detail += (detail ? ' ' : '') + `Ave${m.avgTime}`;
+                        if (m.sets && m.sets > 1) detail += (detail ? ' ' : '') + `×${m.sets}`;
                         cardBodyHtml += `<span class="pn-menu-chip pn-menu-chip-${intensityClass}"><span class="pn-menu-chip-label">${label}</span>${detail ? `<span class="pn-menu-chip-detail">${detail}</span>` : ''}</span>`;
                     });
                     cardBodyHtml += `</div>`;
@@ -4598,12 +4599,12 @@ function renderPracticeNoteReadView(note, schedule) {
             if (m.mode === 'onoff') {
                 html += `<div class="pn-rv-menu-card">
                     <div class="pn-rv-menu-header">${intensityBadge} On/Off ${windBadge}</div>
-                    <div class="pn-rv-menu-detail">On ${m.onDist}m / Off ${m.offDist}m${m.rate ? ` | rt${m.rate}` : ''}${m.distance ? ` | 合計${m.distance}m` : ''}${m.avgTime ? ` | Ave ${m.avgTime}` : ''}</div>
+                    <div class="pn-rv-menu-detail">On ${m.onDist}m / Off ${m.offDist}m${m.rate ? ` | rt${m.rate}` : ''}${m.distance ? ` | 合計${m.distance}m` : ''}${m.avgTime ? ` | Ave ${m.avgTime}` : ''}${m.sets && m.sets > 1 ? ` | ×${m.sets}` : ''}</div>
                 </div>`;
             } else {
                 html += `<div class="pn-rv-menu-card">
                     <div class="pn-rv-menu-header">${intensityBadge} 通常 ${windBadge}</div>
-                    <div class="pn-rv-menu-detail">${m.rate ? `rt${m.rate}` : ''}${m.distance ? ` | ${m.distance}m` : ''}${m.avgTime ? ` | Ave ${m.avgTime}` : ''}</div>
+                    <div class="pn-rv-menu-detail">${m.rate ? `rt${m.rate}` : ''}${m.distance ? ` | ${m.distance}m` : ''}${m.avgTime ? ` | Ave ${m.avgTime}` : ''}${m.sets && m.sets > 1 ? ` | ×${m.sets}` : ''}</div>
                 </div>`;
             }
         });
@@ -5052,13 +5053,14 @@ function getWeightMenuData() {
 // 乗艇メニュー入力
 // =========================================
 
-function addRowingMenuItem(mode, rate, distance, avgTime, onDist, offDist, wind, intensity) {
+function addRowingMenuItem(mode, rate, distance, avgTime, onDist, offDist, wind, intensity, sets) {
     const list = document.getElementById('rowing-menu-list');
     if (!list) return;
 
     const isOnOff = mode === 'onoff';
     const windVal = wind || '';
     const intensityVal = intensity || '';
+    const setsVal = sets || '';
     const item = document.createElement('div');
     item.className = 'rowing-menu-item';
     item.dataset.mode = isOnOff ? 'onoff' : 'normal';
@@ -5076,6 +5078,7 @@ function addRowingMenuItem(mode, rate, distance, avgTime, onDist, offDist, wind,
                 <option value="短力" ${intensityVal === '短力' ? 'selected' : ''}>🟠 短力</option>
                 <option value="RP" ${intensityVal === 'RP' || intensityVal === 'レースペース' ? 'selected' : ''}>🔴 RP</option>
             </select>
+            <input type="number" class="rm-sets" placeholder="Set" min="1" max="20" value="${setsVal}" style="width:45px;font-size:12px;padding:3px 4px;border-radius:6px;border:1px solid #d1d5db;text-align:center;background:var(--bg-white);color:var(--text-primary);">
             <select class="rm-wind" style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid #d1d5db;background:var(--bg-white);color:var(--text-primary);">
                 <option value="" ${!windVal ? 'selected' : ''}>🌬️ 風</option>
                 <option value="無風" ${windVal === '無風' ? 'selected' : ''}>🔵 無風</option>
@@ -5140,7 +5143,7 @@ function renderRowingMenuItems(items) {
     if (!list) return;
     list.innerHTML = '';
     if (items && items.length > 0) {
-        items.forEach(m => addRowingMenuItem(m.mode, m.rate, m.distance, m.avgTime, m.onDist, m.offDist, m.wind, m.intensity));
+        items.forEach(m => addRowingMenuItem(m.mode, m.rate, m.distance, m.avgTime, m.onDist, m.offDist, m.wind, m.intensity, m.sets));
     }
 }
 
@@ -5151,6 +5154,7 @@ function getRowingMenuData() {
         const mode = item.dataset.mode || 'normal';
         const wind = item.querySelector('.rm-wind')?.value || '';
         const intensity = item.querySelector('.rm-intensity')?.value || '';
+        const sets = parseInt(item.querySelector('.rm-sets')?.value) || 0;
         if (mode === 'onoff') {
             const onDist = parseInt(item.querySelector('.rm-on')?.value) || 0;
             const offDist = parseInt(item.querySelector('.rm-off')?.value) || 0;
@@ -5158,14 +5162,14 @@ function getRowingMenuData() {
             const distance = parseInt(item.querySelector('.rm-distance-onoff')?.value) || 0;
             const avgTime = item.querySelector('.rm-avgtime-onoff')?.value?.trim() || '';
             if (onDist || offDist || rate || distance) {
-                data.push({ mode: 'onoff', onDist, offDist, rate, distance, avgTime, wind, intensity });
+                data.push({ mode: 'onoff', onDist, offDist, rate, distance, avgTime, wind, intensity, sets: sets || undefined });
             }
         } else {
             const rate = parseInt(item.querySelector('.rm-rate')?.value) || 0;
             const distance = parseInt(item.querySelector('.rm-distance')?.value) || 0;
             const avgTime = item.querySelector('.rm-avgtime')?.value?.trim() || '';
             if (rate || distance) {
-                data.push({ mode: 'normal', rate, distance, avgTime, wind, intensity });
+                data.push({ mode: 'normal', rate, distance, avgTime, wind, intensity, sets: sets || undefined });
             }
         }
     });
