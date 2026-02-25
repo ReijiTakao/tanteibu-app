@@ -5030,11 +5030,22 @@ textarea {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     font-size: 12px;
     color: var(--text-secondary, #aaa);
     position: relative;
     background: rgba(255, 255, 255, 0.02);
+    padding: 2px 1px;
+    overflow: hidden;
+}
+
+.my-dash-cal-day.has-data {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.my-dash-cal-day.has-data:active {
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .my-dash-cal-day.today {
@@ -5046,44 +5057,68 @@ textarea {
     background: transparent;
 }
 
-.my-dash-cal-day .cal-dots {
+.cal-day-num {
+    font-size: 10px;
+    line-height: 1;
+    margin-bottom: 1px;
+}
+
+.cal-day-slots {
     display: flex;
-    gap: 2px;
-    margin-top: 2px;
+    flex-direction: column;
+    gap: 1px;
+    width: 100%;
 }
 
-.my-dash-cal-day .cal-dot {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
+.cal-slot-am,
+.cal-slot-pm {
+    display: flex;
+    justify-content: center;
+    gap: 1px;
+    min-height: 11px;
 }
 
-.cal-dot.boat {
-    background: #60a5fa;
+.cal-slot-empty {
+    font-size: 8px;
+    color: rgba(255, 255, 255, 0.1);
 }
 
-.cal-dot.ergo {
-    background: #f97316;
+.cal-slot-label {
+    display: inline-block;
+    font-size: 8px;
+    font-weight: 700;
+    padding: 1px 3px;
+    border-radius: 3px;
+    line-height: 1.1;
+    color: #fff;
 }
 
-.cal-dot.weight {
-    background: #a78bfa;
+.cal-slot-label.boat {
+    background: rgba(96, 165, 250, 0.6);
 }
 
-.cal-dot.run {
-    background: #34d399;
+.cal-slot-label.ergo {
+    background: rgba(249, 115, 22, 0.6);
 }
 
-.cal-dot.bancha {
-    background: #fbbf24;
+.cal-slot-label.weight {
+    background: rgba(167, 139, 250, 0.6);
 }
 
-.cal-dot.off {
-    background: #6b7280;
+.cal-slot-label.run {
+    background: rgba(52, 211, 153, 0.6);
 }
 
-.cal-dot.absent {
-    background: #ef4444;
+.cal-slot-label.bancha {
+    background: rgba(251, 191, 36, 0.6);
+}
+
+.cal-slot-label.off {
+    background: rgba(107, 114, 128, 0.5);
+}
+
+.cal-slot-label.absent {
+    background: rgba(239, 68, 68, 0.6);
 }
 
 /* --- カレンダー凡例 --- */
