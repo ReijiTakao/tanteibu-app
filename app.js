@@ -9436,29 +9436,165 @@ function autoCreateCrewNotesFromSchedule(schedule) {
     // 同じハッシュ、同じ日付のノートがあるか
     const existingNote = state.crewNotes.find(n => n.crewHash === hash && n.date === schedule.date);
 
-    if (!existingNote) {
-        // ノートがない場合、新規作成
-        const newNote = {
-            id: generateId(),
-            crewHash: hash,
-            memberIds: memberIds,
-            boatType: boatType,
-            date: schedule.date,
-            content: '', // 空で作成
-            videoUrls: [],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            lastAuthorId: 'system' // システム作成
-        };
-        state.crewNotes.push(newNote);
-        DB.save('crew_notes', state.crewNotes);
-        DB.saveCrewNote(newNote); // Supabase同期
+    if (existingNote) return; // 既に存在する場合は何もしない
 
-        // クルーリストも更新
-        extractCrewsFromSchedules();
+    // 6. 類似クルーの検出（代打対応）
+    // 同じ艇種で、1〜2人だけ違うクルーがあるかチェック
+    const similarCrew = findSimilarCrew(memberIds, boatType);
 
-        showToast('クルーノートを自動作成しました', 'success');
+    if (similarCrew) {
+        // 類似クルーが見つかった場合、代打確認を表示
+        showSubstituteConfirmModal(similarCrew, memberIds, boatType, schedule, hash);
+    } else {
+        // 類似クルーなし → 通常の新規作成
+        createNewCrewNote(hash, memberIds, boatType, schedule);
     }
+}
+
+// 類似クルーを検出する
+function findSimilarCrew(memberIds, boatType) {
+    const crews = state.crews || [];
+    for (const crew of crews) {
+        if (crew.boatType !== boatType) continue;
+        if (crew.memberIds.length !== memberIds.length) continue;
+
+        // 完全一致はスキップ（同じクルーの場合）
+        const crewSet = new Set(crew.memberIds);
+        const newSet = new Set(memberIds);
+        if (memberIds.every(id => crewSet.has(id)) && crew.memberIds.every(id => newSet.has(id))) continue;
+
+        // 差分を計算
+        const missing = crew.memberIds.filter(id => !newSet.has(id)); // 元クルーにいるが新しいクルーにいない
+        const added = memberIds.filter(id => !crewSet.has(id));       // 新しいクルーにいるが元クルーにいない
+
+        // 1〜2人の差分ならマッチ
+        if (missing.length >= 1 && missing.length <= 2 && added.length >= 1 && added.length <= 2) {
+            return {
+                crew: crew,
+                missing: missing, // 元のメンバー（休み）
+                added: added      // 代打メンバー
+            };
+        }
+    }
+    return null;
+}
+
+// 新しいクルーノートを作成（通常の新規作成）
+function createNewCrewNote(hash, memberIds, boatType, schedule) {
+    const newNote = {
+        id: generateId(),
+        crewHash: hash,
+        memberIds: memberIds,
+        boatType: boatType,
+        date: schedule.date,
+        content: '',
+        videoUrls: [],
+        substitutes: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastAuthorId: 'system'
+    };
+    state.crewNotes.push(newNote);
+    DB.save('crew_notes', state.crewNotes);
+    DB.saveCrewNote(newNote);
+    extractCrewsFromSchedules();
+    showToast('クルーノートを自動作成しました', 'success');
+}
+
+// 代打確認モーダルを表示
+function showSubstituteConfirmModal(similarInfo, newMemberIds, boatType, schedule, newHash) {
+    const { crew, missing, added } = similarInfo;
+
+    // メンバー名に変換
+    const missingNames = missing.map(id => state.users.find(u => u.id === id)?.name || '?');
+    const addedNames = added.map(id => state.users.find(u => u.id === id)?.name || '?');
+    const crewMembers = crew.memberIds.map(id => state.users.find(u => u.id === id)?.name || '?');
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;';
+    overlay.innerHTML = `
+        <div style="background:var(--bg-card, #1e1e2e);border-radius:16px;padding:24px;width:min(360px,90vw);box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+            <h3 style="margin:0 0 8px;font-size:16px;color:var(--text-primary, #fff);">🔄 似ているクルーがあります</h3>
+            <p style="margin:0 0 12px;font-size:13px;color:var(--text-muted, #888);">以下の既存クルーと1〜2人だけ違います。代打として紐付けますか？</p>
+            
+            <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:12px;margin-bottom:12px;">
+                <div style="font-size:12px;color:var(--text-muted,#888);margin-bottom:6px;">既存クルー（${crew.boatType}）</div>
+                <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">
+                    ${crewMembers.map(n => `<span style="font-size:12px;padding:2px 8px;border-radius:6px;background:rgba(99,102,241,0.15);color:#818cf8;">${n}</span>`).join('')}
+                </div>
+                <div style="font-size:12px;margin-top:8px;">
+                    <span style="color:#ef4444;">❌ ${missingNames.join(', ')}（欠席）</span>
+                    <span style="margin-left:8px;color:#22c55e;">✅ ${addedNames.join(', ')}（代打）</span>
+                </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                <button id="sub-link-btn" style="padding:12px;border:none;border-radius:10px;background:#6366f1;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">🔄 代打として紐付ける</button>
+                <button id="sub-new-btn" style="padding:12px;border:1px solid rgba(255,255,255,0.2);border-radius:10px;background:transparent;color:var(--text-primary, #fff);font-size:14px;cursor:pointer;">➕ 新しいクルーノートを作成</button>
+                <button id="sub-cancel-btn" style="padding:8px;border:none;background:transparent;color:var(--text-muted,#888);font-size:12px;cursor:pointer;">キャンセル</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const cleanup = () => overlay.remove();
+
+    // 代打として紐付ける
+    document.getElementById('sub-link-btn').addEventListener('click', () => {
+        cleanup();
+        // 既存クルーのハッシュで新しい日付のノートを作成（代打情報付き）
+        const existingForDate = state.crewNotes.find(n => n.crewHash === crew.hash && n.date === schedule.date);
+        if (existingForDate) {
+            // 既に同じ日付のノートがある場合は代打情報だけ追加
+            if (!existingForDate.substitutes) existingForDate.substitutes = [];
+            missing.forEach((missingId, i) => {
+                existingForDate.substitutes.push({
+                    originalId: missingId,
+                    substituteId: added[i] || added[0],
+                    date: schedule.date
+                });
+            });
+            existingForDate.updatedAt = new Date().toISOString();
+            DB.save('crew_notes', state.crewNotes);
+            DB.saveCrewNote(existingForDate);
+        } else {
+            // 既存クルーのハッシュで新しいノートを作成
+            const newNote = {
+                id: generateId(),
+                crewHash: crew.hash,
+                memberIds: crew.memberIds, // 元のクルーメンバー
+                boatType: boatType,
+                date: schedule.date,
+                content: '',
+                videoUrls: [],
+                substitutes: missing.map((missingId, i) => ({
+                    originalId: missingId,
+                    substituteId: added[i] || added[0],
+                    date: schedule.date
+                })),
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                lastAuthorId: 'system'
+            };
+            state.crewNotes.push(newNote);
+            DB.save('crew_notes', state.crewNotes);
+            DB.saveCrewNote(newNote);
+        }
+        extractCrewsFromSchedules();
+        showToast('代打としてクルーノートに紐付けました', 'success');
+    });
+
+    // 新しいクルーノートを作成
+    document.getElementById('sub-new-btn').addEventListener('click', () => {
+        cleanup();
+        createNewCrewNote(newHash, newMemberIds, boatType, schedule);
+    });
+
+    // キャンセル
+    document.getElementById('sub-cancel-btn').addEventListener('click', cleanup);
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) cleanup();
+    });
 }
 
 
@@ -9718,12 +9854,23 @@ function openCrewDetail(hash) {
     historyList.innerHTML = historyItems.length ? historyItems.map(n => {
         const d = formatDisplayDate(n.date);
         const contentPreview = n.content ? n.content.substring(0, 50) + (n.content.length > 50 ? '…' : '') : '';
+        // 代打情報
+        let subInfo = '';
+        if (n.substitutes && n.substitutes.length > 0) {
+            const subTexts = n.substitutes.map(sub => {
+                const origName = state.users.find(u => u.id === sub.originalId)?.name || '?';
+                const subName = state.users.find(u => u.id === sub.substituteId)?.name || '?';
+                return `${origName}→${subName}`;
+            });
+            subInfo = `<div class="history-card-sub"><span class="sub-badge">🔄 代打: ${subTexts.join(', ')}</span></div>`;
+        }
         return `<div class="history-card" onclick="openCrewNoteEdit('${hash}', '${n.date}')">
             <div class="history-card-header">
                 <span class="history-card-date">${d.month}/${d.day}（${d.weekday}）</span>
                 <div class="history-card-badges">
                 </div>
             </div>
+            ${subInfo}
             ${contentPreview ? `<div class="history-card-content">${contentPreview}</div>` : '<div class="history-card-empty">タップして記録を確認</div>'}
             <button class="crew-note-delete-btn" onclick="event.stopPropagation();deleteCrewNote('${n.id}','${hash}')" title="削除">🗑️</button>
         </div>`;

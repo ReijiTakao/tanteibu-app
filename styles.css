@@ -5107,6 +5107,19 @@ textarea {
     font-style: italic;
 }
 
+.history-card-sub {
+    margin: 4px 0;
+}
+
+.sub-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(14, 165, 233, 0.12);
+    color: #0ea5e9;
+    font-weight: 600;
+}
+
 /* 自分の振り返り行 */
 .member-reflection-me {
     background: rgba(16, 185, 129, 0.04);
