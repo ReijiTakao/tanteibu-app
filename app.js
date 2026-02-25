@@ -9303,6 +9303,21 @@ function closeRiggingComparison() {
 function extractCrewsFromSchedules() {
     const crewMap = new Map();
 
+    // データ正規化: idが欠けているノートにid付与 & ハッシュの末尾スペース修正
+    let needsSave = false;
+    if (state.crewNotes) {
+        state.crewNotes.forEach(note => {
+            if (!note.id) {
+                note.id = generateId();
+                needsSave = true;
+            }
+            if (note.crewHash && note.crewHash !== note.crewHash.trim()) {
+                note.crewHash = note.crewHash.trim();
+                needsSave = true;
+            }
+        });
+        if (needsSave) DB.saveLocal('crew_notes', state.crewNotes);
+    }
     // 既存のクルーノートからクルーをリスト化
     if (state.crewNotes) {
         state.crewNotes.forEach(note => {
@@ -9607,7 +9622,7 @@ function showSubstituteConfirmModal(similarInfo, newMemberIds, boatType, schedul
 // クルーハッシュ生成 (メンバーIDをソートして結合)
 function generateCrewHash(memberIds, boatType) {
     const sortedIds = [...memberIds].sort();
-    return `${boatType}_${sortedIds.join('_')} `;
+    return `${boatType}_${sortedIds.join('_')}`;
 }
 
 // クルーノート保存
@@ -9648,45 +9663,69 @@ function saveCrewNote(noteData) {
 // クルーノート削除
 function deleteCrewNote(noteId, crewHash) {
     const note = state.crewNotes.find(n => n.id === noteId);
-    if (!note) return;
-
-    const d = formatDisplayDate(note.date);
-    if (!confirm(`${d.month}/${d.day}（${d.weekday}）のクルーノートを削除しますか？\nこの操作は元に戻せません。`)) {
+    if (!note) {
+        showToast('ノートが見つかりません', 'error');
         return;
     }
 
-    // state.crewNotesから削除
-    state.crewNotes = state.crewNotes.filter(n => n.id !== noteId);
-    DB.save('crew_notes', state.crewNotes);
+    const d = formatDisplayDate(note.date);
 
-    // Supabase削除
-    if (DB.useSupabase && window.SupabaseConfig?.isReady()) {
-        try {
-            window.SupabaseConfig.getClient()
-                .from('crew_notes')
-                .delete()
-                .eq('id', noteId)
-                .then(() => { });
-        } catch (e) { /* ignore */ }
-    }
+    // カスタム確認モーダル（モバイル対応）
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:10001;display:flex;align-items:center;justify-content:center;';
+    overlay.innerHTML = `
+        <div style="background:var(--bg-card, #1e1e2e);border-radius:16px;padding:24px;width:min(320px,85vw);box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+            <h3 style="margin:0 0 12px;font-size:15px;color:var(--text-primary, #fff);">🗑️ クルーノートを削除</h3>
+            <p style="margin:0 0 16px;font-size:13px;color:var(--text-secondary, #aaa);">${d.month}/${d.day}（${d.weekday}）のクルーノートを削除しますか？<br>この操作は元に戻せません。</p>
+            <div style="display:flex;gap:8px;">
+                <button id="cn-del-cancel" style="flex:1;padding:10px;border:1px solid rgba(255,255,255,0.2);border-radius:10px;background:transparent;color:var(--text-primary,#fff);font-size:14px;cursor:pointer;">キャンセル</button>
+                <button id="cn-del-confirm" style="flex:1;padding:10px;border:none;border-radius:10px;background:#ef4444;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">削除する</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
 
-    // 練習ノートからのリンク解除
-    state.practiceNotes.forEach(pn => {
-        if (pn.crewNoteId === noteId) {
-            pn.crewNoteId = null;
+    const cleanup = () => overlay.remove();
+
+    document.getElementById('cn-del-cancel').addEventListener('click', cleanup);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) cleanup(); });
+
+    document.getElementById('cn-del-confirm').addEventListener('click', () => {
+        cleanup();
+
+        // state.crewNotesから削除
+        state.crewNotes = state.crewNotes.filter(n => n.id !== noteId);
+        DB.save('crew_notes', state.crewNotes);
+
+        // Supabase削除
+        if (DB.useSupabase && window.SupabaseConfig?.isReady()) {
+            try {
+                window.SupabaseConfig.getClient()
+                    .from('crew_notes')
+                    .delete()
+                    .eq('id', noteId)
+                    .then(() => { });
+            } catch (e) { /* ignore */ }
+        }
+
+        // 練習ノートからのリンク解除
+        state.practiceNotes.forEach(pn => {
+            if (pn.crewNoteId === noteId) {
+                pn.crewNoteId = null;
+            }
+        });
+        DB.save('practice_notes', state.practiceNotes);
+
+        // クルーリスト再構築
+        extractCrewsFromSchedules();
+
+        showToast('クルーノートを削除しました', 'success');
+
+        // モーダルをリフレッシュ
+        if (crewHash) {
+            openCrewDetail(crewHash);
         }
     });
-    DB.save('practice_notes', state.practiceNotes);
-
-    // クルーリスト再構築
-    extractCrewsFromSchedules();
-
-    showToast('クルーノートを削除しました', 'success');
-
-    // モーダルをリフレッシュ
-    if (crewHash) {
-        openCrewDetail(crewHash);
-    }
 }
 
 // UIロジック: クルーノート
@@ -9919,7 +9958,7 @@ function openCrewDetail(hash) {
         // crewオブジェクトに保存
         crew.playlistUrl = url;
         // crewNotes内の該当crewHashのノートにもplaylistUrlを付与（同期用）
-        DB.save('crews_playlist', state.crews.map(c => ({ hash: c.hash, playlistUrl: c.playlistUrl })).filter(c => c.playlistUrl));
+        DB.saveLocal('crews_playlist', state.crews.map(c => ({ hash: c.hash, playlistUrl: c.playlistUrl })).filter(c => c.playlistUrl));
         showPlaylistState(url);
         showToast('再生リストを保存しました', 'success');
     };
