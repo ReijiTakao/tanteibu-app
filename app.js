@@ -9451,12 +9451,18 @@ function autoCreateCrewNotesFromSchedule(schedule) {
     }
 }
 
-// 類似クルーを検出する
+// 類似クルーを検出する（直近30日以内のクルーのみ対象）
 function findSimilarCrew(memberIds, boatType) {
     const crews = state.crews || [];
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const cutoffStr = thirtyDaysAgo.toISOString().slice(0, 10);
+
     for (const crew of crews) {
         if (crew.boatType !== boatType) continue;
         if (crew.memberIds.length !== memberIds.length) continue;
+        // 直近30日以内に活動があるクルーのみ対象
+        if (crew.lastPractice && crew.lastPractice < cutoffStr) continue;
 
         // 完全一致はスキップ（同じクルーの場合）
         const crewSet = new Set(crew.memberIds);
