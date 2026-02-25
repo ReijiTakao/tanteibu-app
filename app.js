@@ -3756,8 +3756,26 @@ function renderOverview() {
         }
     });
 
-    // 非登録者（予定未入力の部員）
+    // 参加不可を午前/午後に分離
+    const absentMorning = [];
+    const absentAfternoon = [];
+    const absentBoth = []; // timeSlot不明
+    absentSchedules.forEach(s => {
+        const slot = s.timeSlot || '';
+        if (slot === '午前' || slot === 'morning') {
+            absentMorning.push(s);
+        } else if (slot === '午後' || slot === 'afternoon') {
+            absentAfternoon.push(s);
+        } else {
+            absentBoth.push(s);
+        }
+    });
+
+    // 非登録者（予定未入力の部員）→ 午前/午後別
     const unregisteredUsers = activeUsers.filter(u => !registeredUserIds.has(u.id));
+    // 午前のスケジュールが1件以上あるか → 午前枠を表示
+    const hasMorning = morningSchedules.length > 0 || absentMorning.length > 0;
+    const hasAfternoon = afternoonSchedules.length > 0 || absentAfternoon.length > 0;
 
     let html = '';
 
@@ -3778,8 +3796,38 @@ function renderOverview() {
     // === 午前セクション ===
     html += renderSlotSection('🌅 午前', morningSchedules);
 
+    // 午前の参加不可
+    if (absentMorning.length > 0) {
+        html += renderAbsentBlock('❌ 午前 参加不可', absentMorning);
+    }
+
+    // 午前の未登録
+    if (hasMorning && unregisteredUsers.length > 0) {
+        // 午前に登録があるユーザーを除外して未登録者を表示
+        const morningRegisteredIds = new Set([...morningSchedules.map(s => s.userId), ...absentMorning.map(s => s.userId)]);
+        const unregMorning = unregisteredUsers.filter(u => !morningRegisteredIds.has(u.id));
+        // 午後に登録しているユーザーも午前の未登録から除外しない（両方に出る）
+        if (unregMorning.length > 0) {
+            html += renderUnregisteredBlock('📝 午前 未登録', unregMorning);
+        }
+    }
+
     // === 午後セクション ===
     html += renderSlotSection('🌇 午後', afternoonSchedules);
+
+    // 午後の参加不可
+    if (absentAfternoon.length > 0) {
+        html += renderAbsentBlock('❌ 午後 参加不可', absentAfternoon);
+    }
+
+    // 午後の未登録
+    if (hasAfternoon && unregisteredUsers.length > 0) {
+        const afternoonRegisteredIds = new Set([...afternoonSchedules.map(s => s.userId), ...absentAfternoon.map(s => s.userId)]);
+        const unregAfternoon = unregisteredUsers.filter(u => !afternoonRegisteredIds.has(u.id));
+        if (unregAfternoon.length > 0) {
+            html += renderUnregisteredBlock('📝 午後 未登録', unregAfternoon);
+        }
+    }
 
     // === OFF（折りたたみ） ===
     if (offSchedules.length > 0) {
@@ -3799,60 +3847,101 @@ function renderOverview() {
         </div>`;
     }
 
-    // === 参加不可（折りたたみ） ===
-    if (absentSchedules.length > 0) {
-        const absentByReason = {};
-        absentSchedules.forEach(s => {
-            const reason = s.absenceReason || 'その他';
-            if (!absentByReason[reason]) absentByReason[reason] = [];
-            absentByReason[reason].push(s);
-        });
-
-        const absentChips = Object.entries(absentByReason).map(([reason, list]) => {
-            const names = list.map(s => {
-                const u = state.users.find(u => u.id === s.userId);
-                const detail = s.absenceDetail ? `<span class="absent-detail-hint" title="${s.absenceDetail}">ⓘ</span>` : '';
-                return `<span class="ov-chip absent-chip">${u?.name || '?'}${detail}</span>`;
-            }).join('');
-            return `<div class="absent-reason-group">
-                <span class="absent-reason-label">${reason}</span>
-                <div class="ov-chip-row">${names}</div>
-            </div>`;
-        }).join('');
-
-        html += `<div class="timeline-block absent-block">
-            <div class="ov-card-header" onclick="this.parentElement.classList.toggle('expanded')">
-                <span class="timeline-time-label">❌ 参加不可</span>
-                <div class="ov-summary-badges">
-                    <span class="ov-badge absent-badge">${absentSchedules.length}人</span>
-                    <span class="ov-expand-icon">▶</span>
-                </div>
-            </div>
-            <div class="ov-card-body">${absentChips}</div>
-        </div>`;
+    // === timeSlot不明の参加不可（両方 or 不明） ===
+    if (absentBoth.length > 0) {
+        html += renderAbsentBlock('❌ 参加不可', absentBoth);
     }
 
-    // === 非登録者（折りたたみ） ===
-    if (unregisteredUsers.length > 0) {
-        const unregChips = unregisteredUsers.map(u =>
-            `<span class="ov-chip unregistered-chip">⚠️ ${u.name}</span>`
-        ).join('');
-        html += `<div class="timeline-block absent-block">
-            <div class="ov-card-header" onclick="this.parentElement.classList.toggle('expanded')">
-                <span class="timeline-time-label">📝 未登録</span>
-                <div class="ov-summary-badges">
-                    <span class="ov-badge" style="background:#f59e0b;">${unregisteredUsers.length}人</span>
-                    <span class="ov-expand-icon">▶</span>
-                </div>
-            </div>
-            <div class="ov-card-body"><div class="ov-chip-row">${unregChips}</div></div>
-        </div>`;
+    // === timeSlot不明の場合の未登録（午前/午後スケジュールが無い場合のフォールバック） ===
+    if (!hasMorning && !hasAfternoon && unregisteredUsers.length > 0) {
+        html += renderUnregisteredBlock('📝 未登録', unregisteredUsers);
     }
 
     container.innerHTML = html;
 
     // 空き艇セクション
     renderAvailableBoats(dateStr, boatSection);
+}
+
+function renderAbsentBlock(title, absentList) {
+    const absentByReason = {};
+    absentList.forEach(s => {
+        const reason = s.absenceReason || 'その他';
+        if (!absentByReason[reason]) absentByReason[reason] = [];
+        absentByReason[reason].push(s);
+    });
+
+    const absentChips = Object.entries(absentByReason).map(([reason, list]) => {
+        const names = list.map(s => {
+            const u = state.users.find(u => u.id === s.userId);
+            const name = u?.name || '?';
+            if (s.absenceDetail) {
+                const escapedDetail = (s.absenceDetail || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                return `<span class="ov-chip absent-chip absent-chip-with-detail" onclick="showAbsenceDetail('${name}', '${escapedDetail}')">${name} <span class="absent-detail-hint">ⓘ</span></span>`;
+            }
+            return `<span class="ov-chip absent-chip">${name}</span>`;
+        }).join('');
+        return `<div class="absent-reason-group">
+            <span class="absent-reason-label">${reason}</span>
+            <div class="ov-chip-row">${names}</div>
+        </div>`;
+    }).join('');
+
+    return `<div class="timeline-block absent-block">
+        <div class="ov-card-header" onclick="this.parentElement.classList.toggle('expanded')">
+            <span class="timeline-time-label">${title}</span>
+            <div class="ov-summary-badges">
+                <span class="ov-badge absent-badge">${absentList.length}人</span>
+                <span class="ov-expand-icon">▶</span>
+            </div>
+        </div>
+        <div class="ov-card-body">${absentChips}</div>
+    </div>`;
+}
+
+function renderUnregisteredBlock(title, users) {
+    const unregChips = users.map(u =>
+        `<span class="ov-chip unregistered-chip">⚠️ ${u.name}</span>`
+    ).join('');
+    return `<div class="timeline-block absent-block">
+        <div class="ov-card-header" onclick="this.parentElement.classList.toggle('expanded')">
+            <span class="timeline-time-label">${title}</span>
+            <div class="ov-summary-badges">
+                <span class="ov-badge" style="background:#f59e0b;">${users.length}人</span>
+                <span class="ov-expand-icon">▶</span>
+            </div>
+        </div>
+        <div class="ov-card-body"><div class="ov-chip-row">${unregChips}</div></div>
+    </div>`;
+}
+
+/**
+ * 休む理由の詳細をポップアップ表示（モバイル対応）
+ */
+function showAbsenceDetail(name, detail) {
+    event.stopPropagation();
+    // 既存のポップアップがあれば削除
+    document.querySelectorAll('.absence-detail-popup').forEach(el => el.remove());
+
+    const popup = document.createElement('div');
+    popup.className = 'absence-detail-popup';
+    popup.innerHTML = `
+        <div class="absence-detail-popup-content">
+            <div class="absence-detail-popup-header">
+                <strong>${name}</strong>の休み理由
+                <button onclick="this.closest('.absence-detail-popup').remove()" style="background:none;border:none;color:var(--text-primary,#fff);font-size:18px;cursor:pointer;padding:0 4px;">✕</button>
+            </div>
+            <div class="absence-detail-popup-body">${detail}</div>
+        </div>
+    `;
+    document.body.appendChild(popup);
+
+    // オーバーレイクリックで閉じる
+    popup.addEventListener('click', (e) => {
+        if (e.target === popup) popup.remove();
+    });
+
+    // 3秒後に自動で消えない（ユーザーが明示的に閉じるまで表示）
 }
 
 function renderTimeBlock(timeLabel, entries) {

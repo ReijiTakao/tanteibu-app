@@ -1329,7 +1329,69 @@ body {
     font-size: 10px;
     color: var(--accent-color);
     margin-left: 2px;
-    cursor: help;
+    cursor: pointer;
+}
+
+.absent-chip-with-detail {
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 2px;
+}
+
+/* 休み理由詳細ポップアップ */
+.absence-detail-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.15s ease;
+}
+
+.absence-detail-popup-content {
+    background: var(--bg-card, #1e1e2e);
+    border-radius: 16px;
+    padding: 20px;
+    width: min(320px, 85vw);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    animation: slideUp 0.2s ease;
+}
+
+.absence-detail-popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: var(--text-primary, #fff);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.absence-detail-popup-body {
+    font-size: 14px;
+    color: var(--text-secondary, #ccc);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 /* ======= マイレージランキング ======= */
