@@ -4302,9 +4302,11 @@ function renderMyPracticeDashboard() {
                 return `<div style="margin-top:4px;"><span style="font-size:10px;color:var(--text-muted,#888);">${label}</span> ${items}</div>`;
             }
 
+            const distInfo = data.distance > 0 ? `<div style="margin-top:4px;color:#60a5fa;font-weight:600;">🚣 ${(data.distance / 1000).toFixed(1)} km</div>` : '';
+
             const popup = document.createElement('div');
             popup.id = 'cal-detail-popup';
-            popup.innerHTML = `<b>${dateLabel}</b>${formatSlot(data.am, '午前')}${formatSlot(data.pm, '午後')}`;
+            popup.innerHTML = `<b>${dateLabel}</b>${formatSlot(data.am, '午前')}${formatSlot(data.pm, '午後')}${distInfo}`;
             popup.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;background:var(--bg-card,#1e1e2e);border:1px solid rgba(255,255,255,0.15);border-radius:12px;padding:12px 16px;font-size:12px;color:var(--text-primary,#fff);box-shadow:0 8px 24px rgba(0,0,0,0.5);max-width:280px;text-align:left;';
             document.body.appendChild(popup);
             setTimeout(() => popup.remove(), 3000);
@@ -4427,12 +4429,12 @@ function renderDashCalendar(schedules, viewMonth, todayStr) {
         [SCHEDULE_TYPES.ABSENT]: { cls: 'absent', short: '✕', icon: '❌' }
     };
 
-    // 日付 → { am: [{type, reason}], pm: [{type, reason}] }
+    // 日付 → { am: [{type, reason}], pm: [{type, reason}], distance: number }
     const dateMap = {};
     schedules.forEach(s => {
         const d = new Date(s.date);
         if (d.getFullYear() === year && d.getMonth() === month && s.scheduleType) {
-            if (!dateMap[s.date]) dateMap[s.date] = { am: [], pm: [] };
+            if (!dateMap[s.date]) dateMap[s.date] = { am: [], pm: [], distance: 0 };
             const slot = s.timeSlot === '午後' ? 'pm' : 'am';
             dateMap[s.date][slot].push({
                 type: s.scheduleType,
@@ -4440,6 +4442,20 @@ function renderDashCalendar(schedules, viewMonth, todayStr) {
             });
         }
     });
+
+    // 練習ノートから乗艇距離を取得
+    const userId = state.currentUser?.id;
+    if (userId && state.practiceNotes) {
+        state.practiceNotes.forEach(note => {
+            if (note.userId === userId && note.rowingDistance && note.rowingDistance > 0) {
+                const nd = new Date(note.date);
+                if (nd.getFullYear() === year && nd.getMonth() === month) {
+                    if (!dateMap[note.date]) dateMap[note.date] = { am: [], pm: [], distance: 0 };
+                    dateMap[note.date].distance += note.rowingDistance;
+                }
+            }
+        });
+    }
 
     // セル用ヘルパー: スケジュール種別→ミニラベル
     function slotHtml(entries) {
@@ -4458,8 +4474,9 @@ function renderDashCalendar(schedules, viewMonth, todayStr) {
     for (let day = 1; day <= lastDay.getDate(); day++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const isToday = dateStr === todayStr;
-        const data = dateMap[dateStr] || { am: [], pm: [] };
+        const data = dateMap[dateStr] || { am: [], pm: [], distance: 0 };
         const hasAny = data.am.length > 0 || data.pm.length > 0;
+        const distLabel = data.distance > 0 ? `<div class="cal-day-dist">${(data.distance / 1000).toFixed(1)}k</div>` : '';
 
         cells += `<div class="my-dash-cal-day${isToday ? ' today' : ''}${hasAny ? ' has-data' : ''}" data-date="${dateStr}">
             <div class="cal-day-num">${day}</div>
@@ -4467,6 +4484,7 @@ function renderDashCalendar(schedules, viewMonth, todayStr) {
                 <div class="cal-slot-am">${slotHtml(data.am)}</div>
                 <div class="cal-slot-pm">${slotHtml(data.pm)}</div>
             </div>
+            ${distLabel}
         </div>`;
     }
 

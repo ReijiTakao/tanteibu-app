@@ -5063,6 +5063,14 @@ textarea {
     margin-bottom: 1px;
 }
 
+.cal-day-dist {
+    font-size: 7px;
+    font-weight: 700;
+    color: #60a5fa;
+    line-height: 1;
+    margin-top: 1px;
+}
+
 .cal-day-slots {
     display: flex;
     flex-direction: column;
