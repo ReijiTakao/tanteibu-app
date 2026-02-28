@@ -1758,7 +1758,7 @@ body {
 }
 
 .ba-free-chip {
-    display: inline-block;
+    display: inline-flex;
     padding: 4px 10px;
     border: 1px dashed #9ca3af;
     border-radius: 8px;

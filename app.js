@@ -4856,21 +4856,26 @@ function renderBoatAllocation() {
         });
         // BA_TYPE_ORDER順にソートして表示
         let freeChips = '';
+        const renderFreeBoatChip = (b, type, color) => {
+            const memo = b.memo || b.notes || '';
+            const org = b.organization || '';
+            const infoLine = [org, memo].filter(Boolean).join(' · ');
+            return `<span class="ba-free-chip" style="border-color:${color};flex-direction:column;align-items:flex-start;" onclick="openAllocationModal(null, '${b.id}')">
+                <span>${b.name} <span style="color:${color};font-size:9px;">${type}</span></span>
+                ${infoLine ? `<span style="font-size:9px;color:#888;line-height:1.2;margin-top:1px;">${infoLine}</span>` : ''}
+            </span>`;
+        };
         BA_TYPE_ORDER.forEach(type => {
             if (!boatsByType[type]) return;
             const color = BA_TYPE_COLORS[type] || '#6b7280';
             boatsByType[type].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
-            const chips = boatsByType[type].map(b =>
-                `<span class="ba-free-chip" style="border-color:${color};" onclick="openAllocationModal(null, '${b.id}')">${b.name} <span style="color:${color};font-size:9px;">${type}</span></span>`
-            ).join('');
+            const chips = boatsByType[type].map(b => renderFreeBoatChip(b, type, color)).join('');
             freeChips += `<div class="ba-free-type-group"><span class="ba-free-type-label" style="color:${color};">${type}</span>${chips}</div>`;
         });
         // BA_TYPE_ORDER外の艇種
         Object.keys(boatsByType).filter(t => !BA_TYPE_ORDER.includes(t)).forEach(type => {
             const color = BA_TYPE_COLORS[type] || '#6b7280';
-            const chips = boatsByType[type].map(b =>
-                `<span class="ba-free-chip" style="border-color:${color};" onclick="openAllocationModal(null, '${b.id}')">${b.name} <span style="color:${color};font-size:9px;">${type}</span></span>`
-            ).join('');
+            const chips = boatsByType[type].map(b => renderFreeBoatChip(b, type, color)).join('');
             freeChips += `<div class="ba-free-type-group"><span class="ba-free-type-label" style="color:${color};">${type}</span>${chips}</div>`;
         });
         freeBoatsHtml = `
