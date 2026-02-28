@@ -1704,6 +1704,119 @@ body {
     font-style: italic;
 }
 
+.ba-add-btn {
+    width: 100%;
+    padding: 10px;
+    border: 2px dashed rgba(30, 58, 95, 0.3);
+    border-radius: 10px;
+    background: transparent;
+    color: #1e3a5f;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ba-add-btn:hover {
+    background: rgba(30, 58, 95, 0.05);
+    border-color: #1e3a5f;
+}
+
+.ba-edit-icon {
+    font-size: 12px;
+    opacity: 0.5;
+}
+
+.ba-updated {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+.ba-card.used {
+    cursor: pointer;
+}
+
+.ba-card.used:active {
+    transform: scale(0.98);
+}
+
+.ba-free-section {
+    margin-top: 8px;
+    padding: 8px;
+    background: rgba(107, 114, 128, 0.04);
+    border-radius: 8px;
+}
+
+.ba-free-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.ba-free-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.ba-free-chip {
+    display: inline-block;
+    padding: 3px 8px;
+    border: 1px dashed #9ca3af;
+    border-radius: 8px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ba-free-chip:hover {
+    background: rgba(59, 130, 246, 0.08);
+    border-color: #3b82f6;
+}
+
+.ba-free-chip.oar {
+    cursor: default;
+    border-style: dotted;
+}
+
+/* 配艇モーダルのシートグリッド */
+.alloc-seats-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.alloc-seat-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.alloc-seat-label {
+    min-width: 32px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #3b82f6;
+    text-align: center;
+}
+
+.alloc-seat-select {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+.alloc-preview-card {
+    padding: 10px 12px;
+    background: rgba(59, 130, 246, 0.06);
+    border-radius: 10px;
+    border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
 /* 空き艇セクション - アコーディオン */
 .available-boats-section {
     margin-top: 12px;

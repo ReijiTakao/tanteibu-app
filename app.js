@@ -199,6 +199,7 @@ let state = {
     crews: [],
     practiceNotes: [],
     teamSchedules: [],
+    boatAllocations: [],
     auditLogs: []
 };
 
@@ -292,6 +293,7 @@ const DB = {
         state.ergoRaw = this.load('ergoRaw') || [];
         state.ergoSessions = this.load('ergoSessions') || [];
         state.teamSchedules = this.load('team_schedules') || [];
+        state.boatAllocations = this.load('boat_allocations') || [];
         state.currentUser = this.load('current_user');
 
         // 承認済みユーザーがいない場合もデモデータを再作成（デモモード用）
@@ -2718,12 +2720,128 @@ function handleScheduleTypeChange(type) {
     document.getElementById('meal-type-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.MEAL);
     document.getElementById('video-duration-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.VIDEO);
 
-    // 乗艇選択時はシートUI表示
+    // 配艇セレクタの表示切替
+    const allocGroup = document.getElementById('allocation-select-group');
+    if (allocGroup) allocGroup.classList.toggle('hidden', type !== SCHEDULE_TYPES.BOAT);
+
+    // 乗艇選択時は配艇セレクタをポピュレート＋シートUI表示
     if (type === SCHEDULE_TYPES.BOAT) {
+        populateAllocationSelect();
         const activeBoatTypeBtn = document.querySelector('.boat-type-btn.active');
         const boatType = activeBoatTypeBtn ? activeBoatTypeBtn.dataset.value : '8+';
         renderSeatInputs(boatType);
     }
+}
+
+function populateAllocationSelect() {
+    const select = document.getElementById('input-allocation');
+    if (!select) return;
+
+    const allocations = state.boatAllocations || [];
+    const userId = state.currentUser?.id;
+
+    // 自分が含まれる配艇を上に
+    const myAllocs = allocations.filter(a => (a.crewIds || []).includes(userId));
+    const otherAllocs = allocations.filter(a => !(a.crewIds || []).includes(userId));
+
+    let html = '<option value="">配艇を選択（手動入力も可）</option>';
+
+    if (myAllocs.length > 0) {
+        html += '<optgroup label="⭐ あなたの配艇">';
+        myAllocs.forEach(a => {
+            const boat = (state.boats || []).find(b => b.id === a.boatId);
+            const boatName = boat ? boat.name : '不明';
+            const crewCount = (a.crewIds || []).length;
+            html += `<option value="${a.id}">🚣 ${boatName} (${a.boatType || ''}) - ${crewCount}人</option>`;
+        });
+        html += '</optgroup>';
+    }
+
+    if (otherAllocs.length > 0) {
+        html += '<optgroup label="その他の配艇">';
+        otherAllocs.forEach(a => {
+            const boat = (state.boats || []).find(b => b.id === a.boatId);
+            const boatName = boat ? boat.name : '不明';
+            const crewCount = (a.crewIds || []).length;
+            html += `<option value="${a.id}">${boatName} (${a.boatType || ''}) - ${crewCount}人</option>`;
+        });
+        html += '</optgroup>';
+    }
+
+    select.innerHTML = html;
+}
+
+function onAllocationSelected(allocId) {
+    const preview = document.getElementById('allocation-preview');
+    if (!allocId) {
+        if (preview) preview.innerHTML = '';
+        // 手動入力モードに戻す
+        document.getElementById('boat-group').classList.remove('hidden');
+        document.getElementById('oar-group').classList.remove('hidden');
+        document.getElementById('crew-group').classList.remove('hidden');
+        return;
+    }
+
+    const alloc = (state.boatAllocations || []).find(a => a.id === allocId);
+    if (!alloc) return;
+
+    const boat = (state.boats || []).find(b => b.id === alloc.boatId);
+
+    // 艇種ボタンを自動設定
+    if (alloc.boatType) {
+        document.querySelectorAll('.boat-type-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.value === alloc.boatType);
+        });
+    }
+
+    // 船の選択を自動設定
+    if (typeof populateBoatOarSelects === 'function') populateBoatOarSelects();
+    setTimeout(() => {
+        const boatSelect = document.getElementById('input-boat');
+        if (boatSelect && alloc.boatId) boatSelect.value = alloc.boatId;
+
+        // オール自動セット
+        const oarSelects = document.querySelectorAll('#oar-selects-container select');
+        (alloc.oarIds || []).forEach((oid, i) => {
+            if (oarSelects[i]) oarSelects[i].value = oid;
+        });
+
+        // シート自動セット
+        if (alloc.boatType) renderSeatInputs(alloc.boatType);
+        setTimeout(() => {
+            const crewMap = alloc.crewDetailsMap || {};
+            Object.entries(crewMap).forEach(([seat, uid]) => {
+                const seatSelect = document.querySelector(`[data-seat="${seat}"]`);
+                if (seatSelect) seatSelect.value = uid;
+            });
+        }, 50);
+    }, 50);
+
+    // プレビュー表示
+    const crewNames = Object.entries(alloc.crewDetailsMap || {}).map(([seat, uid]) => {
+        const u = (state.users || []).find(u => u.id === uid);
+        return u ? `<span class="ba-crew-member"><span class="ba-seat">${seat}</span>${u.name}</span>` : '';
+    }).filter(n => n).join('');
+
+    const oarNames = (alloc.oarIds || []).map(oid => {
+        const oar = (state.oars || []).find(o => o.id === oid);
+        return oar ? oar.name : '';
+    }).filter(n => n);
+
+    if (preview) {
+        preview.innerHTML = `
+            <div class="alloc-preview-card">
+                <div style="font-weight:600;font-size:13px;">${boat ? boat.name : ''} <span style="color:#3b82f6;">${alloc.boatType || ''}</span></div>
+                <div class="ba-crew-row" style="margin-top:4px;">${crewNames || '<span style="color:#999;">クルー未設定</span>'}</div>
+                ${oarNames.length > 0 ? `<div class="ba-oars">🏏 ${oarNames.join(', ')}</div>` : ''}
+            </div>
+        `;
+    }
+
+    // 手動入力UIは隠す（配艇から自動入力されるため）
+    document.getElementById('boat-group').classList.add('hidden');
+    document.getElementById('oar-group').classList.add('hidden');
+    document.getElementById('crew-group').classList.add('hidden');
 }
 
 function addErgoRecordInput(existingRecord = null) {
@@ -2947,6 +3065,7 @@ function saveSchedule() {
         boatId: document.getElementById('input-boat').value || null,
         oarIds: Array.from(document.querySelectorAll('.input-oar-select')).map(s => s.value).filter(v => v),
         oarId: document.querySelector('.input-oar-select')?.value || null, // 後方互換
+        allocationId: document.getElementById('input-allocation')?.value || null,
         crewIds: [],
         crewDetailsMap: {},
         mealTypes: Array.from(document.querySelectorAll('.meal-type-btn.active')).map(b => b.dataset.value),
@@ -3865,7 +3984,7 @@ function renderOverview() {
     renderAvailableBoats(dateStr, boatSection);
 
     // 配艇表
-    renderBoatAllocation(dateStr);
+    renderBoatAllocation();
 }
 
 function renderAbsentBlock(title, absentList) {
@@ -4597,9 +4716,24 @@ function renderWeeklyPracticeSummary() {
 
 
 // =========================================
-// 配艇表（ホワイトボード風）
+// 配艇表（独立データ管理）
 // =========================================
-function renderBoatAllocation(dateStr) {
+const BA_TYPE_ORDER = ['8+', '4+', '4-', '4x', '2-', '2x', '1x'];
+const BA_TYPE_COLORS = {
+    '8+': '#3b82f6', '4+': '#8b5cf6', '4-': '#6366f1', '4x': '#f59e0b',
+    '2-': '#10b981', '2x': '#06b6d4', '1x': '#ef4444'
+};
+
+function getBoatTypeFromBoat(boat) {
+    const t = (boat.type || '').toLowerCase();
+    if (t) return t.toUpperCase().replace('X', 'x');
+    for (const bt of BA_TYPE_ORDER) {
+        if ((boat.name || '').includes(bt)) return bt;
+    }
+    return '他';
+}
+
+function renderBoatAllocation() {
     const section = document.getElementById('boat-allocation-section');
     if (!section) return;
 
@@ -4607,187 +4741,325 @@ function renderBoatAllocation(dateStr) {
         const status = b.status || (b.availability === '使用不可' ? 'broken' : 'available');
         return status === 'available';
     });
-    if (allBoats.length === 0) {
-        section.innerHTML = '';
-        return;
-    }
 
-    // その日の乗艇スケジュールを集計
-    const boatSchedules = (state.schedules || []).filter(
-        s => s.date === dateStr && s.scheduleType === SCHEDULE_TYPES.BOAT && s.boatId
-    );
+    const allocations = state.boatAllocations || [];
+    const allocatedBoatIds = new Set(allocations.map(a => a.boatId));
+    const allocatedOarIds = new Set(allocations.flatMap(a => a.oarIds || []));
 
-    // boatId → 集約情報
-    const boatInfoMap = {};
-    boatSchedules.forEach(s => {
-        if (!boatInfoMap[s.boatId]) {
-            boatInfoMap[s.boatId] = {
-                timeSlots: new Set(),
-                startTimes: [],
-                crewMembers: new Map(), // seatId → { name, userId }
-                oarIds: new Set(),
-                boatType: s.boatType,
-                schedules: []
-            };
-        }
-        const info = boatInfoMap[s.boatId];
-        info.schedules.push(s);
-        if (s.timeSlot) info.timeSlots.add(s.timeSlot);
-        if (s.startTime) info.startTimes.push(s.startTime);
-
-        // クルー情報集約
-        const registrant = state.users.find(u => u.id === s.userId);
-        if (s.crewDetailsMap && Object.keys(s.crewDetailsMap).length > 0) {
-            Object.entries(s.crewDetailsMap).forEach(([seat, uid]) => {
-                const u = state.users.find(u => u.id === uid);
-                if (u) info.crewMembers.set(uid, { seat, name: u.name });
-            });
-            // 登録者本人も追加（Coxかもしれない）
-            if (registrant && !info.crewMembers.has(s.userId)) {
-                info.crewMembers.set(s.userId, { seat: 'Cox', name: registrant.name });
-            }
-        } else if (registrant) {
-            // クルー情報なし → 登録者のみ
-            if (!info.crewMembers.has(s.userId)) {
-                info.crewMembers.set(s.userId, { seat: '', name: registrant.name });
-            }
-        }
-
-        // オール集約
-        const oarIds = s.oarIds || (s.oarId ? [s.oarId] : []);
-        oarIds.forEach(oid => { if (oid) info.oarIds.add(oid); });
+    // 空き船
+    const freeBoats = allBoats.filter(b => !allocatedBoatIds.has(b.id));
+    // 空きオール
+    const allOars = (state.oars || []).filter(o => {
+        const status = o.status || (o.availability === '使用不可' ? 'broken' : 'available');
+        return status === 'available';
     });
+    const freeOars = allOars.filter(o => !allocatedOarIds.has(o.id));
 
-    // 艇種でソート＆グループ化
-    const typeOrder = ['8+', '4+', '4-', '4x', '2-', '2x', '1x'];
-    const typeColors = {
-        '8+': '#3b82f6', '4+': '#8b5cf6', '4-': '#6366f1', '4x': '#f59e0b',
-        '2-': '#10b981', '2x': '#06b6d4', '1x': '#ef4444'
-    };
-
-    function getBoatType(boat) {
-        const t = (boat.type || '').toLowerCase();
-        if (t) return t.toUpperCase().replace('X', 'x');
-        // 名前から推定
-        for (const bt of typeOrder) {
-            if ((boat.name || '').includes(bt)) return bt;
-        }
-        return '他';
-    }
-
-    const grouped = {};
-    allBoats.forEach(b => {
-        const type = getBoatType(b);
-        if (!grouped[type]) grouped[type] = [];
-        grouped[type].push(b);
-    });
-
-    // 各グループ内をソート（使用中が先、名前順）
-    Object.values(grouped).forEach(boats => {
-        boats.sort((a, b) => {
-            const aUsed = boatInfoMap[a.id] ? 1 : 0;
-            const bUsed = boatInfoMap[b.id] ? 1 : 0;
-            if (bUsed !== aUsed) return bUsed - aUsed;
-            return (a.name || '').localeCompare(b.name || '');
-        });
-    });
-
-    // カード生成
+    // 配艇カード生成
     let cardsHtml = '';
-    const sortedTypes = Object.keys(grouped).sort((a, b) => {
-        const ai = typeOrder.indexOf(a);
-        const bi = typeOrder.indexOf(b);
+    const sortedAllocations = [...allocations].sort((a, b) => {
+        const ai = BA_TYPE_ORDER.indexOf(a.boatType);
+        const bi = BA_TYPE_ORDER.indexOf(b.boatType);
         return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
     });
 
-    const usedCount = Object.keys(boatInfoMap).length;
+    sortedAllocations.forEach(alloc => {
+        const boat = allBoats.find(b => b.id === alloc.boatId);
+        if (!boat) return;
+        const type = alloc.boatType || getBoatTypeFromBoat(boat);
+        const color = BA_TYPE_COLORS[type] || '#6b7280';
 
-    sortedTypes.forEach(type => {
-        const boats = grouped[type];
-        const color = typeColors[type] || '#6b7280';
-
-        boats.forEach(boat => {
-            const info = boatInfoMap[boat.id];
-            const isUsed = !!info;
-
-            if (isUsed) {
-                // シート順でクルーをソート
-                const crewArr = Array.from(info.crewMembers.values());
-                const seatOrder = ['Cox', 'S', '7', '6', '5', '4', '3', '2', 'B', ''];
-                crewArr.sort((a, b) => {
-                    const ai = seatOrder.indexOf(a.seat);
-                    const bi = seatOrder.indexOf(b.seat);
-                    return (ai === -1 ? 50 : ai) - (bi === -1 ? 50 : bi);
-                });
-
-                const crewHtml = crewArr.map(c => {
-                    const seatLabel = c.seat ? `<span class="ba-seat">${c.seat}</span>` : '';
-                    return `<span class="ba-crew-member">${seatLabel}${c.name}</span>`;
-                }).join('');
-
-                // オール名取得
-                const oarNames = Array.from(info.oarIds).map(oid => {
-                    const oar = (state.oars || []).find(o => o.id === oid);
-                    return oar ? oar.name : '';
-                }).filter(n => n);
-
-                const oarHtml = oarNames.length > 0
-                    ? `<div class="ba-oars">🏏 ${oarNames.join(', ')}</div>`
-                    : '';
-
-                // 時間表示
-                const timeStr = info.startTimes.length > 0
-                    ? info.startTimes[0]
-                    : (info.timeSlots.size > 0 ? Array.from(info.timeSlots).join('/') : '');
-
-                const slotBadges = Array.from(info.timeSlots).map(ts =>
-                    `<span class="ba-slot-badge ${ts === '午前' ? 'am' : 'pm'}">${ts}</span>`
-                ).join('');
-
-                cardsHtml += `
-                <div class="ba-card used" style="border-left-color: ${color};">
-                    <div class="ba-card-header">
-                        <div class="ba-boat-info">
-                            <span class="ba-boat-name">${boat.name}</span>
-                            <span class="ba-boat-type" style="color:${color};">${type}</span>
-                        </div>
-                        <div class="ba-time-info">
-                            ${slotBadges}
-                            ${timeStr ? `<span class="ba-start-time">${timeStr}</span>` : ''}
-                        </div>
-                    </div>
-                    <div class="ba-crew-row">${crewHtml}</div>
-                    ${oarHtml}
-                </div>`;
-            } else {
-                cardsHtml += `
-                <div class="ba-card empty" style="border-left-color: ${color};">
-                    <div class="ba-card-header">
-                        <div class="ba-boat-info">
-                            <span class="ba-boat-name">${boat.name}</span>
-                            <span class="ba-boat-type" style="color:${color};">${type}</span>
-                        </div>
-                        <span class="ba-empty-label">空き</span>
-                    </div>
-                </div>`;
-            }
+        // クルー表示
+        const crewArr = [];
+        const crewMap = alloc.crewDetailsMap || {};
+        const seatOrder = ['Cox', 'S', '7', '6', '5', '4', '3', '2', 'B'];
+        Object.entries(crewMap).forEach(([seat, uid]) => {
+            const u = (state.users || []).find(u => u.id === uid);
+            if (u) crewArr.push({ seat, name: u.name });
         });
+        crewArr.sort((a, b) => {
+            const ai = seatOrder.indexOf(a.seat);
+            const bi = seatOrder.indexOf(b.seat);
+            return (ai === -1 ? 50 : ai) - (bi === -1 ? 50 : bi);
+        });
+
+        const crewHtml = crewArr.map(c => {
+            const seatLabel = c.seat ? `<span class="ba-seat">${c.seat}</span>` : '';
+            return `<span class="ba-crew-member">${seatLabel}${c.name}</span>`;
+        }).join('');
+
+        // オール名
+        const oarNames = (alloc.oarIds || []).map(oid => {
+            const oar = (state.oars || []).find(o => o.id === oid);
+            return oar ? oar.name : '';
+        }).filter(n => n);
+        const oarHtml = oarNames.length > 0
+            ? `<div class="ba-oars">🏏 ${oarNames.join(', ')}</div>` : '';
+
+        // 更新日時
+        const updatedLabel = alloc.updatedAt
+            ? new Date(alloc.updatedAt).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })
+            : '';
+
+        cardsHtml += `
+        <div class="ba-card used" style="border-left-color: ${color};" onclick="openAllocationModal('${alloc.id}')">
+            <div class="ba-card-header">
+                <div class="ba-boat-info">
+                    <span class="ba-boat-name">${boat.name}</span>
+                    <span class="ba-boat-type" style="color:${color};">${type}</span>
+                </div>
+                <div class="ba-time-info">
+                    ${updatedLabel ? `<span class="ba-updated">${updatedLabel}</span>` : ''}
+                    <span class="ba-edit-icon">✏️</span>
+                </div>
+            </div>
+            <div class="ba-crew-row">${crewHtml || '<span class="ba-empty-label">クルー未設定</span>'}</div>
+            ${oarHtml}
+        </div>`;
     });
+
+    // 空き船カード
+    let freeBoatsHtml = '';
+    if (freeBoats.length > 0) {
+        const freeChips = freeBoats.map(b => {
+            const type = getBoatTypeFromBoat(b);
+            const color = BA_TYPE_COLORS[type] || '#6b7280';
+            return `<span class="ba-free-chip" style="border-color:${color};" onclick="openAllocationModal(null, '${b.id}')">${b.name} <span style="color:${color};font-size:9px;">${type}</span></span>`;
+        }).join('');
+        freeBoatsHtml = `
+        <div class="ba-free-section">
+            <div class="ba-free-title">🚣 空き船 (${freeBoats.length})</div>
+            <div class="ba-free-chips">${freeChips}</div>
+        </div>`;
+    }
+
+    // 空きオール
+    let freeOarsHtml = '';
+    if (freeOars.length > 0) {
+        const oarChips = freeOars.map(o => `<span class="ba-free-chip oar">${o.name}</span>`).join('');
+        freeOarsHtml = `
+        <div class="ba-free-section">
+            <div class="ba-free-title">🏏 空きオール (${freeOars.length})</div>
+            <div class="ba-free-chips">${oarChips}</div>
+        </div>`;
+    }
 
     section.innerHTML = `
         <div class="ba-container">
             <div class="ba-header" onclick="this.parentElement.classList.toggle('collapsed')">
                 <div class="ba-title">
                     <span>🚣 配艇表</span>
-                    <span class="ba-count">${usedCount}/${allBoats.length}艇 使用中</span>
+                    <span class="ba-count">${allocations.length}組</span>
                 </div>
                 <span class="accordion-icon">▼</span>
             </div>
             <div class="ba-body">
-                ${cardsHtml || '<div class="empty-state sub-empty"><p>乗艇スケジュールがありません</p></div>'}
+                ${cardsHtml}
+                <button class="ba-add-btn" onclick="event.stopPropagation(); openAllocationModal(null)">＋ 配艇を追加</button>
+                ${freeBoatsHtml}
+                ${freeOarsHtml}
             </div>
         </div>
     `;
+}
+
+// --- 配艇モーダル ---
+let currentAllocationId = null;
+
+function openAllocationModal(allocId, preselectedBoatId) {
+    currentAllocationId = allocId || null;
+    const modal = document.getElementById('allocation-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+
+    const alloc = allocId ? (state.boatAllocations || []).find(a => a.id === allocId) : null;
+    const allocations = state.boatAllocations || [];
+    const allocatedBoatIds = new Set(allocations.filter(a => a.id !== allocId).map(a => a.boatId));
+    const allocatedOarIds = new Set(allocations.filter(a => a.id !== allocId).flatMap(a => a.oarIds || []));
+
+    // 船セレクト（空いてる船 + 現在の船）
+    const boatSelect = document.getElementById('alloc-boat-select');
+    const availBoats = (state.boats || []).filter(b => {
+        const status = b.status || (b.availability === '使用不可' ? 'broken' : 'available');
+        return status === 'available' && (!allocatedBoatIds.has(b.id) || (alloc && alloc.boatId === b.id));
+    });
+    boatSelect.innerHTML = '<option value="">船を選択</option>' +
+        availBoats.map(b => `<option value="${b.id}" ${(alloc?.boatId === b.id || preselectedBoatId === b.id) ? 'selected' : ''}>${b.name} (${getBoatTypeFromBoat(b)})</option>`).join('');
+
+    // 艇種ボタン
+    const boatType = alloc?.boatType || (preselectedBoatId ? getBoatTypeFromBoat(availBoats.find(b => b.id === preselectedBoatId) || {}) : '');
+    document.querySelectorAll('.alloc-boat-type-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.value === boatType);
+    });
+
+    // 船選択変更時に艇種を自動設定
+    boatSelect.onchange = () => {
+        const selectedBoat = availBoats.find(b => b.id === boatSelect.value);
+        if (selectedBoat) {
+            const bt = getBoatTypeFromBoat(selectedBoat);
+            document.querySelectorAll('.alloc-boat-type-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.value === bt);
+            });
+            renderAllocSeatInputs(bt, alloc?.crewDetailsMap || {});
+            renderAllocOarSelects(bt, alloc?.oarIds || [], allocatedOarIds);
+        }
+    };
+
+    // シート入力UI
+    if (boatType) {
+        renderAllocSeatInputs(boatType, alloc?.crewDetailsMap || {});
+        renderAllocOarSelects(boatType, alloc?.oarIds || [], allocatedOarIds);
+    } else {
+        document.getElementById('alloc-seat-container').innerHTML = '<p style="color:#888;font-size:12px;">船を選択してください</p>';
+        document.getElementById('alloc-oar-container').innerHTML = '';
+    }
+
+    // 削除ボタン表示
+    document.getElementById('delete-allocation-btn').classList.toggle('hidden', !alloc);
+}
+
+function renderAllocSeatInputs(boatType, existingCrewMap) {
+    const container = document.getElementById('alloc-seat-container');
+    if (!container) return;
+
+    const OAR_COUNT_BY_BOAT = {
+        '1x': { seats: [], oars: 2, sweep: false },
+        '2x': { seats: ['S', 'B'], oars: 4, sweep: false },
+        '2-': { seats: ['S', 'B'], oars: 2, sweep: true },
+        '4x': { seats: ['S', '3', '2', 'B'], oars: 8, sweep: false },
+        '4+': { seats: ['S', '3', '2', 'B', 'Cox'], oars: 4, sweep: true },
+        '4-': { seats: ['S', '3', '2', 'B'], oars: 4, sweep: true },
+        '8+': { seats: ['S', '7', '6', '5', '4', '3', '2', 'B', 'Cox'], oars: 8, sweep: true }
+    };
+
+    const config = OAR_COUNT_BY_BOAT[boatType] || { seats: [], oars: 0, sweep: false };
+    const seats = config.seats;
+
+    if (seats.length === 0) {
+        container.innerHTML = '<p style="color:#888;font-size:12px;">シングルはクルー設定不要</p>';
+        return;
+    }
+
+    const activeUsers = (state.users || []).filter(u => u.approvalStatus === '承認済み' && u.status !== '退部' && !u.isDemo);
+
+    let html = '<div class="alloc-seats-grid">';
+    seats.forEach(seat => {
+        const selectedUserId = existingCrewMap[seat] || '';
+        html += `<div class="alloc-seat-row">
+            <span class="alloc-seat-label">${seat}</span>
+            <select class="alloc-seat-select" data-seat="${seat}">
+                <option value="">未定</option>
+                ${activeUsers.map(u => `<option value="${u.id}" ${u.id === selectedUserId ? 'selected' : ''}>${u.name}</option>`).join('')}
+            </select>
+        </div>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function renderAllocOarSelects(boatType, existingOarIds, allocatedOarIds) {
+    const container = document.getElementById('alloc-oar-container');
+    if (!container) return;
+
+    const OAR_COUNT = {
+        '1x': 2, '2x': 4, '2-': 2, '4x': 8, '4+': 4, '4-': 4, '8+': 8
+    };
+    const IS_SWEEP = { '2-': true, '4+': true, '4-': true, '8+': true };
+
+    const oarCount = OAR_COUNT[boatType] || 0;
+    const isSweep = IS_SWEEP[boatType] || false;
+    const isScull = !isSweep;
+
+    if (oarCount === 0) { container.innerHTML = ''; return; }
+
+    // フィルタ
+    let filteredOars = (state.oars || []).filter(o => {
+        const status = o.status || (o.availability === '使用不可' ? 'broken' : 'available');
+        return status === 'available';
+    });
+    if (isSweep || isScull) {
+        filteredOars = filteredOars.filter(o => {
+            const t = (o.type || '').toLowerCase();
+            if (isSweep) return t.includes('sweep') || t.includes('スイープ');
+            if (isScull) return t.includes('scull') || t.includes('スカル');
+            return true;
+        });
+    }
+
+    let html = `<label style="font-size:12px;font-weight:600;margin-bottom:4px;display:block;">🏏 オール (${oarCount}本)</label>`;
+    for (let i = 0; i < oarCount; i++) {
+        const savedVal = existingOarIds[i] || '';
+        html += `<select class="alloc-oar-select" data-oar-index="${i}" style="margin-bottom:4px;width:100%;padding:6px;border-radius:8px;border:1px solid #ccc;font-size:12px;">
+            <option value="">オール ${i + 1}</option>
+            ${filteredOars.map(o => {
+            const inUse = allocatedOarIds.has(o.id) && o.id !== savedVal;
+            return `<option value="${o.id}" ${inUse ? 'style="color:#f59e0b"' : ''} ${savedVal === o.id ? 'selected' : ''}>${inUse ? '🟡 ' : ''}${o.name}${inUse ? ' (使用中)' : ''}</option>`;
+        }).join('')}
+        </select>`;
+    }
+    container.innerHTML = html;
+}
+
+function saveAllocation() {
+    const boatId = document.getElementById('alloc-boat-select').value;
+    if (!boatId) { showToast('船を選択してください', 'error'); return; }
+
+    const activeTypeBtn = document.querySelector('.alloc-boat-type-btn.active');
+    const boatType = activeTypeBtn ? activeTypeBtn.dataset.value : '';
+
+    // クルー取得
+    const crewDetailsMap = {};
+    const crewIds = [];
+    document.querySelectorAll('.alloc-seat-select').forEach(sel => {
+        if (sel.value) {
+            crewDetailsMap[sel.dataset.seat] = sel.value;
+            crewIds.push(sel.value);
+        }
+    });
+
+    // オール取得
+    const oarIds = Array.from(document.querySelectorAll('.alloc-oar-select')).map(s => s.value).filter(v => v);
+
+    const alloc = {
+        id: currentAllocationId || generateId(),
+        boatId,
+        boatType,
+        crewDetailsMap,
+        crewIds,
+        oarIds,
+        createdBy: state.currentUser?.id || '',
+        updatedAt: new Date().toISOString()
+    };
+
+    // 既存を更新 or 新規追加
+    const idx = (state.boatAllocations || []).findIndex(a => a.id === alloc.id);
+    if (idx >= 0) {
+        state.boatAllocations[idx] = alloc;
+    } else {
+        state.boatAllocations.push(alloc);
+    }
+
+    DB.save('boat_allocations', state.boatAllocations);
+    closeAllocationModal();
+    renderBoatAllocation();
+    showToast('配艇を保存しました');
+}
+
+function deleteAllocation() {
+    if (!currentAllocationId) return;
+    showConfirmModal('この配艇を解除しますか？', () => {
+        state.boatAllocations = (state.boatAllocations || []).filter(a => a.id !== currentAllocationId);
+        DB.save('boat_allocations', state.boatAllocations);
+        closeAllocationModal();
+        renderBoatAllocation();
+        showToast('配艇を解除しました');
+    });
+}
+
+function closeAllocationModal() {
+    const modal = document.getElementById('allocation-modal');
+    if (modal) modal.classList.add('hidden');
+    currentAllocationId = null;
 }
 
 function renderAvailableBoats(dateStr, container) {

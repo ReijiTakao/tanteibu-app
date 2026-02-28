@@ -1032,6 +1032,15 @@
 
 
                 <!-- 乗艇の場合 -->
+                <div class="form-group hidden" id="allocation-select-group">
+                    <label>📋 配艇から選択</label>
+                    <select id="input-allocation" onchange="onAllocationSelected(this.value)"
+                        style="width:100%;padding:8px;border-radius:8px;border:1px solid #ccc;font-size:13px;">
+                        <option value="">配艇を選択...</option>
+                    </select>
+                    <div id="allocation-preview" style="margin-top:8px;"></div>
+                </div>
+
                 <div class="form-group hidden" id="boat-group">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                         <label style="margin-bottom:0;">艇種</label>
@@ -1479,6 +1488,61 @@
                         </div>
                     </div>
                     <button id="save-new-preset-btn" class="primary-btn full-width">保存する</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 配艇編集モーダル -->
+    <div id="allocation-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeAllocationModal()"></div>
+        <div class="modal-content" style="max-width:420px;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#1e3a5f,#2d5a87);color:#fff;">
+                <h3>🚣 配艇設定</h3>
+                <button class="modal-close" onclick="closeAllocationModal()" style="color:#fff;">×</button>
+            </div>
+            <div class="modal-body" style="padding:16px;">
+                <div class="form-group">
+                    <label>船</label>
+                    <select id="alloc-boat-select"
+                        style="width:100%;padding:8px;border-radius:8px;border:1px solid #ccc;font-size:13px;"></select>
+                </div>
+
+                <div class="form-group">
+                    <label>艇種</label>
+                    <div class="toggle-group" style="flex-wrap:wrap;gap:4px;">
+                        <button class="toggle-btn alloc-boat-type-btn" data-value="1x"
+                            onclick="this.parentElement.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');renderAllocSeatInputs(this.dataset.value,{});renderAllocOarSelects(this.dataset.value,[],new Set())">1x</button>
+                        <button class="toggle-btn alloc-boat-type-btn" data-value="2x"
+                            onclick="this.parentElement.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');renderAllocSeatInputs(this.dataset.value,{});renderAllocOarSelects(this.dataset.value,[],new Set())">2x</button>
+                        <button class="toggle-btn alloc-boat-type-btn" data-value="2-"
+                            onclick="this.parentElement.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');renderAllocSeatInputs(this.dataset.value,{});renderAllocOarSelects(this.dataset.value,[],new Set())">2-</button>
+                        <button class="toggle-btn alloc-boat-type-btn" data-value="4x"
+                            onclick="this.parentElement.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');renderAllocSeatInputs(this.dataset.value,{});renderAllocOarSelects(this.dataset.value,[],new Set())">4x</button>
+                        <button class="toggle-btn alloc-boat-type-btn" data-value="4+"
+                            onclick="this.parentElement.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');renderAllocSeatInputs(this.dataset.value,{});renderAllocOarSelects(this.dataset.value,[],new Set())">4+</button>
+                        <button class="toggle-btn alloc-boat-type-btn" data-value="4-"
+                            onclick="this.parentElement.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');renderAllocSeatInputs(this.dataset.value,{});renderAllocOarSelects(this.dataset.value,[],new Set())">4-</button>
+                        <button class="toggle-btn alloc-boat-type-btn" data-value="8+"
+                            onclick="this.parentElement.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');renderAllocSeatInputs(this.dataset.value,{});renderAllocOarSelects(this.dataset.value,[],new Set())">8+</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>クルー配置</label>
+                    <div id="alloc-seat-container">
+                        <p style="color:#888;font-size:12px;">船を選択してください</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div id="alloc-oar-container"></div>
+                </div>
+
+                <div style="display:flex;gap:8px;margin-top:16px;">
+                    <button onclick="saveAllocation()" class="primary-btn" style="flex:1;">保存</button>
+                    <button id="delete-allocation-btn" onclick="deleteAllocation()" class="danger-btn hidden"
+                        style="flex:0 0 auto;padding:8px 16px;">🗑 解除</button>
                 </div>
             </div>
         </div>
