@@ -7359,18 +7359,37 @@ function populateBoatOarSelects() {
             if (filteredBoats.length === 0) filteredBoats = (state.boats || []);
         }
 
+        // 同日・同時間帯で使用中の船をチェック
+        const dateStr = currentInputData?.dateStr;
+        const timeSlot = currentInputData?.timeSlot;
+        const editingId = currentInputData?.schedule?.id;
+        const inUseBoatMap = {}; // boatId → 使用者名
+        if (dateStr && timeSlot) {
+            (state.schedules || []).forEach(s => {
+                if (s.date === dateStr && s.timeSlot === timeSlot &&
+                    s.boatId && s.userId !== state.currentUser?.id &&
+                    s.id !== editingId && s.scheduleType === SCHEDULE_TYPES.BOAT) {
+                    const user = (state.users || []).find(u => u.id === s.userId);
+                    inUseBoatMap[s.boatId] = user ? user.name : '他のメンバー';
+                }
+            });
+        }
+
         boatSelect.innerHTML = '<option value="">選択してください</option>';
         filteredBoats.forEach(b => {
             const status = b.status || (b.availability === '使用不可' ? 'broken' : 'available');
             const isUnavailable = status !== 'available';
-            const statusLabel = isUnavailable ? ` (${translateStatus(status)})` : '';
-            const statusEmoji = isUnavailable ? '🔴 ' : '🟢 ';
+            const inUseBy = inUseBoatMap[b.id];
+            const statusLabel = isUnavailable ? ` (${translateStatus(status)})` : inUseBy ? ` (${inUseBy}が使用中)` : '';
+            const statusEmoji = isUnavailable ? '🔴 ' : inUseBy ? '🟡 ' : '🟢 ';
             const option = document.createElement('option');
             option.value = b.id;
             option.textContent = `${statusEmoji}${b.name}${statusLabel}`;
             if (isUnavailable) {
                 option.disabled = true;
                 option.style.color = '#999';
+            } else if (inUseBy) {
+                option.style.color = '#f59e0b';
             }
             boatSelect.appendChild(option);
         });
@@ -7415,6 +7434,24 @@ function populateOarSelects() {
     }
     filteredOars = sortOars(filteredOars);
 
+    // 同日・同時間帯で使用中のオールをチェック
+    const dateStr = currentInputData?.dateStr;
+    const timeSlot = currentInputData?.timeSlot;
+    const editingId = currentInputData?.schedule?.id;
+    const inUseOarMap = {}; // oarId → 使用者名
+    if (dateStr && timeSlot) {
+        (state.schedules || []).forEach(s => {
+            if (s.date === dateStr && s.timeSlot === timeSlot &&
+                s.userId !== state.currentUser?.id &&
+                s.id !== editingId && s.scheduleType === SCHEDULE_TYPES.BOAT) {
+                const user = (state.users || []).find(u => u.id === s.userId);
+                const userName = user ? user.name : '他のメンバー';
+                const oarIds = s.oarIds || (s.oarId ? [s.oarId] : []);
+                oarIds.forEach(oid => { if (oid) inUseOarMap[oid] = userName; });
+            }
+        });
+    }
+
     // 本数分のselectを生成
     let html = '';
     for (let i = 0; i < oarCount; i++) {
@@ -7424,9 +7461,11 @@ function populateOarSelects() {
             ${filteredOars.map(o => {
             const status = o.status || (o.availability === '使用不可' ? 'broken' : 'available');
             const isUnavailable = status !== 'available';
-            const statusEmoji = isUnavailable ? '🔴 ' : '🟢 ';
-            const statusLabel = isUnavailable ? ` (${translateStatus(status)})` : '';
-            return `<option value="${o.id}" ${isUnavailable ? 'disabled style="color:#999"' : ''} ${savedVal === o.id ? 'selected' : ''}>${statusEmoji}${o.name}${statusLabel}</option>`;
+            const inUseBy = inUseOarMap[o.id];
+            const statusEmoji = isUnavailable ? '🔴 ' : inUseBy ? '🟡 ' : '🟢 ';
+            const statusLabel = isUnavailable ? ` (${translateStatus(status)})` : inUseBy ? ` (${inUseBy}が使用中)` : '';
+            const disabledAttr = isUnavailable ? 'disabled style="color:#999"' : inUseBy ? 'style="color:#f59e0b"' : '';
+            return `<option value="${o.id}" ${disabledAttr} ${savedVal === o.id ? 'selected' : ''}>${statusEmoji}${o.name}${statusLabel}</option>`;
         }).join('')}
         </select>`;
     }
