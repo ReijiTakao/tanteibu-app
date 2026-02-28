@@ -4880,7 +4880,7 @@ function renderBoatAllocation() {
         </div>`;
     }
 
-    // 空きオール（アコーディオン：デフォルト閉）- スカル/スイープ別にグループ化
+    // 空きオール（アコーディオン：デフォルト閉）- スカル/スイープ別 → プレフィックス別 → 数字順
     let freeOarsHtml = '';
     if (freeOars.length > 0) {
         const scullOars = [];
@@ -4892,22 +4892,49 @@ function renderBoatAllocation() {
             else if (t.includes('sweep') || t.includes('スイープ')) sweepOars.push(o);
             else otherOars.push(o);
         });
-        // 各グループ内を名前順でソート
-        [scullOars, sweepOars, otherOars].forEach(arr => arr.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja')));
+
+        // プレフィックス(先頭ローマ字2文字)でグループ化→数字順ソート
+        function sortOarsByPrefix(oars) {
+            // 名前からプレフィックスと数字を抽出
+            const parsed = oars.map(o => {
+                const match = (o.name || '').match(/^([A-Za-z]{1,3})\s*(\d+)/);
+                return {
+                    oar: o,
+                    prefix: match ? match[1].toUpperCase() : (o.name || '').slice(0, 2).toUpperCase(),
+                    num: match ? parseInt(match[2], 10) : 9999
+                };
+            });
+            // プレフィックス順→数字順
+            parsed.sort((a, b) => a.prefix.localeCompare(b.prefix) || a.num - b.num);
+            return parsed;
+        }
+
+        function renderOarGroup(oars, label, color) {
+            if (oars.length === 0) return '';
+            const sorted = sortOarsByPrefix(oars);
+            // プレフィックスでサブグループ化
+            const groups = [];
+            let currentPrefix = null;
+            sorted.forEach(item => {
+                if (item.prefix !== currentPrefix) {
+                    currentPrefix = item.prefix;
+                    groups.push({ prefix: currentPrefix, items: [] });
+                }
+                groups[groups.length - 1].items.push(item.oar);
+            });
+            let html = `<div class="ba-free-type-group" style="flex-direction:column;align-items:stretch;"><span class="ba-free-type-label" style="color:${color};align-self:flex-start;">${label}</span>`;
+            groups.forEach(g => {
+                const chips = g.items.map(o => `<span class="ba-free-chip oar">${o.name}</span>`).join('');
+                html += `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-left:4px;margin-bottom:2px;"><span style="font-size:9px;color:#888;min-width:24px;padding-top:3px;">${g.prefix}</span>${chips}</div>`;
+            });
+            html += '</div>';
+            return html;
+        }
 
         let oarChips = '';
-        if (scullOars.length > 0) {
-            const chips = scullOars.map(o => `<span class="ba-free-chip oar">${o.name}</span>`).join('');
-            oarChips += `<div class="ba-free-type-group"><span class="ba-free-type-label" style="color:#3b82f6;">スカル</span>${chips}</div>`;
-        }
-        if (sweepOars.length > 0) {
-            const chips = sweepOars.map(o => `<span class="ba-free-chip oar">${o.name}</span>`).join('');
-            oarChips += `<div class="ba-free-type-group"><span class="ba-free-type-label" style="color:#f59e0b;">スイープ</span>${chips}</div>`;
-        }
-        if (otherOars.length > 0) {
-            const chips = otherOars.map(o => `<span class="ba-free-chip oar">${o.name}</span>`).join('');
-            oarChips += `<div class="ba-free-type-group"><span class="ba-free-type-label" style="color:#888;">その他</span>${chips}</div>`;
-        }
+        oarChips += renderOarGroup(scullOars, 'スカル', '#3b82f6');
+        oarChips += renderOarGroup(sweepOars, 'スイープ', '#f59e0b');
+        oarChips += renderOarGroup(otherOars, 'その他', '#888');
         freeOarsHtml = `
         <div class="ba-free-section ba-accordion collapsed">
             <div class="ba-free-title" onclick="this.parentElement.classList.toggle('collapsed')">🏏 空きオール (${freeOars.length}) <span class="ba-accordion-icon">▶</span></div>
