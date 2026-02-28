@@ -4897,20 +4897,23 @@ function openAllocationModal(allocId, preselectedBoatId) {
     const allocatedBoatIds = new Set(allocations.filter(a => a.id !== allocId).map(a => a.boatId));
     const allocatedOarIds = new Set(allocations.filter(a => a.id !== allocId).flatMap(a => a.oarIds || []));
 
-    // 船セレクト（空いてる船 + 現在の船）
-    const boatSelect = document.getElementById('alloc-boat-select');
+    // 利用可能な全船リスト
     const availBoats = (state.boats || []).filter(b => {
         const status = b.status || (b.availability === '使用不可' ? 'broken' : 'available');
         return status === 'available' && (!allocatedBoatIds.has(b.id) || (alloc && alloc.boatId === b.id));
     });
-    boatSelect.innerHTML = '<option value="">船を選択</option>' +
-        availBoats.map(b => `<option value="${b.id}" ${(alloc?.boatId === b.id || preselectedBoatId === b.id) ? 'selected' : ''}>${b.name} (${getBoatTypeFromBoat(b)})</option>`).join('');
 
-    // 艇種ボタン
+    // 艇種ボタン初期値
     const boatType = alloc?.boatType || (preselectedBoatId ? getBoatTypeFromBoat(availBoats.find(b => b.id === preselectedBoatId) || {}) : '');
     document.querySelectorAll('.alloc-boat-type-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.value === boatType);
     });
+
+    // 船セレクト（艇種でフィルタ）
+    const boatSelect = document.getElementById('alloc-boat-select');
+    window._allocAvailBoats = availBoats;
+    window._allocatedOarIds = allocatedOarIds;
+    filterAllocBoatsByType(boatType, alloc?.boatId || preselectedBoatId);
 
     // 船選択変更時に艇種を自動設定
     boatSelect.onchange = () => {
@@ -4920,6 +4923,7 @@ function openAllocationModal(allocId, preselectedBoatId) {
             document.querySelectorAll('.alloc-boat-type-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.value === bt);
             });
+            filterAllocBoatsByType(bt, boatSelect.value);
             renderAllocSeatInputs(bt, alloc?.crewDetailsMap || {});
             renderAllocOarSelects(bt, alloc?.oarIds || [], allocatedOarIds);
         }
@@ -4930,12 +4934,24 @@ function openAllocationModal(allocId, preselectedBoatId) {
         renderAllocSeatInputs(boatType, alloc?.crewDetailsMap || {});
         renderAllocOarSelects(boatType, alloc?.oarIds || [], allocatedOarIds);
     } else {
-        document.getElementById('alloc-seat-container').innerHTML = '<p style="color:#888;font-size:12px;">船を選択してください</p>';
+        document.getElementById('alloc-seat-container').innerHTML = '<p style="color:#888;font-size:12px;">艇種を選択してください</p>';
         document.getElementById('alloc-oar-container').innerHTML = '';
     }
 
     // 削除ボタン表示
     document.getElementById('delete-allocation-btn').classList.toggle('hidden', !alloc);
+}
+
+// 艇種で船セレクトをフィルタリング
+function filterAllocBoatsByType(boatType, selectedBoatId) {
+    const boatSelect = document.getElementById('alloc-boat-select');
+    const availBoats = window._allocAvailBoats || [];
+    let filtered = availBoats;
+    if (boatType) {
+        filtered = availBoats.filter(b => getBoatTypeFromBoat(b) === boatType);
+    }
+    boatSelect.innerHTML = '<option value="">船を選択</option>' +
+        filtered.map(b => `<option value="${b.id}" ${b.id === selectedBoatId ? 'selected' : ''}>${b.name} (${getBoatTypeFromBoat(b)})</option>`).join('');
 }
 
 function renderAllocSeatInputs(boatType, existingCrewMap) {
@@ -4981,16 +4997,20 @@ function renderAllocOarSelects(boatType, existingOarIds, allocatedOarIds) {
     const container = document.getElementById('alloc-oar-container');
     if (!container) return;
 
-    const OAR_COUNT = {
-        '1x': 2, '2x': 4, '2-': 2, '4x': 8, '4+': 4, '4-': 4, '8+': 8
-    };
+    // スカル艇種はセット(左右ペア)で扱う
+    const IS_SCULL = { '1x': true, '2x': true, '4x': true };
     const IS_SWEEP = { '2-': true, '4+': true, '4-': true, '8+': true };
 
-    const oarCount = OAR_COUNT[boatType] || 0;
+    const isScull = IS_SCULL[boatType] || false;
     const isSweep = IS_SWEEP[boatType] || false;
-    const isScull = !isSweep;
 
-    if (oarCount === 0) { container.innerHTML = ''; return; }
+    // スカル: セット数（1人1セット = 左右2本）
+    // スイープ: 1人1本
+    const SEAT_COUNT = { '1x': 1, '2x': 2, '2-': 2, '4x': 4, '4+': 4, '4-': 4, '8+': 8 };
+    const seatCount = SEAT_COUNT[boatType] || 0;
+    const selectCount = isScull ? seatCount : seatCount; // スカルはセット数=人数, スイープは本数=人数
+
+    if (seatCount === 0) { container.innerHTML = ''; return; }
 
     // フィルタ
     let filteredOars = (state.oars || []).filter(o => {
@@ -5006,11 +5026,14 @@ function renderAllocOarSelects(boatType, existingOarIds, allocatedOarIds) {
         });
     }
 
-    let html = `<label style="font-size:12px;font-weight:600;margin-bottom:4px;display:block;">🏏 オール (${oarCount}本)</label>`;
-    for (let i = 0; i < oarCount; i++) {
+    const label = isScull ? `🏏 オール (${selectCount}セット)` : `🏏 オール (${selectCount}本)`;
+    let html = `<label style="font-size:12px;font-weight:600;margin-bottom:4px;display:block;">${label}</label>`;
+
+    for (let i = 0; i < selectCount; i++) {
         const savedVal = existingOarIds[i] || '';
+        const slotLabel = isScull ? `セット ${i + 1}` : `オール ${i + 1}`;
         html += `<select class="alloc-oar-select" data-oar-index="${i}" style="margin-bottom:4px;width:100%;padding:6px;border-radius:8px;border:1px solid #ccc;font-size:12px;">
-            <option value="">オール ${i + 1}</option>
+            <option value="">${slotLabel}</option>
             ${filteredOars.map(o => {
             const inUse = allocatedOarIds.has(o.id) && o.id !== savedVal;
             return `<option value="${o.id}" ${inUse ? 'style="color:#f59e0b"' : ''} ${savedVal === o.id ? 'selected' : ''}>${inUse ? '🟡 ' : ''}${o.name}${inUse ? ' (使用中)' : ''}</option>`;
