@@ -884,6 +884,68 @@ const SupabaseDB = {
         }).catch(e => { console.error('Supabase op failed:', e); throw e; });
     },
 
+    // --- 配艇表 ---
+    _toAllocationRow(a) {
+        return {
+            id: a.id,
+            boat_id: a.boatId || null,
+            boat_type: a.boatType || null,
+            crew_ids: a.crewIds || [],
+            crew_details_map: a.crewDetailsMap || {},
+            oar_ids: a.oarIds || [],
+            created_by: a.createdBy || null,
+            updated_at: a.updatedAt || new Date().toISOString()
+        };
+    },
+    _fromAllocationRow(r) {
+        return {
+            id: r.id,
+            boatId: r.boat_id,
+            boatType: r.boat_type,
+            crewIds: r.crew_ids || [],
+            crewDetailsMap: r.crew_details_map || {},
+            oarIds: r.oar_ids || [],
+            createdBy: r.created_by,
+            updatedAt: r.updated_at,
+            createdAt: r.created_at
+        };
+    },
+
+    async loadBoatAllocations() {
+        if (!isSupabaseReady()) return [];
+        const { data, error } = await _supabaseClient
+            .from('boat_allocations')
+            .select('*');
+        if (error) { console.error('Load boat_allocations error:', error); return []; }
+        return (data || []).map(r => SupabaseDB._fromAllocationRow(r));
+    },
+
+    async saveBoatAllocation(alloc) {
+        if (!isSupabaseReady()) return null;
+        const row = this._toAllocationRow(alloc);
+        return withSyncIndicator(async () => {
+            const { data, error } = await _supabaseClient
+                .from('boat_allocations')
+                .upsert(row, { onConflict: 'id' })
+                .select()
+                .single();
+            if (error) { console.error('Save boat_allocation error:', error); throw error; }
+            return data;
+        }).catch(e => { console.error('Supabase op failed:', e); throw e; });
+    },
+
+    async deleteBoatAllocation(id) {
+        if (!isSupabaseReady()) return false;
+        return withSyncIndicator(async () => {
+            const { error } = await _supabaseClient
+                .from('boat_allocations')
+                .delete()
+                .eq('id', id);
+            if (error) { console.error('Delete boat_allocation error:', error); throw error; }
+            return true;
+        }).catch(() => false);
+    },
+
     // --- アプリ設定 ---
     async loadSetting(key) {
         if (!isSupabaseReady()) return null;

@@ -487,6 +487,19 @@ const DB = {
                 }
             } catch (e) { console.warn('Admin passcode sync failed:', e); }
 
+            // 配艇表
+            try {
+                const allocations = await window.SupabaseConfig.db.loadBoatAllocations();
+                if (allocations.length) {
+                    allocations.forEach(a => {
+                        const idx = state.boatAllocations.findIndex(local => local.id === a.id);
+                        if (idx !== -1) state.boatAllocations[idx] = a;
+                        else state.boatAllocations.push(a);
+                    });
+                    this.saveLocal('boat_allocations', state.boatAllocations);
+                }
+            } catch (e) { console.warn('Boat allocations sync failed:', e); }
+
         } catch (e) {
             console.error('syncFromSupabase failed:', e);
             showToast('同期エラー: ' + (e?.message || JSON.stringify(e)), 'error');
@@ -5040,6 +5053,12 @@ function saveAllocation() {
     }
 
     DB.save('boat_allocations', state.boatAllocations);
+
+    // Supabase同期
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.saveBoatAllocation(alloc).catch(e => console.warn('Alloc save to Supabase failed:', e));
+    }
+
     closeAllocationModal();
     renderBoatAllocation();
     showToast('配艇を保存しました');
@@ -5048,8 +5067,15 @@ function saveAllocation() {
 function deleteAllocation() {
     if (!currentAllocationId) return;
     showConfirmModal('この配艇を解除しますか？', () => {
-        state.boatAllocations = (state.boatAllocations || []).filter(a => a.id !== currentAllocationId);
+        const delId = currentAllocationId;
+        state.boatAllocations = (state.boatAllocations || []).filter(a => a.id !== delId);
         DB.save('boat_allocations', state.boatAllocations);
+
+        // Supabase同期
+        if (DB.useSupabase && window.SupabaseConfig?.db) {
+            window.SupabaseConfig.db.deleteBoatAllocation(delId).catch(e => console.warn('Alloc delete from Supabase failed:', e));
+        }
+
         closeAllocationModal();
         renderBoatAllocation();
         showToast('配艇を解除しました');
