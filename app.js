@@ -4844,14 +4844,35 @@ function renderBoatAllocation() {
         </div>`;
     });
 
-    // 空き船カード（アコーディオン：デフォルト閉）
+    // 空き船カード（アコーディオン：デフォルト閉）- 艇種別にグループ化・ソート
     let freeBoatsHtml = '';
     if (freeBoats.length > 0) {
-        const freeChips = freeBoats.map(b => {
+        // 艇種別にグループ化
+        const boatsByType = {};
+        freeBoats.forEach(b => {
             const type = getBoatTypeFromBoat(b);
+            if (!boatsByType[type]) boatsByType[type] = [];
+            boatsByType[type].push(b);
+        });
+        // BA_TYPE_ORDER順にソートして表示
+        let freeChips = '';
+        BA_TYPE_ORDER.forEach(type => {
+            if (!boatsByType[type]) return;
             const color = BA_TYPE_COLORS[type] || '#6b7280';
-            return `<span class="ba-free-chip" style="border-color:${color};" onclick="openAllocationModal(null, '${b.id}')">${b.name} <span style="color:${color};font-size:9px;">${type}</span></span>`;
-        }).join('');
+            boatsByType[type].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
+            const chips = boatsByType[type].map(b =>
+                `<span class="ba-free-chip" style="border-color:${color};" onclick="openAllocationModal(null, '${b.id}')">${b.name} <span style="color:${color};font-size:9px;">${type}</span></span>`
+            ).join('');
+            freeChips += `<div class="ba-free-type-group"><span class="ba-free-type-label" style="color:${color};">${type}</span>${chips}</div>`;
+        });
+        // BA_TYPE_ORDER外の艇種
+        Object.keys(boatsByType).filter(t => !BA_TYPE_ORDER.includes(t)).forEach(type => {
+            const color = BA_TYPE_COLORS[type] || '#6b7280';
+            const chips = boatsByType[type].map(b =>
+                `<span class="ba-free-chip" style="border-color:${color};" onclick="openAllocationModal(null, '${b.id}')">${b.name} <span style="color:${color};font-size:9px;">${type}</span></span>`
+            ).join('');
+            freeChips += `<div class="ba-free-type-group"><span class="ba-free-type-label" style="color:${color};">${type}</span>${chips}</div>`;
+        });
         freeBoatsHtml = `
         <div class="ba-free-section ba-accordion collapsed">
             <div class="ba-free-title" onclick="this.parentElement.classList.toggle('collapsed')">🚣 空き船 (${freeBoats.length}) <span class="ba-accordion-icon">▶</span></div>
@@ -4859,10 +4880,34 @@ function renderBoatAllocation() {
         </div>`;
     }
 
-    // 空きオール（アコーディオン：デフォルト閉）
+    // 空きオール（アコーディオン：デフォルト閉）- スカル/スイープ別にグループ化
     let freeOarsHtml = '';
     if (freeOars.length > 0) {
-        const oarChips = freeOars.map(o => `<span class="ba-free-chip oar">${o.name}</span>`).join('');
+        const scullOars = [];
+        const sweepOars = [];
+        const otherOars = [];
+        freeOars.forEach(o => {
+            const t = (o.type || '').toLowerCase();
+            if (t.includes('scull') || t.includes('スカル')) scullOars.push(o);
+            else if (t.includes('sweep') || t.includes('スイープ')) sweepOars.push(o);
+            else otherOars.push(o);
+        });
+        // 各グループ内を名前順でソート
+        [scullOars, sweepOars, otherOars].forEach(arr => arr.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja')));
+
+        let oarChips = '';
+        if (scullOars.length > 0) {
+            const chips = scullOars.map(o => `<span class="ba-free-chip oar">${o.name}</span>`).join('');
+            oarChips += `<div class="ba-free-type-group"><span class="ba-free-type-label" style="color:#3b82f6;">スカル</span>${chips}</div>`;
+        }
+        if (sweepOars.length > 0) {
+            const chips = sweepOars.map(o => `<span class="ba-free-chip oar">${o.name}</span>`).join('');
+            oarChips += `<div class="ba-free-type-group"><span class="ba-free-type-label" style="color:#f59e0b;">スイープ</span>${chips}</div>`;
+        }
+        if (otherOars.length > 0) {
+            const chips = otherOars.map(o => `<span class="ba-free-chip oar">${o.name}</span>`).join('');
+            oarChips += `<div class="ba-free-type-group"><span class="ba-free-type-label" style="color:#888;">その他</span>${chips}</div>`;
+        }
         freeOarsHtml = `
         <div class="ba-free-section ba-accordion collapsed">
             <div class="ba-free-title" onclick="this.parentElement.classList.toggle('collapsed')">🏏 空きオール (${freeOars.length}) <span class="ba-accordion-icon">▶</span></div>
