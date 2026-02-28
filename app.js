@@ -4776,6 +4776,16 @@ function renderBoatAllocation() {
     });
     const freeOars = allOars.filter(o => !allocatedOarIds.has(o.id));
 
+    // 故障中/修理中の船・オール
+    const brokenBoats = (state.boats || []).filter(b => {
+        const status = b.status || (b.availability === '使用不可' ? 'broken' : 'available');
+        return status === 'broken' || status === 'repair' || status === 'maintenance';
+    });
+    const brokenOars = (state.oars || []).filter(o => {
+        const status = o.status || (o.availability === '使用不可' ? 'broken' : 'available');
+        return status === 'broken' || status === 'repair' || status === 'maintenance';
+    });
+
     // 配艇カード生成
     let cardsHtml = '';
     const sortedAllocations = [...allocations].sort((a, b) => {
@@ -4947,6 +4957,44 @@ function renderBoatAllocation() {
         </div>`;
     }
 
+    // 故障中/修理中セクション
+    let brokenHtml = '';
+    if (brokenBoats.length > 0 || brokenOars.length > 0) {
+        const statusIcon = (s) => s === 'broken' ? '🔴' : s === 'repair' || s === 'maintenance' ? '🟠' : '🟡';
+        const statusText = (s) => s === 'broken' ? '故障' : s === 'repair' ? '修理中' : s === 'maintenance' ? 'メンテ中' : '使用不可';
+        let brokenChips = '';
+        if (brokenBoats.length > 0) {
+            brokenBoats.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
+            const chips = brokenBoats.map(b => {
+                const st = b.status || 'broken';
+                const memo = b.memo || b.notes || '';
+                return `<span class="ba-free-chip" style="border-color:#ef4444;opacity:0.8;flex-direction:column;align-items:flex-start;">
+                    <span>${statusIcon(st)} ${b.name} <span style="color:#ef4444;font-size:9px;">${statusText(st)}</span></span>
+                    ${memo ? `<span style="font-size:9px;color:#888;margin-top:1px;">${memo}</span>` : ''}
+                </span>`;
+            }).join('');
+            brokenChips += `<div class="ba-free-type-group"><span class="ba-free-type-label" style="color:#ef4444;">船</span>${chips}</div>`;
+        }
+        if (brokenOars.length > 0) {
+            brokenOars.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
+            const chips = brokenOars.map(o => {
+                const st = o.status || 'broken';
+                const memo = o.memo || o.notes || '';
+                return `<span class="ba-free-chip oar" style="border-color:#ef4444;opacity:0.8;flex-direction:column;align-items:flex-start;">
+                    <span>${statusIcon(st)} ${o.name} <span style="color:#ef4444;font-size:9px;">${statusText(st)}</span></span>
+                    ${memo ? `<span style="font-size:9px;color:#888;margin-top:1px;">${memo}</span>` : ''}
+                </span>`;
+            }).join('');
+            brokenChips += `<div class="ba-free-type-group"><span class="ba-free-type-label" style="color:#ef4444;">オール</span>${chips}</div>`;
+        }
+        const totalBroken = brokenBoats.length + brokenOars.length;
+        brokenHtml = `
+        <div class="ba-free-section ba-accordion collapsed">
+            <div class="ba-free-title" style="color:#ef4444;" onclick="this.parentElement.classList.toggle('collapsed')">🔧 故障・修理中 (${totalBroken}) <span class="ba-accordion-icon">▶</span></div>
+            <div class="ba-free-chips">${brokenChips}</div>
+        </div>`;
+    }
+
     // サマリー
     const totalCrew = allocations.reduce((sum, a) => sum + (a.crewIds || []).length, 0);
 
@@ -4964,6 +5012,7 @@ function renderBoatAllocation() {
                 <button class="ba-add-btn" onclick="event.stopPropagation(); openAllocationModal(null)">＋ 配艇を追加</button>
                 ${freeBoatsHtml}
                 ${freeOarsHtml}
+                ${brokenHtml}
             </div>
         </div>
     `;
