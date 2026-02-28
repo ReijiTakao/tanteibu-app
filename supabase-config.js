@@ -213,6 +213,7 @@ const SupabaseDB = {
         if (s.oarIds && s.oarIds.length > 0) crewDetailsMap.__oarIds = s.oarIds;
         if (s.autoCreatedBy) crewDetailsMap.__autoCreatedBy = s.autoCreatedBy;
         if (s.autoCreatedByName) crewDetailsMap.__autoCreatedByName = s.autoCreatedByName;
+        if (s.ergoMenu) crewDetailsMap.__ergoMenu = s.ergoMenu;
 
         return {
             id: s.id,
@@ -243,10 +244,12 @@ const SupabaseDB = {
         const oarIds = rawMap.__oarIds || [];
         const autoCreatedBy = rawMap.__autoCreatedBy || null;
         const autoCreatedByName = rawMap.__autoCreatedByName || null;
+        const ergoMenu = rawMap.__ergoMenu || null;
         const crewDetailsMap = { ...rawMap };
         delete crewDetailsMap.__oarIds;
         delete crewDetailsMap.__autoCreatedBy;
         delete crewDetailsMap.__autoCreatedByName;
+        delete crewDetailsMap.__ergoMenu;
 
         return {
             id: r.id,
@@ -268,6 +271,7 @@ const SupabaseDB = {
             videoDuration: r.videoDuration,
             autoCreatedBy: autoCreatedBy,
             autoCreatedByName: autoCreatedByName,
+            ergoMenu: ergoMenu,
             startTime: r.start_time,
             memo: r.memo,
             updatedAt: r.updated_at,

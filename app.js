@@ -2634,6 +2634,9 @@ function openInputModal(dateStr, timeSlot, scheduleId = null) {
     document.getElementById('input-memo').value = '';
     document.getElementById('absence-reason-group').classList.add('hidden');
     document.getElementById('ergo-type-group').classList.add('hidden');
+    document.getElementById('ergo-menu-group').classList.add('hidden');
+    const ergoMenuInput = document.getElementById('input-ergo-menu');
+    if (ergoMenuInput) ergoMenuInput.value = '';
     document.getElementById('boat-group').classList.add('hidden');
     document.getElementById('oar-group').classList.add('hidden');
     document.getElementById('crew-group').classList.add('hidden');
@@ -2666,6 +2669,10 @@ function openInputModal(dateStr, timeSlot, scheduleId = null) {
         if (schedule.ergoType) {
             const ergoBtn = document.querySelector(`.ergo-type-btn[data-value="${schedule.ergoType}"]`);
             if (ergoBtn) ergoBtn.classList.add('active');
+        }
+        if (schedule.ergoMenu) {
+            const ergoMenuInput = document.getElementById('input-ergo-menu');
+            if (ergoMenuInput) ergoMenuInput.value = schedule.ergoMenu;
         }
 
         if (schedule.boatType) {
@@ -2727,6 +2734,7 @@ function handleScheduleTypeChange(type) {
     document.getElementById('start-time-group').classList.toggle('hidden', isAbsent || isOff);
     document.getElementById('absence-reason-group').classList.toggle('hidden', !isAbsent);
     document.getElementById('ergo-type-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.ERGO);
+    document.getElementById('ergo-menu-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.ERGO);
     document.getElementById('boat-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.BOAT);
     document.getElementById('oar-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.BOAT);
     document.getElementById('crew-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.BOAT);
@@ -3074,6 +3082,7 @@ function saveSchedule() {
         absenceDetail: document.getElementById('input-absence-detail')?.value || null,
 
         ergoType: document.querySelector('.ergo-type-btn.active')?.dataset.value || null,
+        ergoMenu: document.getElementById('input-ergo-menu')?.value?.trim() || null,
         boatType: document.querySelector('.boat-type-btn.active')?.dataset.value || null,
         boatId: document.getElementById('input-boat').value || null,
         oarIds: Array.from(document.querySelectorAll('.input-oar-select')).map(s => s.value).filter(v => v),
@@ -4176,7 +4185,7 @@ function renderTimeBlock(timeLabel, entries) {
             const u = state.users.find(u => u.id === s.userId);
             let extra = '';
             if (type === SCHEDULE_TYPES.ERGO) {
-                extra = [s.ergoType, s.distance ? `${s.distance}m` : ''].filter(Boolean).join(' ');
+                extra = [s.ergoType, s.ergoMenu, s.distance ? `${s.distance}m` : ''].filter(Boolean).join(' ');
             } else if (type === SCHEDULE_TYPES.MEAL) {
                 extra = s.mealTypes ? s.mealTypes.join('/') : '';
             }
