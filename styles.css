@@ -1535,6 +1535,175 @@ body {
     margin-bottom: 6px;
 }
 
+/* 配艇表 */
+.boat-allocation-section {
+    margin-bottom: 12px;
+}
+
+.ba-container {
+    background: var(--card-gradient);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+}
+
+.ba-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    cursor: pointer;
+    background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+    color: #fff;
+}
+
+.ba-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.ba-count {
+    font-size: 11px;
+    font-weight: 500;
+    opacity: 0.8;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.ba-container.collapsed .ba-body {
+    display: none;
+}
+
+.ba-container.collapsed .accordion-icon {
+    transform: rotate(-90deg);
+}
+
+.ba-body {
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ba-card {
+    border-radius: 10px;
+    padding: 10px 12px;
+    border-left: 4px solid #6b7280;
+    transition: all 0.2s;
+}
+
+.ba-card.used {
+    background: var(--bg-white);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-left-width: 4px;
+    border-left-style: solid;
+}
+
+.ba-card.empty {
+    background: rgba(107, 114, 128, 0.06);
+    border: 1px dashed rgba(107, 114, 128, 0.2);
+    border-left-width: 4px;
+    border-left-style: solid;
+    opacity: 0.55;
+    padding: 6px 12px;
+}
+
+.ba-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ba-boat-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ba-boat-name {
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.ba-boat-type {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 6px;
+}
+
+.ba-time-info {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ba-slot-badge {
+    font-size: 9px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 6px;
+    color: #fff;
+}
+
+.ba-slot-badge.am {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.ba-slot-badge.pm {
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+}
+
+.ba-start-time {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.ba-crew-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.ba-crew-member {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 11px;
+    padding: 2px 6px;
+    background: rgba(59, 130, 246, 0.08);
+    border-radius: 6px;
+    color: var(--text-primary);
+}
+
+.ba-seat {
+    font-size: 9px;
+    font-weight: 700;
+    color: #3b82f6;
+    margin-right: 2px;
+}
+
+.ba-oars {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.ba-empty-label {
+    font-size: 11px;
+    color: #9ca3af;
+    font-style: italic;
+}
+
 /* 空き艇セクション - アコーディオン */
 .available-boats-section {
     margin-top: 12px;

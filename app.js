@@ -3863,6 +3863,9 @@ function renderOverview() {
 
     // 空き艇セクション
     renderAvailableBoats(dateStr, boatSection);
+
+    // 配艇表
+    renderBoatAllocation(dateStr);
 }
 
 function renderAbsentBlock(title, absentList) {
@@ -4592,6 +4595,200 @@ function renderWeeklyPracticeSummary() {
     `;
 }
 
+
+// =========================================
+// 配艇表（ホワイトボード風）
+// =========================================
+function renderBoatAllocation(dateStr) {
+    const section = document.getElementById('boat-allocation-section');
+    if (!section) return;
+
+    const allBoats = (state.boats || []).filter(b => {
+        const status = b.status || (b.availability === '使用不可' ? 'broken' : 'available');
+        return status === 'available';
+    });
+    if (allBoats.length === 0) {
+        section.innerHTML = '';
+        return;
+    }
+
+    // その日の乗艇スケジュールを集計
+    const boatSchedules = (state.schedules || []).filter(
+        s => s.date === dateStr && s.scheduleType === SCHEDULE_TYPES.BOAT && s.boatId
+    );
+
+    // boatId → 集約情報
+    const boatInfoMap = {};
+    boatSchedules.forEach(s => {
+        if (!boatInfoMap[s.boatId]) {
+            boatInfoMap[s.boatId] = {
+                timeSlots: new Set(),
+                startTimes: [],
+                crewMembers: new Map(), // seatId → { name, userId }
+                oarIds: new Set(),
+                boatType: s.boatType,
+                schedules: []
+            };
+        }
+        const info = boatInfoMap[s.boatId];
+        info.schedules.push(s);
+        if (s.timeSlot) info.timeSlots.add(s.timeSlot);
+        if (s.startTime) info.startTimes.push(s.startTime);
+
+        // クルー情報集約
+        const registrant = state.users.find(u => u.id === s.userId);
+        if (s.crewDetailsMap && Object.keys(s.crewDetailsMap).length > 0) {
+            Object.entries(s.crewDetailsMap).forEach(([seat, uid]) => {
+                const u = state.users.find(u => u.id === uid);
+                if (u) info.crewMembers.set(uid, { seat, name: u.name });
+            });
+            // 登録者本人も追加（Coxかもしれない）
+            if (registrant && !info.crewMembers.has(s.userId)) {
+                info.crewMembers.set(s.userId, { seat: 'Cox', name: registrant.name });
+            }
+        } else if (registrant) {
+            // クルー情報なし → 登録者のみ
+            if (!info.crewMembers.has(s.userId)) {
+                info.crewMembers.set(s.userId, { seat: '', name: registrant.name });
+            }
+        }
+
+        // オール集約
+        const oarIds = s.oarIds || (s.oarId ? [s.oarId] : []);
+        oarIds.forEach(oid => { if (oid) info.oarIds.add(oid); });
+    });
+
+    // 艇種でソート＆グループ化
+    const typeOrder = ['8+', '4+', '4-', '4x', '2-', '2x', '1x'];
+    const typeColors = {
+        '8+': '#3b82f6', '4+': '#8b5cf6', '4-': '#6366f1', '4x': '#f59e0b',
+        '2-': '#10b981', '2x': '#06b6d4', '1x': '#ef4444'
+    };
+
+    function getBoatType(boat) {
+        const t = (boat.type || '').toLowerCase();
+        if (t) return t.toUpperCase().replace('X', 'x');
+        // 名前から推定
+        for (const bt of typeOrder) {
+            if ((boat.name || '').includes(bt)) return bt;
+        }
+        return '他';
+    }
+
+    const grouped = {};
+    allBoats.forEach(b => {
+        const type = getBoatType(b);
+        if (!grouped[type]) grouped[type] = [];
+        grouped[type].push(b);
+    });
+
+    // 各グループ内をソート（使用中が先、名前順）
+    Object.values(grouped).forEach(boats => {
+        boats.sort((a, b) => {
+            const aUsed = boatInfoMap[a.id] ? 1 : 0;
+            const bUsed = boatInfoMap[b.id] ? 1 : 0;
+            if (bUsed !== aUsed) return bUsed - aUsed;
+            return (a.name || '').localeCompare(b.name || '');
+        });
+    });
+
+    // カード生成
+    let cardsHtml = '';
+    const sortedTypes = Object.keys(grouped).sort((a, b) => {
+        const ai = typeOrder.indexOf(a);
+        const bi = typeOrder.indexOf(b);
+        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+
+    const usedCount = Object.keys(boatInfoMap).length;
+
+    sortedTypes.forEach(type => {
+        const boats = grouped[type];
+        const color = typeColors[type] || '#6b7280';
+
+        boats.forEach(boat => {
+            const info = boatInfoMap[boat.id];
+            const isUsed = !!info;
+
+            if (isUsed) {
+                // シート順でクルーをソート
+                const crewArr = Array.from(info.crewMembers.values());
+                const seatOrder = ['Cox', 'S', '7', '6', '5', '4', '3', '2', 'B', ''];
+                crewArr.sort((a, b) => {
+                    const ai = seatOrder.indexOf(a.seat);
+                    const bi = seatOrder.indexOf(b.seat);
+                    return (ai === -1 ? 50 : ai) - (bi === -1 ? 50 : bi);
+                });
+
+                const crewHtml = crewArr.map(c => {
+                    const seatLabel = c.seat ? `<span class="ba-seat">${c.seat}</span>` : '';
+                    return `<span class="ba-crew-member">${seatLabel}${c.name}</span>`;
+                }).join('');
+
+                // オール名取得
+                const oarNames = Array.from(info.oarIds).map(oid => {
+                    const oar = (state.oars || []).find(o => o.id === oid);
+                    return oar ? oar.name : '';
+                }).filter(n => n);
+
+                const oarHtml = oarNames.length > 0
+                    ? `<div class="ba-oars">🏏 ${oarNames.join(', ')}</div>`
+                    : '';
+
+                // 時間表示
+                const timeStr = info.startTimes.length > 0
+                    ? info.startTimes[0]
+                    : (info.timeSlots.size > 0 ? Array.from(info.timeSlots).join('/') : '');
+
+                const slotBadges = Array.from(info.timeSlots).map(ts =>
+                    `<span class="ba-slot-badge ${ts === '午前' ? 'am' : 'pm'}">${ts}</span>`
+                ).join('');
+
+                cardsHtml += `
+                <div class="ba-card used" style="border-left-color: ${color};">
+                    <div class="ba-card-header">
+                        <div class="ba-boat-info">
+                            <span class="ba-boat-name">${boat.name}</span>
+                            <span class="ba-boat-type" style="color:${color};">${type}</span>
+                        </div>
+                        <div class="ba-time-info">
+                            ${slotBadges}
+                            ${timeStr ? `<span class="ba-start-time">${timeStr}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="ba-crew-row">${crewHtml}</div>
+                    ${oarHtml}
+                </div>`;
+            } else {
+                cardsHtml += `
+                <div class="ba-card empty" style="border-left-color: ${color};">
+                    <div class="ba-card-header">
+                        <div class="ba-boat-info">
+                            <span class="ba-boat-name">${boat.name}</span>
+                            <span class="ba-boat-type" style="color:${color};">${type}</span>
+                        </div>
+                        <span class="ba-empty-label">空き</span>
+                    </div>
+                </div>`;
+            }
+        });
+    });
+
+    section.innerHTML = `
+        <div class="ba-container">
+            <div class="ba-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                <div class="ba-title">
+                    <span>🚣 配艇表</span>
+                    <span class="ba-count">${usedCount}/${allBoats.length}艇 使用中</span>
+                </div>
+                <span class="accordion-icon">▼</span>
+            </div>
+            <div class="ba-body">
+                ${cardsHtml || '<div class="empty-state sub-empty"><p>乗艇スケジュールがありません</p></div>'}
+            </div>
+        </div>
+    `;
+}
 
 function renderAvailableBoats(dateStr, container) {
     if (!container) return;
