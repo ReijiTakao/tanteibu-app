@@ -5031,8 +5031,51 @@ function filterAllocBoatsByType(boatType, selectedBoatId) {
     if (boatType) {
         filtered = availBoats.filter(b => getBoatTypeFromBoat(b) === boatType);
     }
+    // 名前順ソート
+    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
+
+    // ステータスアイコンとメモを表示
     boatSelect.innerHTML = '<option value="">船を選択</option>' +
-        filtered.map(b => `<option value="${b.id}" ${b.id === selectedBoatId ? 'selected' : ''}>${b.name} (${getBoatTypeFromBoat(b)})</option>`).join('');
+        filtered.map(b => {
+            const memo = b.memo || b.notes || b.details || '';
+            const org = b.organization || '';
+            const statusLabel = memo ? ` [${memo}]` : '';
+            const orgLabel = org ? ` (${org})` : '';
+            return `<option value="${b.id}" ${b.id === selectedBoatId ? 'selected' : ''}>${b.name}${orgLabel}${statusLabel}</option>`;
+        }).join('');
+
+    // 選択中の船の詳細を表示
+    updateAllocBoatDetail();
+    boatSelect.removeEventListener('change', updateAllocBoatDetail);
+    boatSelect.addEventListener('change', updateAllocBoatDetail);
+}
+
+function updateAllocBoatDetail() {
+    const boatSelect = document.getElementById('alloc-boat-select');
+    let detailDiv = document.getElementById('alloc-boat-detail');
+    if (!detailDiv) {
+        detailDiv = document.createElement('div');
+        detailDiv.id = 'alloc-boat-detail';
+        boatSelect.parentElement.appendChild(detailDiv);
+    }
+    const availBoats = window._allocAvailBoats || [];
+    const boat = availBoats.find(b => b.id === boatSelect.value);
+    if (!boat) {
+        detailDiv.innerHTML = '';
+        return;
+    }
+    const memo = boat.memo || boat.notes || '';
+    const details = boat.details || '';
+    const org = boat.organization || '';
+    detailDiv.innerHTML = `
+        <div style="margin-top:6px;padding:8px 10px;background:var(--bg-light, #f5f5f5);border-radius:8px;font-size:12px;border:1px solid var(--border-color, #e0e0e0);">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <span style="font-weight:700;">${boat.name}</span>
+                ${org ? `<span style="background:#6366f1;color:#fff;padding:1px 6px;border-radius:4px;font-size:10px;">${org}</span>` : ''}
+            </div>
+            ${memo ? `<div style="margin-top:4px;color:var(--text-muted, #888);">📝 ${memo}</div>` : ''}
+            ${details ? `<div style="margin-top:2px;color:var(--text-secondary, #666);">📋 ${details}</div>` : ''}
+        </div>`;
 }
 
 function renderAllocSeatInputs(boatType, existingCrewMap) {
