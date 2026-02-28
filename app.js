@@ -4782,24 +4782,37 @@ function renderBoatAllocation() {
         const type = alloc.boatType || getBoatTypeFromBoat(boat);
         const color = BA_TYPE_COLORS[type] || '#6b7280';
 
-        // クルー表示
-        const crewArr = [];
+        // クルー表示 - 縦型テーブル
         const crewMap = alloc.crewDetailsMap || {};
         const seatOrder = ['Cox', 'S', '7', '6', '5', '4', '3', '2', 'B'];
-        Object.entries(crewMap).forEach(([seat, uid]) => {
-            const u = (state.users || []).find(u => u.id === uid);
-            if (u) crewArr.push({ seat, name: u.name });
+        const crewRows = [];
+        seatOrder.forEach(seat => {
+            const uid = crewMap[seat];
+            if (uid) {
+                const u = (state.users || []).find(u => u.id === uid);
+                crewRows.push({ seat, name: u ? u.name : '不明' });
+            }
         });
-        crewArr.sort((a, b) => {
-            const ai = seatOrder.indexOf(a.seat);
-            const bi = seatOrder.indexOf(b.seat);
-            return (ai === -1 ? 50 : ai) - (bi === -1 ? 50 : bi);
+        // seatOrderにない座席も追加
+        Object.entries(crewMap).forEach(([seat, uid]) => {
+            if (!seatOrder.includes(seat)) {
+                const u = (state.users || []).find(u => u.id === uid);
+                crewRows.push({ seat, name: u ? u.name : '不明' });
+            }
         });
 
-        const crewHtml = crewArr.map(c => {
-            const seatLabel = c.seat ? `<span class="ba-seat">${c.seat}</span>` : '';
-            return `<span class="ba-crew-member">${seatLabel}${c.name}</span>`;
-        }).join('');
+        let crewHtml = '';
+        if (crewRows.length > 0) {
+            const rows = crewRows.map(c =>
+                `<div class="ba-crew-table-row">
+                    <span class="ba-crew-seat">${c.seat}</span>
+                    <span class="ba-crew-name">${c.name}</span>
+                </div>`
+            ).join('');
+            crewHtml = `<div class="ba-crew-table">${rows}</div>`;
+        } else {
+            crewHtml = '<div class="ba-empty-label">クルー未設定</div>';
+        }
 
         // オール名
         const oarNames = (alloc.oarIds || []).map(oid => {
@@ -4807,26 +4820,18 @@ function renderBoatAllocation() {
             return oar ? oar.name : '';
         }).filter(n => n);
         const oarHtml = oarNames.length > 0
-            ? `<div class="ba-oars">🏏 ${oarNames.join(', ')}</div>` : '';
-
-        // 更新日時
-        const updatedLabel = alloc.updatedAt
-            ? new Date(alloc.updatedAt).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })
-            : '';
+            ? `<div class="ba-oar-row">🏏 <span>${oarNames.join('、')}</span></div>` : '';
 
         cardsHtml += `
-        <div class="ba-card used" style="border-left-color: ${color};" onclick="openAllocationModal('${alloc.id}')">
-            <div class="ba-card-header">
+        <div class="ba-card used" style="--ba-accent: ${color};" onclick="openAllocationModal('${alloc.id}')">
+            <div class="ba-card-top">
                 <div class="ba-boat-info">
                     <span class="ba-boat-name">${boat.name}</span>
-                    <span class="ba-boat-type" style="color:${color};">${type}</span>
+                    <span class="ba-type-badge" style="background:${color};">${type}</span>
                 </div>
-                <div class="ba-time-info">
-                    ${updatedLabel ? `<span class="ba-updated">${updatedLabel}</span>` : ''}
-                    <span class="ba-edit-icon">✏️</span>
-                </div>
+                <span class="ba-edit-icon">✏️</span>
             </div>
-            <div class="ba-crew-row">${crewHtml || '<span class="ba-empty-label">クルー未設定</span>'}</div>
+            ${crewHtml}
             ${oarHtml}
         </div>`;
     });
@@ -4857,17 +4862,20 @@ function renderBoatAllocation() {
         </div>`;
     }
 
+    // サマリー
+    const totalCrew = allocations.reduce((sum, a) => sum + (a.crewIds || []).length, 0);
+
     section.innerHTML = `
         <div class="ba-container">
             <div class="ba-header" onclick="this.parentElement.classList.toggle('collapsed')">
                 <div class="ba-title">
                     <span>🚣 配艇表</span>
-                    <span class="ba-count">${allocations.length}組</span>
+                    <span class="ba-count">${allocations.length}組 / ${totalCrew}人</span>
                 </div>
                 <span class="accordion-icon">▼</span>
             </div>
             <div class="ba-body">
-                ${cardsHtml}
+                ${cardsHtml || '<div class="ba-empty-state">配艇がありません</div>'}
                 <button class="ba-add-btn" onclick="event.stopPropagation(); openAllocationModal(null)">＋ 配艇を追加</button>
                 ${freeBoatsHtml}
                 ${freeOarsHtml}

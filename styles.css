@@ -1584,39 +1584,38 @@ body {
 }
 
 .ba-body {
-    padding: 8px;
+    padding: 10px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 10px;
 }
 
+/* --- 配艇カード --- */
 .ba-card {
-    border-radius: 10px;
-    padding: 10px 12px;
-    border-left: 4px solid #6b7280;
+    border-radius: 12px;
     transition: all 0.2s;
 }
 
 .ba-card.used {
     background: var(--bg-white);
     border: 1px solid rgba(0, 0, 0, 0.06);
-    border-left-width: 4px;
-    border-left-style: solid;
+    border-left: 5px solid var(--ba-accent, #6b7280);
+    padding: 12px 14px;
+    cursor: pointer;
 }
 
-.ba-card.empty {
-    background: rgba(107, 114, 128, 0.06);
-    border: 1px dashed rgba(107, 114, 128, 0.2);
-    border-left-width: 4px;
-    border-left-style: solid;
-    opacity: 0.55;
-    padding: 6px 12px;
+.ba-card.used:active {
+    transform: scale(0.98);
 }
 
-.ba-card-header {
+/* カードトップ（船名 + 編集アイコン） */
+.ba-card-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .ba-boat-info {
@@ -1626,84 +1625,99 @@ body {
 }
 
 .ba-boat-name {
-    font-weight: 700;
-    font-size: 13px;
+    font-weight: 800;
+    font-size: 15px;
     color: var(--text-primary);
+    letter-spacing: 0.3px;
 }
 
-.ba-boat-type {
+.ba-type-badge {
     font-size: 10px;
     font-weight: 700;
-    padding: 1px 6px;
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 6px;
-}
-
-.ba-time-info {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.ba-slot-badge {
-    font-size: 9px;
-    font-weight: 600;
-    padding: 1px 6px;
+    padding: 2px 8px;
     border-radius: 6px;
     color: #fff;
+    letter-spacing: 0.5px;
 }
 
-.ba-slot-badge.am {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
+.ba-edit-icon {
+    font-size: 14px;
+    opacity: 0.4;
+    transition: opacity 0.2s;
 }
 
-.ba-slot-badge.pm {
-    background: linear-gradient(135deg, #6366f1, #4f46e5);
+.ba-card.used:hover .ba-edit-icon {
+    opacity: 0.8;
 }
 
-.ba-start-time {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-secondary);
-}
-
-.ba-crew-row {
+/* --- クルーテーブル --- */
+.ba-crew-table {
     display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    margin-top: 6px;
-}
-
-.ba-crew-member {
-    display: inline-flex;
-    align-items: center;
+    flex-direction: column;
     gap: 2px;
-    font-size: 11px;
-    padding: 2px 6px;
-    background: rgba(59, 130, 246, 0.08);
-    border-radius: 6px;
-    color: var(--text-primary);
+    margin-bottom: 6px;
 }
 
-.ba-seat {
-    font-size: 9px;
-    font-weight: 700;
+.ba-crew-table-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+.ba-crew-table-row:last-child {
+    border-bottom: none;
+}
+
+.ba-crew-seat {
+    min-width: 36px;
+    font-size: 11px;
+    font-weight: 800;
     color: #3b82f6;
-    margin-right: 2px;
+    text-align: center;
+    flex-shrink: 0;
 }
 
-.ba-oars {
-    font-size: 10px;
-    color: var(--text-muted);
-    margin-top: 4px;
+.ba-crew-name {
+    font-size: 13px;
+    color: var(--text-primary);
+    font-weight: 500;
+    padding-left: 8px;
 }
 
-.ba-empty-label {
+/* オール行 */
+.ba-oar-row {
     font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ba-oar-row span {
+    font-weight: 500;
+}
+
+/* 空状態 */
+.ba-empty-label {
+    font-size: 12px;
     color: #9ca3af;
     font-style: italic;
+    padding: 8px 0;
 }
 
+.ba-empty-state {
+    text-align: center;
+    padding: 20px;
+    color: #9ca3af;
+    font-size: 13px;
+}
+
+/* 配艇追加ボタン */
 .ba-add-btn {
     width: 100%;
     padding: 10px;
@@ -1722,47 +1736,30 @@ body {
     border-color: #1e3a5f;
 }
 
-.ba-edit-icon {
-    font-size: 12px;
-    opacity: 0.5;
-}
-
-.ba-updated {
-    font-size: 10px;
-    color: var(--text-muted);
-}
-
-.ba-card.used {
-    cursor: pointer;
-}
-
-.ba-card.used:active {
-    transform: scale(0.98);
-}
-
+/* 空き船・空きオールセクション */
 .ba-free-section {
-    margin-top: 8px;
-    padding: 8px;
+    margin-top: 4px;
+    padding: 10px;
     background: rgba(107, 114, 128, 0.04);
-    border-radius: 8px;
+    border-radius: 10px;
 }
 
 .ba-free-title {
     font-size: 11px;
     font-weight: 600;
     color: var(--text-secondary);
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 }
 
 .ba-free-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 6px;
 }
 
 .ba-free-chip {
     display: inline-block;
-    padding: 3px 8px;
+    padding: 4px 10px;
     border: 1px dashed #9ca3af;
     border-radius: 8px;
     font-size: 11px;
