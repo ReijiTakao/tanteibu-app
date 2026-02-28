@@ -3275,7 +3275,8 @@ function filterBoatSelect(type) {
             if (b.name.includes(type)) return true;
             // 4+と4xの区別など
             if (type === '4+' && b.name.includes('付きフォア')) return true;
-            if (type === '4x' && b.name.includes('クォドルプル')) return true;
+            if (type === '4-' && (b.name.includes('なしフォア') || b.name.includes('4-'))) return true;
+            if (type === '4x' && (b.name.includes('クォドルプル') || b.name.includes('クォード') || b.name.includes('4x'))) return true;
             if (type === '2x' && b.name.includes('ダブル')) return true;
             if (type === '2-' && b.name.includes('ペア')) return true;
             if (type === '1x' && b.name.includes('シングル')) return true;
@@ -4309,40 +4310,29 @@ function calcHealthStreak(schedules, todayStr) {
     // スケジュールが1件もなければストリーク0
     if (schedules.length === 0) return { current: 0, best: 0 };
 
-    // 最初のスケジュール日を取得（ストリーク起点）
-    const sortedDates = schedules.map(s => s.date).sort();
-    const firstScheduleDate = sortedDates[0];
+    // スケジュールがある日のユニークなリスト（降順ソート＝最新が先）
+    const scheduleDates = [...new Set(schedules.map(s => s.date))].sort().reverse();
 
-    // 今日から遡って体調不良がない連続日数（最初のスケジュール日まで）
+    // 現在のストリーク: 最新のスケジュール日から遡って体調不良がない連続日数
     let current = 0;
-    const d = new Date(todayStr);
-    const firstDate = new Date(firstScheduleDate);
-    while (d >= firstDate) {
-        const dateStr = d.toISOString().slice(0, 10);
+    for (const dateStr of scheduleDates) {
         if (sickDates.has(dateStr)) break;
         current++;
-        d.setDate(d.getDate() - 1);
     }
 
-    // 最長記録: 体調不良が一度もなければcurrentがbest
+    // 最長記録: スケジュールがある日を昇順に辿って最長の連続体調不良なし
     let best = current;
-    const allSickDates = [...sickDates].sort();
-    if (allSickDates.length > 0) {
-        const lastDate = new Date(todayStr);
-        let streak = 0;
-        const cursor = new Date(firstDate);
-        while (cursor <= lastDate) {
-            const cs = cursor.toISOString().slice(0, 10);
-            if (sickDates.has(cs)) {
-                if (streak > best) best = streak;
-                streak = 0;
-            } else {
-                streak++;
-            }
-            cursor.setDate(cursor.getDate() + 1);
+    let streak = 0;
+    const sortedAsc = [...scheduleDates].reverse();
+    for (const dateStr of sortedAsc) {
+        if (sickDates.has(dateStr)) {
+            if (streak > best) best = streak;
+            streak = 0;
+        } else {
+            streak++;
         }
-        if (streak > best) best = streak;
     }
+    if (streak > best) best = streak;
 
     return { current, best };
 }
@@ -7358,7 +7348,8 @@ function populateBoatOarSelects() {
                 if (b.type) return b.type === selectedBoatType;
                 if (b.name.includes(selectedBoatType)) return true;
                 if (selectedBoatType === '4+' && b.name.includes('付きフォア')) return true;
-                if (selectedBoatType === '4x' && b.name.includes('クォドルプル')) return true;
+                if (selectedBoatType === '4-' && (b.name.includes('なしフォア') || b.name.includes('4-'))) return true;
+                if (selectedBoatType === '4x' && (b.name.includes('クォドルプル') || b.name.includes('クォード') || b.name.includes('4x'))) return true;
                 if (selectedBoatType === '2x' && b.name.includes('ダブル')) return true;
                 if (selectedBoatType === '2-' && b.name.includes('ペア')) return true;
                 if (selectedBoatType === '1x' && b.name.includes('シングル')) return true;
