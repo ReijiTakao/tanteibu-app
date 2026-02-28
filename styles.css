@@ -1778,6 +1778,27 @@ body {
     border-style: dotted;
 }
 
+/* 空き艇/オール アコーディオン */
+.ba-accordion .ba-free-title {
+    cursor: pointer;
+    user-select: none;
+}
+
+.ba-accordion-icon {
+    font-size: 9px;
+    display: inline-block;
+    transition: transform 0.2s;
+    margin-left: 4px;
+}
+
+.ba-accordion.collapsed .ba-free-chips {
+    display: none;
+}
+
+.ba-accordion:not(.collapsed) .ba-accordion-icon {
+    transform: rotate(90deg);
+}
+
 /* 配艇モーダルのシートグリッド */
 .alloc-seats-grid {
     display: flex;

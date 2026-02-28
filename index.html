@@ -179,9 +179,6 @@
                         <button id="overview-today-btn" class="nav-btn-sm today-btn">今日</button>
                     </div>
                 </div>
-                <div id="boat-allocation-section" class="boat-allocation-section">
-                    <!-- 配艇表: JSで動的生成 -->
-                </div>
                 <div id="schedule-timeline" class="schedule-timeline">
                     <!-- JSで動的生成 -->
                 </div>
@@ -229,146 +226,10 @@
 
 
 
-            <!-- 3. リギング管理タブ（新規追加） -->
+            <!-- 3. 配艇表タブ -->
             <div id="tab-rigging" class="tab-content hidden">
-                <!-- 漕手用: 個人リギング管理 -->
-                <div id="rower-rigging-view">
-                    <h2 class="tab-title">リギング管理</h2>
-                    <div class="rigging-content">
-                        <!-- リギング一覧・選択 -->
-                        <div class="form-group">
-                            <label>艇を選択</label>
-                            <select id="rigging-boat-select">
-                                <option value="">選択してください</option>
-                                <!-- JSで動的生成 -->
-                            </select>
-                        </div>
-
-                        <div id="rigging-form" class="rigging-form hidden">
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label>ピン・トゥ・ヒール (cm)</label>
-                                    <input type="number" id="rigging-pin-to-heel" step="0.1" placeholder="例: 123.4">
-                                </div>
-                                <div class="form-group">
-                                    <label>デプス (cm)</label>
-                                    <input type="number" id="rigging-depth" step="0.1">
-                                </div>
-                                <div class="form-group">
-                                    <label>スパン (cm)</label>
-                                    <input type="number" id="rigging-span" step="0.1">
-                                </div>
-                                <div class="form-group">
-                                    <label>足角 (°)</label>
-                                    <input type="number" id="rigging-pitch" step="0.1">
-                                </div>
-                                <div class="form-group">
-                                    <label>ハイト (cm)</label>
-                                    <input type="number" id="rigging-height" step="0.1">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label>メモ（感覚・感触・所感など）</label>
-                                <textarea id="rigging-memo" rows="3" placeholder="最近の感覚..."></textarea>
-                            </div>
-                            <div class="rigging-btn-row">
-                                <button id="save-rigging-btn" class="primary-btn">設定を保存</button>
-                                <button id="rigging-history-btn" class="secondary-btn"
-                                    onclick="toggleRiggingHistory()">📋
-                                    履歴 <span id="rigging-history-count"
-                                        class="history-count-badge hidden">0</span></button>
-                            </div>
-                        </div>
-
-                        <!-- リギング履歴パネル -->
-                        <div id="rigging-history-panel" class="rigging-history-panel hidden">
-                            <div class="rigging-history-header">
-                                <h3>📋 リギング履歴</h3>
-                                <button class="close-btn" onclick="toggleRiggingHistory()">✕</button>
-                            </div>
-                            <div id="rigging-history-list" class="rigging-history-list">
-                                <!-- JSで動的生成 -->
-                            </div>
-                        </div>
-
-                        <!-- リギング比較パネル -->
-                        <div id="rigging-comparison-panel" class="rigging-comparison-panel hidden">
-                            <div class="rigging-history-header">
-                                <h3>🔍 設定比較</h3>
-                                <button class="close-btn" onclick="closeRiggingComparison()">✕</button>
-                            </div>
-                            <div id="rigging-comparison-body"></div>
-                        </div>
-
-                        <div id="rigging-empty-state" class="empty-state">
-                            <p>艇を選択してリギング値を設定してください</p>
-                        </div>
-                    </div>
-
-                    <!-- 設備状態一覧 -->
-                    <div id="equipment-status-section" style="margin-top:24px;">
-                        <h2 class="tab-title">🛥️ 設備状態一覧</h2>
-                        <div class="view-toggle" style="margin-bottom:12px;">
-                            <button class="view-toggle-btn active" data-equip-view="boats"
-                                onclick="switchEquipView('boats')">🚣 艇</button>
-                            <button class="view-toggle-btn" data-equip-view="oars" onclick="switchEquipView('oars')">🏏
-                                オール</button>
-                        </div>
-                        <div id="equip-boats-list"></div>
-                        <div id="equip-oars-list" class="hidden"></div>
-                    </div>
-                </div>
-                <!-- コックス/コーチ用: クルーリギング閲覧 -->
-                <div id="crew-rigging-view" class="hidden">
-                    <h2 class="tab-title">🚣 クルーリギング閲覧</h2>
-                    <div class="crew-rigging-content">
-                        <!-- 閲覧モード切替 -->
-                        <div class="view-toggle" style="margin-bottom: 16px;">
-                            <button class="view-toggle-btn active" data-crew-view="schedule"
-                                onclick="switchCrewRiggingView('schedule')">📅 船割りから確認</button>
-                            <button class="view-toggle-btn" data-crew-view="member"
-                                onclick="switchCrewRiggingView('member')">👤 選手を選んで確認</button>
-                        </div>
-
-                        <!-- 船割りベース閲覧 -->
-                        <div id="crew-rigging-schedule-view">
-                            <div class="form-group">
-                                <label>日付を選択</label>
-                                <input type="date" id="crew-rigging-date"
-                                    style="padding: 8px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; width: 100%;">
-                            </div>
-                            <div id="crew-rigging-schedule-list">
-                                <div class="empty-state">
-                                    <p>日付を選択してクルーのリギング情報を確認</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 選手ベース閲覧 -->
-                        <div id="crew-rigging-member-view" class="hidden">
-                            <div class="form-group">
-                                <label>選手を選択</label>
-                                <select id="crew-rigging-member-select"
-                                    style="padding: 8px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; width: 100%;">
-                                    <option value="">選択してください</option>
-                                </select>
-                            </div>
-                            <div id="crew-rigging-member-detail">
-                                <div class="empty-state">
-                                    <p>選手を選択してリギング情報を表示</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- マスタ管理（コックス用） -->
-                        <div class="settings-section"
-                            style="margin-top: 24px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
-                            <h3>⚙️ マスタ管理</h3>
-                            <button class="settings-btn" onclick="openMasterModal('boats')">🚣 艇マスタ</button>
-                            <button class="settings-btn" onclick="openMasterModal('oars')">🏏 オールマスタ</button>
-                            <button class="settings-btn" onclick="openMasterModal('ergos')">🏋️ エルゴマスタ</button>
-                        </div>
-                    </div>
+                <div id="boat-allocation-section" class="boat-allocation-section">
+                    <!-- 配艇表: JSで動的生成 -->
                 </div>
             </div>
 
@@ -529,6 +390,7 @@
                     <div class="note-subtabs">
                         <button class="note-subtab-btn active" data-subtab="practice">📝 練習記録</button>
                         <button class="note-subtab-btn" data-subtab="crew">🚣 クルーノート</button>
+                        <button class="note-subtab-btn" data-subtab="rigging">🔧 リギング</button>
                     </div>
                 </div>
 
@@ -601,6 +463,80 @@
                         </div>
                         <div class="fab-container">
                             <button class="fab" id="add-crew-note-btn">＋</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- サブタブ: リギング -->
+                <div id="subtab-rigging" class="note-subtab-content hidden">
+                    <div class="rigging-content">
+                        <!-- リギング一覧・選択 -->
+                        <div class="form-group">
+                            <label>艇を選択</label>
+                            <select id="rigging-boat-select">
+                                <option value="">選択してください</option>
+                                <!-- JSで動的生成 -->
+                            </select>
+                        </div>
+
+                        <div id="rigging-form" class="rigging-form hidden">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>ピン・トゥ・ヒール (cm)</label>
+                                    <input type="number" id="rigging-pin-to-heel" step="0.1" placeholder="例: 123.4">
+                                </div>
+                                <div class="form-group">
+                                    <label>デプス (cm)</label>
+                                    <input type="number" id="rigging-depth" step="0.1">
+                                </div>
+                                <div class="form-group">
+                                    <label>スパン (cm)</label>
+                                    <input type="number" id="rigging-span" step="0.1">
+                                </div>
+                                <div class="form-group">
+                                    <label>足角 (°)</label>
+                                    <input type="number" id="rigging-pitch" step="0.1">
+                                </div>
+                                <div class="form-group">
+                                    <label>ハイト (cm)</label>
+                                    <input type="number" id="rigging-height" step="0.1">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>メモ（感覚・感触・所感など）</label>
+                                <textarea id="rigging-memo" rows="3" placeholder="最近の感覚..."></textarea>
+                            </div>
+                            <div class="rigging-btn-row">
+                                <button id="save-rigging-btn" class="primary-btn">設定を保存</button>
+                                <button id="rigging-history-btn" class="secondary-btn"
+                                    onclick="toggleRiggingHistory()">📋
+                                    履歴 <span id="rigging-history-count"
+                                        class="history-count-badge hidden">0</span></button>
+                            </div>
+                        </div>
+
+                        <!-- リギング履歴パネル -->
+                        <div id="rigging-history-panel" class="rigging-history-panel hidden">
+                            <div class="rigging-history-header">
+                                <h3>📋 リギング履歴</h3>
+                                <button class="close-btn" onclick="toggleRiggingHistory()">✕</button>
+                            </div>
+                            <div id="rigging-history-list" class="rigging-history-list">
+                                <!-- JSで動的生成 -->
+                            </div>
+                        </div>
+
+                        <!-- リギング比較パネル -->
+                        <div id="rigging-comparison-panel" class="rigging-comparison-panel hidden">
+                            <div class="rigging-history-header">
+                                <h3>🔍 設定比較</h3>
+                                <button class="close-btn" onclick="closeRiggingComparison()">✕</button>
+                            </div>
+                            <div id="rigging-comparison-body"></div>
+                        </div>
+
+                        <div id="rigging-empty-state" class="empty-state">
+                            <p>艇を選択してリギング値を設定してください</p>
                         </div>
                     </div>
                 </div>
@@ -910,8 +846,8 @@
                 <span class="nav-label">エルゴデータ</span>
             </button>
             <button class="nav-item" data-tab="rigging" data-roles="rower,cox,admin,coach">
-                <span class="nav-icon">🔧</span>
-                <span class="nav-label">リギング</span>
+                <span class="nav-icon">🚣</span>
+                <span class="nav-label">配艇</span>
             </button>
             <button class="nav-item" data-tab="crew-note" data-roles="rower,cox,admin,coach">
                 <span class="nav-icon">📖</span>

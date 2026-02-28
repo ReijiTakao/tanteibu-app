@@ -1084,7 +1084,7 @@ function switchTab(tabId) {
             renderWeeklyRanking();
             renderTeamRecords();
         }
-        if (tabId === 'rigging') initRigging();
+        if (tabId === 'rigging') renderBoatAllocation();
         if (tabId === 'crew-note') {
             initCrewNoteFeatures();
             renderPracticeNotesList();
@@ -3996,8 +3996,7 @@ function renderOverview() {
     // 空き艇セクション
     renderAvailableBoats(dateStr, boatSection);
 
-    // 配艇表
-    renderBoatAllocation();
+    // 配艇表は専用タブに移動済み
 }
 
 function renderAbsentBlock(title, absentList) {
@@ -4836,7 +4835,7 @@ function renderBoatAllocation() {
         </div>`;
     });
 
-    // 空き船カード
+    // 空き船カード（アコーディオン：デフォルト閉）
     let freeBoatsHtml = '';
     if (freeBoats.length > 0) {
         const freeChips = freeBoats.map(b => {
@@ -4845,19 +4844,19 @@ function renderBoatAllocation() {
             return `<span class="ba-free-chip" style="border-color:${color};" onclick="openAllocationModal(null, '${b.id}')">${b.name} <span style="color:${color};font-size:9px;">${type}</span></span>`;
         }).join('');
         freeBoatsHtml = `
-        <div class="ba-free-section">
-            <div class="ba-free-title">🚣 空き船 (${freeBoats.length})</div>
+        <div class="ba-free-section ba-accordion collapsed">
+            <div class="ba-free-title" onclick="this.parentElement.classList.toggle('collapsed')">🚣 空き船 (${freeBoats.length}) <span class="ba-accordion-icon">▶</span></div>
             <div class="ba-free-chips">${freeChips}</div>
         </div>`;
     }
 
-    // 空きオール
+    // 空きオール（アコーディオン：デフォルト閉）
     let freeOarsHtml = '';
     if (freeOars.length > 0) {
         const oarChips = freeOars.map(o => `<span class="ba-free-chip oar">${o.name}</span>`).join('');
         freeOarsHtml = `
-        <div class="ba-free-section">
-            <div class="ba-free-title">🏏 空きオール (${freeOars.length})</div>
+        <div class="ba-free-section ba-accordion collapsed">
+            <div class="ba-free-title" onclick="this.parentElement.classList.toggle('collapsed')">🏏 空きオール (${freeOars.length}) <span class="ba-accordion-icon">▶</span></div>
             <div class="ba-free-chips">${oarChips}</div>
         </div>`;
     }
@@ -6191,6 +6190,8 @@ function switchNoteSubtab(subtab) {
         renderWeeklyPracticeSummary();
     } else if (subtab === 'crew') {
         renderCrewList();
+    } else if (subtab === 'rigging') {
+        initRigging();
     }
 }
 
