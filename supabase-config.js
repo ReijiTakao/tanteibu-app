@@ -339,7 +339,8 @@ const SupabaseDB = {
             menu_key: r.menuKey || null,
             category: r.category || null,
             source: r.source || '手入力',
-            raw_data: r.rawData || null
+            raw_data: r.rawData || null,
+            ergo_type: r.ergoType || null
         };
     },
     _fromErgoRow(r) {
@@ -360,6 +361,7 @@ const SupabaseDB = {
             category: r.category,
             source: r.source,
             rawData: r.raw_data,
+            ergoType: r.ergo_type || null,
             createdAt: r.created_at,
             updatedAt: r.updated_at
         };
