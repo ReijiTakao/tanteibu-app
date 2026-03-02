@@ -7522,20 +7522,38 @@ function closeErgoDetailModal() {
     document.getElementById('ergo-detail-modal').classList.add('hidden');
 }
 
+// ランキングメニューのカテゴリマップ（グローバル）
+let _rankingMenuCategories = {}; // menuKey -> { category, intervalSubtype }
+
 // ランキングメニューを実データから動的に生成
 function _populateRankingMenus() {
     const menuKeys = new Set();
     const menuCategories = {}; // menuKey -> category
+    const menuIntervalSubtypes = {}; // menuKey -> 'distance-based' | 'time-based'
 
     // ergoRecords + ergoSessions から全menuKeyを収集
     [...(state.ergoRecords || []), ...(state.ergoSessions || [])].forEach(r => {
         if (r.menuKey && r.menuKey !== 'JustRow' && r.menuKey !== 'JustRow_skip' && r.menuKey !== 'その他') {
             menuKeys.add(r.menuKey);
             if (r.category) menuCategories[r.menuKey] = r.category;
+            // インターバルのサブタイプ判定
+            if (r.category === 'interval' && !menuIntervalSubtypes[r.menuKey]) {
+                const sub = getIntervalSubtypeFromMenuKey(r.menuKey, r);
+                if (sub) menuIntervalSubtypes[r.menuKey] = sub.class; // 'distance-based' or 'time-based'
+            }
         }
     });
 
     if (menuKeys.size === 0) return;
+
+    // グローバルマップ更新
+    _rankingMenuCategories = {};
+    menuKeys.forEach(key => {
+        _rankingMenuCategories[key] = {
+            category: menuCategories[key] || 'other',
+            intervalSubtype: menuIntervalSubtypes[key] || null
+        };
+    });
 
     // カテゴリ順でソート: distance → time → interval
     const categoryOrder = { distance: 0, time: 1, interval: 2 };
@@ -7589,6 +7607,20 @@ function _populateRankingMenus() {
     });
 }
 
+// 選択メニューが「時間ベース」かどうか判定（距離が成果指標=ランキング距離順）
+// time category / 時間インターバル(1min×10等) → true
+// distance category / 距離インターバル(500m×8等) → false
+function _isTimeBasedMenu(selectedMenu) {
+    const info = _rankingMenuCategories[selectedMenu];
+    if (!info) return /min|sec|分|秒/.test(selectedMenu); // フォールバック
+    if (info.category === 'time') return true;
+    if (info.category === 'interval') {
+        return info.intervalSubtype === 'time-based';
+    }
+    return false;
+}
+
+
 // 週間ランキング
 let weeklyRankingSortMode = 'time'; // 'time' or 'idt'
 
@@ -7623,7 +7655,7 @@ function renderWeeklyRanking() {
     monday.setDate(now.getDate() - tuesdayOffset);
     monday.setHours(0, 0, 0, 0);
 
-    const isTimeMenu = /min|sec|分|秒/.test(selectedMenu);
+    const isTimeMenu = _isTimeBasedMenu(selectedMenu);
     const is2000m = selectedMenu === '2000m TT';
 
     // ergoRecords + ergoSessions を統合・重複排除してユーザーごとのベストを取得
@@ -7719,7 +7751,7 @@ function renderWeeklyRanking() {
             <div class="date">${display.month}/${display.day}</div>
         </div>
         <div>
-            <div class="time">${formatTime(myBest.time)}</div>
+            <div class="time">${isTimeMenu ? ((myBest.distance || 0) + 'm') : formatTime(myBest.time)}</div>
             <div class="split">Split ${getSplit(myBest)}</div>
             ${idtHtml}
         </div>
@@ -7749,7 +7781,7 @@ function renderWeeklyRanking() {
                 <div class="date">${display.month}/${display.day}</div>
             </div>
             <div>
-                <div class="time">${formatTime(record.time)}</div>
+                <div class="time">${isTimeMenu ? ((record.distance || 0) + 'm') : formatTime(record.time)}</div>
                 <div class="split">Split ${getSplit(record)}</div>
                 ${idtHtml}
             </div>
@@ -7930,7 +7962,7 @@ function renderAllTimeRanking() {
 
     const menuSelect = document.getElementById('all-time-ranking-menu');
     const selectedMenu = menuSelect?.value || '2000m TT';
-    const isTimeMenu = /min|sec|分|秒/.test(selectedMenu);
+    const isTimeMenu = _isTimeBasedMenu(selectedMenu);
     const is2000m = selectedMenu === '2000m TT';
 
     // 性別トグルをDOMから取得
@@ -8035,7 +8067,7 @@ function renderAllTimeRanking() {
             <div class="date">${display.year}/${display.month}/${display.day}</div>
         </div>
         <div>
-            <div class="time">${myRecord.timeDisplay || formatTime(myRecord.time)}</div>
+            <div class="time">${isTimeMenu ? ((myRecord.distance || 0) + 'm') : (myRecord.timeDisplay || formatTime(myRecord.time))}</div>
             <div class="split">Split ${myRecord.split || getSplit(myRecord)}</div>
             ${idtHtml}
         </div>
@@ -8079,7 +8111,7 @@ function renderAllTimeRanking() {
                 <div class="date">${display.year}/${display.month}/${display.day}</div>
             </div>
             <div>
-                <div class="time">${record.timeDisplay || formatTime(record.time)}</div>
+                <div class="time">${isTimeMenu ? ((record.distance || 0) + 'm') : (record.timeDisplay || formatTime(record.time))}</div>
                 <div class="split">Split ${record.split || getSplit(record)}</div>
                 ${idtHtml}
             </div>
