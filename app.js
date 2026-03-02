@@ -1460,7 +1460,19 @@ function processConceptData(results) {
     });
 
     DB.save('ergoRaw', state.ergoRaw);
-    classifyErgoSessions();
+
+    // 分類ロジックのバージョン管理：ロジック変更時にバージョンを上げると既存データを自動再分類
+    const CLASSIFY_VERSION = 2; // v2: workoutTypeベースのインターバル分類修正
+    const savedVersion = parseInt(localStorage.getItem('ergo_classify_v') || '0');
+    const needReclassify = savedVersion < CLASSIFY_VERSION;
+    if (needReclassify) {
+        console.log(`🔄 エルゴ分類ロジック更新 (v${savedVersion}→v${CLASSIFY_VERSION}): 既存データを再分類`);
+    }
+    classifyErgoSessions(needReclassify);
+    if (needReclassify) {
+        localStorage.setItem('ergo_classify_v', String(CLASSIFY_VERSION));
+        DB.save('ergo_records', state.ergoRecords);
+    }
     renderErgoRecords();
 }
 
@@ -7681,6 +7693,31 @@ function _populateRankingMenus() {
     // 週間: 今週データがあるメニューのみ / 歴代: 全メニュー
     populateSelect('ranking-menu', weeklyMenuKeys);
     populateSelect('all-time-ranking-menu', allMenuKeys);
+
+    // 全員データビューのメニューも動的生成（optgroup付き・全メニュー）
+    const allMembersSel = document.getElementById('all-members-menu-select');
+    if (allMembersSel) {
+        const prevVal = allMembersSel.value;
+        const sorted = sortKeys(allMenuKeys);
+        // 先頭の「メニュー」オプションを残す
+        allMembersSel.innerHTML = '<option value="">メニュー</option>';
+        let lastCat = null;
+        let optgroup = null;
+        sorted.forEach(key => {
+            const cat = menuCategories[key] || 'other';
+            if (cat !== lastCat) {
+                optgroup = document.createElement('optgroup');
+                optgroup.label = catLabels[cat] || '📊 その他';
+                allMembersSel.appendChild(optgroup);
+                lastCat = cat;
+            }
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.textContent = key;
+            optgroup.appendChild(opt);
+        });
+        if (prevVal) allMembersSel.value = prevVal;
+    }
 }
 
 
@@ -12248,6 +12285,11 @@ function editRecordWeight(recordId) {
         DB.save('ergo_sessions', state.ergoSessions);
     } else {
         DB.save('ergo_records', state.ergoRecords);
+    }
+
+    // Supabase同期（バックグラウンド）
+    if (source === 'ergo_records' && typeof SupabaseDB !== 'undefined' && isSupabaseReady()) {
+        SupabaseDB.saveErgoRecord(record).catch(e => console.error('体重同期エラー:', e));
     }
 
     // 体重履歴にも記録（同日の体重として保存）
