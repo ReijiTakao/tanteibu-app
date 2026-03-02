@@ -12299,9 +12299,18 @@ function editRecordWeight(recordId) {
     if (existing) {
         existing.weight = newWeight;
     } else {
-        history.push({ userId: record.userId, date: dateStr, weight: newWeight });
+        const newEntry = { id: crypto.randomUUID(), userId: record.userId, date: dateStr, weight: newWeight };
+        history.push(newEntry);
     }
     DB.save('weight_history', history);
+
+    // 体重履歴もSupabase同期（バックグラウンド）
+    if (typeof SupabaseDB !== 'undefined' && isSupabaseReady()) {
+        const entry = history.find(w => w.userId === record.userId && w.date === dateStr);
+        if (entry) {
+            SupabaseDB.saveWeightEntry(entry).catch(e => console.error('体重履歴同期エラー:', e));
+        }
+    }
 
     // ランキング再描画
     renderWeeklyRanking();
