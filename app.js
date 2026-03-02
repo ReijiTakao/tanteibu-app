@@ -12770,7 +12770,8 @@ function toggleErgoType(recordId) {
     const label = record.ergoType ? (record.ergoType === 'ダイナミック' ? '🔄 ダイナミック' : '🔒 固定') : '❌ 未設定';
     showToast(`エルゴ種別: ${label}`, 'info');
 
-    // 再描画
+    // 再描画（全ビュー対応）
+    renderErgoRecords();
     renderWeeklyRanking();
     renderAllTimeRanking();
 }
