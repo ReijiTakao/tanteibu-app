@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS team_schedules (
     date DATE NOT NULL,
     time_slot TEXT DEFAULT '',
     content TEXT NOT NULL DEFAULT '',
-    created_by TEXT REFERENCES profiles(id),
+    created_by TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
