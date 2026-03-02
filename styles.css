@@ -4896,40 +4896,44 @@ textarea {
    マイレージウィジェット (ノートタブ内)
    ========================================= */
 .mileage-widget {
-    background: linear-gradient(135deg, #1e3a5f, #2d5a8c);
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #1e3a5f 100%);
     border-radius: var(--border-radius);
     margin-bottom: 16px;
     overflow: hidden;
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .mileage-widget-header {
     display: flex;
     align-items: center;
-    padding: 12px 16px;
+    padding: 14px 16px;
     cursor: pointer;
     gap: 8px;
+    background: rgba(0, 0, 0, 0.15);
 }
 
 .mileage-widget-title {
     font-size: 14px;
     font-weight: 700;
-    color: #e0e7ff;
+    color: #f1f5f9;
     flex: 1;
+    letter-spacing: 0.3px;
 }
 
 .mileage-widget-summary {
     font-size: 13px;
-    font-weight: 600;
-    color: #93c5fd;
-    padding: 2px 8px;
-    background: rgba(255, 255, 255, 0.1);
+    font-weight: 700;
+    color: #60a5fa;
+    padding: 3px 10px;
+    background: rgba(59, 130, 246, 0.15);
     border-radius: 12px;
+    border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
 .mileage-widget-expand {
     font-size: 12px;
-    color: #93c5fd;
+    color: #94a3b8;
     transition: transform 0.2s ease;
 }
 
@@ -4938,33 +4942,85 @@ textarea {
 }
 
 .mileage-widget-body .mileage-period-toggle {
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 
 .mileage-widget-body .period-btn {
-    background: rgba(255, 255, 255, 0.1);
-    color: #cbd5e1;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+    color: #94a3b8;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    font-weight: 600;
+    transition: all 0.15s ease;
 }
 
 .mileage-widget-body .period-btn.active {
-    background: rgba(59, 130, 246, 0.3);
-    color: #fff;
-    border-color: rgba(59, 130, 246, 0.5);
+    background: rgba(59, 130, 246, 0.25);
+    color: #e0e7ff;
+    border-color: rgba(59, 130, 246, 0.4);
+    font-weight: 700;
 }
 
 .mileage-widget-body .mileage-ranking {
-    background: rgba(0, 0, 0, 0.15);
-    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
     padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .mileage-widget-body .mileage-row {
     color: #e2e8f0;
 }
 
+.mileage-widget-body .mileage-row .mileage-name {
+    color: #f1f5f9;
+}
+
+.mileage-widget-body .mileage-row .mileage-distance {
+    color: #60a5fa;
+    font-weight: 800;
+}
+
+.mileage-widget-body .mileage-row .mileage-sessions {
+    color: #64748b;
+}
+
+.mileage-widget-body .mileage-bar-container {
+    background: rgba(255, 255, 255, 0.08);
+}
+
 .mileage-widget-body .mileage-bar {
-    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+    background: linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd);
+}
+
+.mileage-widget-body .mileage-me {
+    background: rgba(59, 130, 246, 0.12) !important;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.mileage-widget-body .mileage-empty {
+    color: #64748b;
+}
+
+/* 週/月ナビのウィジェット内スタイル */
+.mileage-widget-body .pn-week-nav {
+    padding: 4px 0 8px;
+}
+
+.mileage-widget-body .pn-week-nav-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #94a3b8;
+}
+
+.mileage-widget-body .pn-week-nav-btn:active {
+    background: rgba(59, 130, 246, 0.3);
+    border-color: rgba(59, 130, 246, 0.5);
+    color: #fff;
+}
+
+.mileage-widget-body .pn-week-range {
+    color: #cbd5e1;
+    font-size: 13px;
 }
 
 /* =========================================
