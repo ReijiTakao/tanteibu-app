@@ -8140,6 +8140,7 @@ function renderTrendsChart() {
         date: r.date,
         metric: getMetric(r),
         weight: r.weight || null,
+        ergoType: r.ergoType || null,
         record: r
     })).filter(d => d.metric > 0);
 
@@ -8237,11 +8238,17 @@ function renderTrendsChart() {
     });
     ctx.stroke();
 
-    // データポイント（ドット）
+    // データポイント（ドット）- ergoType別に色分け
+    const ergoTypeColor = (type) => {
+        if (type === 'ダイナミック') return '#6366f1'; // 紫
+        if (type === '固定') return '#eab308'; // 黄
+        return '#50c878'; // 緑（未設定）
+    };
     points.forEach(p => {
-        ctx.fillStyle = '#50c878';
+        const dotColor = ergoTypeColor(p.ergoType);
+        ctx.fillStyle = dotColor;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = '#1a1a2e';
         ctx.beginPath();
@@ -8300,11 +8307,20 @@ function renderTrendsChart() {
 
     // 凡例
     ctx.font = '10px sans-serif';
+    ctx.textAlign = 'left';
     ctx.fillStyle = '#50c878';
     ctx.fillText('● ' + metricLabel, padding.left + 5, 14);
+    // ergoType凡例
+    let legendX = padding.left + 80;
+    ctx.fillStyle = '#6366f1';
+    ctx.fillText('● D', legendX, 14);
+    legendX += 30;
+    ctx.fillStyle = '#eab308';
+    ctx.fillText('● 固', legendX, 14);
+    legendX += 30;
     if (weightPoints.length >= 2) {
         ctx.fillStyle = '#f5a623';
-        ctx.fillText('--- 体重', padding.left + 80, 14);
+        ctx.fillText('--- 体重', legendX, 14);
     }
 
     // --- 統計表示 ---
@@ -8365,9 +8381,11 @@ function renderTrendsChart() {
             const dateDisp = `${dt.getMonth() + 1}/${dt.getDate()}`;
             const metricDisp = isTimeMenu ? (d.metric + 'm') : formatTime(d.metric);
             const weightDisp = d.weight ? `${d.weight}kg` : '-';
+            const ergoTypeBadge = d.ergoType === 'ダイナミック' ? '<span class="ergo-type-badge ergo-type-dynamic">D</span>'
+                : d.ergoType === '固定' ? '<span class="ergo-type-badge ergo-type-static">固</span>' : '';
             return `<div class="ranking-item" style="padding:8px 12px;">
                 <div class="user-info">
-                    <div class="name">${dateDisp}</div>
+                    <div class="name">${dateDisp} ${ergoTypeBadge}</div>
                 </div>
                 <div style="text-align:right;">
                     <div class="time">${metricDisp}</div>
