@@ -515,6 +515,22 @@ const DB = {
                 }
             } catch (e) { console.warn('Weekly menus sync failed:', e); }
 
+            // 全体スケジュール告知
+            try {
+                const teamSchedules = await window.SupabaseConfig.db.loadTeamSchedules();
+                if (teamSchedules.length) {
+                    teamSchedules.forEach(ts => {
+                        const idx = (state.teamSchedules || []).findIndex(local => local.id === ts.id);
+                        if (idx !== -1) state.teamSchedules[idx] = ts;
+                        else {
+                            if (!state.teamSchedules) state.teamSchedules = [];
+                            state.teamSchedules.push(ts);
+                        }
+                    });
+                    this.saveLocal('team_schedules', state.teamSchedules);
+                }
+            } catch (e) { console.warn('Team schedules sync failed:', e); }
+
         } catch (e) {
             console.error('syncFromSupabase failed:', e);
             showToast('同期エラー: ' + (e?.message || JSON.stringify(e)), 'error');
@@ -3853,6 +3869,11 @@ function saveTeamSchedule() {
     }
 
     DB.save('team_schedules', state.teamSchedules);
+    // Supabase同期
+    const savedEntry = editId ? state.teamSchedules.find(t => t.id === editId) : state.teamSchedules[state.teamSchedules.length - 1];
+    if (savedEntry) {
+        window.SupabaseConfig?.db?.saveTeamSchedule(savedEntry).catch(e => console.warn('Team schedule sync failed:', e));
+    }
     document.getElementById('team-schedule-modal').classList.add('hidden');
     renderOverview();
     showToast('全体スケジュールを保存しました', 'success');
@@ -3867,6 +3888,7 @@ function deleteTeamSchedule() {
     showConfirmModal('この全体スケジュールを削除しますか？', () => {
         state.teamSchedules = (state.teamSchedules || []).filter(t => t.id !== editId);
         DB.save('team_schedules', state.teamSchedules);
+        window.SupabaseConfig?.db?.deleteTeamSchedule(editId).catch(e => console.warn('Team schedule delete sync failed:', e));
         document.getElementById('team-schedule-modal').classList.add('hidden');
         renderOverview();
         showToast('削除しました', 'success');

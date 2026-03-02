@@ -1025,6 +1025,58 @@ const SupabaseDB = {
             if (error) { console.error('Save app_setting error:', error); throw error; }
             return data;
         }).catch(e => { console.error('Supabase op failed:', e); throw e; });
+    },
+
+    // --- 全体スケジュール告知 ---
+    async loadTeamSchedules() {
+        if (!isSupabaseReady()) return [];
+        const { data, error } = await _supabaseClient
+            .from('team_schedules')
+            .select('*')
+            .order('date', { ascending: false });
+        if (error) { console.error('Load team_schedules error:', error); return []; }
+        return (data || []).map(r => ({
+            id: r.id,
+            date: r.date,
+            timeSlot: r.time_slot,
+            content: r.content,
+            createdBy: r.created_by,
+            createdAt: r.created_at,
+            updatedAt: r.updated_at
+        }));
+    },
+
+    async saveTeamSchedule(entry) {
+        if (!isSupabaseReady()) return null;
+        const row = {
+            id: entry.id,
+            date: entry.date,
+            time_slot: entry.timeSlot || '',
+            content: entry.content || '',
+            created_by: entry.createdBy || null,
+            updated_at: entry.updatedAt || new Date().toISOString()
+        };
+        return withSyncIndicator(async () => {
+            const { data, error } = await _supabaseClient
+                .from('team_schedules')
+                .upsert(row, { onConflict: 'id' })
+                .select()
+                .single();
+            if (error) { console.error('Save team_schedule error:', error); throw error; }
+            return data;
+        }).catch(e => { console.error('Supabase op failed:', e); throw e; });
+    },
+
+    async deleteTeamSchedule(id) {
+        if (!isSupabaseReady()) return false;
+        return withSyncIndicator(async () => {
+            const { error } = await _supabaseClient
+                .from('team_schedules')
+                .delete()
+                .eq('id', id);
+            if (error) { console.error('Delete team_schedule error:', error); throw error; }
+            return true;
+        }).catch(() => false);
     }
 };
 
