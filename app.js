@@ -7522,12 +7522,82 @@ function closeErgoDetailModal() {
     document.getElementById('ergo-detail-modal').classList.add('hidden');
 }
 
+// ランキングメニューを実データから動的に生成
+function _populateRankingMenus() {
+    const menuKeys = new Set();
+    const menuCategories = {}; // menuKey -> category
+
+    // ergoRecords + ergoSessions から全menuKeyを収集
+    [...(state.ergoRecords || []), ...(state.ergoSessions || [])].forEach(r => {
+        if (r.menuKey && r.menuKey !== 'JustRow' && r.menuKey !== 'JustRow_skip' && r.menuKey !== 'その他') {
+            menuKeys.add(r.menuKey);
+            if (r.category) menuCategories[r.menuKey] = r.category;
+        }
+    });
+
+    if (menuKeys.size === 0) return;
+
+    // カテゴリ順でソート: distance → time → interval
+    const categoryOrder = { distance: 0, time: 1, interval: 2 };
+    const rules = CONCEPT2_API.classificationRules;
+    const ruleOrder = {};
+    rules.forEach((r, i) => { ruleOrder[r.key] = i; });
+
+    const sorted = [...menuKeys].sort((a, b) => {
+        const catA = categoryOrder[menuCategories[a]] ?? 3;
+        const catB = categoryOrder[menuCategories[b]] ?? 3;
+        if (catA !== catB) return catA - catB;
+        // 同カテゴリ内はルール順、なければ名前順
+        const orderA = ruleOrder[a] ?? 999;
+        const orderB = ruleOrder[b] ?? 999;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.localeCompare(b);
+    });
+
+    // カテゴリラベル
+    const catLabels = { distance: '📏 距離', time: '⏱ 時間', interval: '🔄 インターバル' };
+
+    ['ranking-menu', 'all-time-ranking-menu'].forEach(selectId => {
+        const sel = document.getElementById(selectId);
+        if (!sel) return;
+        const prevValue = sel.value;
+
+        // optgroupで分類
+        sel.innerHTML = '';
+        let lastCat = null;
+        let optgroup = null;
+        sorted.forEach(key => {
+            const cat = menuCategories[key] || 'other';
+            if (cat !== lastCat) {
+                optgroup = document.createElement('optgroup');
+                optgroup.label = catLabels[cat] || '📊 その他';
+                sel.appendChild(optgroup);
+                lastCat = cat;
+            }
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.textContent = key;
+            optgroup.appendChild(opt);
+        });
+
+        // 以前の選択値を復元 or デフォルト
+        if (prevValue && menuKeys.has(prevValue)) {
+            sel.value = prevValue;
+        } else if (menuKeys.has('2000m TT')) {
+            sel.value = '2000m TT';
+        }
+    });
+}
+
 // 週間ランキング
 let weeklyRankingSortMode = 'time'; // 'time' or 'idt'
 
 function renderWeeklyRanking() {
     const container = document.getElementById('weekly-ranking');
     if (!container) return;
+
+    // メニュー動的生成
+    _populateRankingMenus();
 
     const menuSelect = document.getElementById('ranking-menu');
     const selectedMenu = menuSelect?.value || '2000m TT';
@@ -7553,7 +7623,7 @@ function renderWeeklyRanking() {
     monday.setDate(now.getDate() - tuesdayOffset);
     monday.setHours(0, 0, 0, 0);
 
-    const isTimeMenu = selectedMenu.includes('分');
+    const isTimeMenu = /min|sec|分|秒/.test(selectedMenu);
     const is2000m = selectedMenu === '2000m TT';
 
     // ergoRecords + ergoSessions を統合・重複排除してユーザーごとのベストを取得
@@ -7855,9 +7925,12 @@ function renderAllTimeRanking() {
     const container = document.getElementById('all-time-ranking-list');
     if (!container) return;
 
+    // メニュー動的生成
+    _populateRankingMenus();
+
     const menuSelect = document.getElementById('all-time-ranking-menu');
     const selectedMenu = menuSelect?.value || '2000m TT';
-    const isTimeMenu = selectedMenu.includes('分');
+    const isTimeMenu = /min|sec|分|秒/.test(selectedMenu);
     const is2000m = selectedMenu === '2000m TT';
 
     // 性別トグルをDOMから取得
@@ -10298,12 +10371,26 @@ function getWeightHistory() {
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 }
 
-// 指定ユーザーの指定日の体重を取得（当日中に記録されていればOK）
+// 指定ユーザーの指定日の体重を取得（当日→直近の過去記録→ユーザープロフィールの順でフォールバック）
 function getWeightForDate(userId, dateStr) {
     const history = DB.load('weight_history') || [];
     const targetDate = dateStr?.split('T')[0] || dateStr; // YYYY-MM-DD形式に正規化
-    const entry = history.find(w => w.userId === userId && w.date === targetDate);
-    return entry ? entry.weight : null;
+
+    // 当日の記録を優先
+    const exactEntry = history.find(w => w.userId === userId && w.date === targetDate);
+    if (exactEntry) return exactEntry.weight;
+
+    // 直近の過去記録にフォールバック（指定日以前で最新のもの）
+    const pastEntries = history
+        .filter(w => w.userId === userId && w.date && w.date <= targetDate)
+        .sort((a, b) => b.date.localeCompare(a.date));
+    if (pastEntries.length > 0) return pastEntries[0].weight;
+
+    // ユーザープロフィールの体重にフォールバック
+    const user = state.users.find(u => u.id === userId);
+    if (user?.weight) return user.weight;
+
+    return null;
 }
 
 function saveWeight() {
