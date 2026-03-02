@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS weekly_menus (
     week_start DATE NOT NULL,
     slots JSONB DEFAULT '{}'::jsonb,
     notes TEXT DEFAULT '',
-    updated_by TEXT REFERENCES profiles(id),
+    updated_by TEXT,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
