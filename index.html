@@ -161,12 +161,6 @@
         <main class="main-content">
             <!-- 1. 入力（自分）タブ -->
             <div id="tab-input" class="tab-content active">
-                <div class="week-navigation">
-                    <button id="prev-week-btn" class="nav-btn">← 先週</button>
-                    <span id="week-range" class="week-range"></span>
-                    <button id="next-week-btn" class="nav-btn">来週 →</button>
-                </div>
-                <div id="week-calendar" class="week-calendar"></div>
                 <!-- 練習登録タブ用 週間メニュー -->
                 <div class="wm-widget" id="wm-widget-input">
                     <div class="wm-widget-header" onclick="toggleWeeklyMenuExpandInput()">
@@ -186,6 +180,12 @@
                         <div class="wm-notes" id="wm-notes-display-input"></div>
                     </div>
                 </div>
+                <div class="week-navigation">
+                    <button id="prev-week-btn" class="nav-btn">← 先週</button>
+                    <span id="week-range" class="week-range"></span>
+                    <button id="next-week-btn" class="nav-btn">来週 →</button>
+                </div>
+                <div id="week-calendar" class="week-calendar"></div>
             </div>
 
             <!-- 2. 全体（閲覧・調整）タブ -->
