@@ -1842,24 +1842,56 @@ function classifyErgoSessions(reclassify = false) {
                     const intDist = firstInterval.distance || 0;
                     const intTime = firstInterval.time ? Math.round(firstInterval.time / 10) : 0; // 1/10秒→秒
                     let intMenuKey = null;
-                    // 距離ルールでマッチ
-                    for (const rule of rules) {
-                        if (rule.type === 'distance' && intDist >= rule.min && intDist <= rule.max) {
-                            intMenuKey = rule.key;
-                            break;
-                        } else if (rule.type === 'time' && intTime >= rule.min && intTime <= rule.max) {
-                            intMenuKey = rule.key;
-                            break;
+
+                    // workoutTypeに基づいて適切なルールのみチェック
+                    if (raw.workoutType === 'FixedTimeInterval') {
+                        // 時間ベース: 時間ルールのみ
+                        for (const rule of rules) {
+                            if (rule.type === 'time' && intTime >= rule.min && intTime <= rule.max) {
+                                intMenuKey = rule.key;
+                                break;
+                            }
+                        }
+                    } else if (raw.workoutType === 'FixedDistanceInterval') {
+                        // 距離ベース: 距離ルールのみ
+                        for (const rule of rules) {
+                            if (rule.type === 'distance' && intDist >= rule.min && intDist <= rule.max) {
+                                intMenuKey = rule.key;
+                                break;
+                            }
+                        }
+                    } else {
+                        // VariableInterval: 両方チェック
+                        for (const rule of rules) {
+                            if (rule.type === 'distance' && intDist >= rule.min && intDist <= rule.max) {
+                                intMenuKey = rule.key;
+                                break;
+                            } else if (rule.type === 'time' && intTime >= rule.min && intTime <= rule.max) {
+                                intMenuKey = rule.key;
+                                break;
+                            }
                         }
                     }
+
                     // レストタイムを取得
                     const restTime = firstInterval.rest_time ? Math.round(firstInterval.rest_time / 10) : 0;
                     const restStr = restTime > 0 ? (restTime >= 60 ? `r${Math.floor(restTime / 60)}min${restTime % 60 > 0 ? (restTime % 60 + 's') : ''}` : `r${restTime}s`) : '';
                     if (intMenuKey) {
                         menuKey = `${intMenuKey}×${raw.intervals.length}${restStr ? ' ' + restStr : ''}`;
                     } else {
-                        menuKey = raw.intervalDisplay || 'インターバル';
-                        if (restStr) menuKey += ' ' + restStr;
+                        // フォールバック: workoutTypeに合わせた表示
+                        if (raw.workoutType === 'FixedTimeInterval' && intTime > 0) {
+                            if (intTime >= 60) {
+                                menuKey = `${Math.round(intTime / 60)}min×${raw.intervals.length}${restStr ? ' ' + restStr : ''}`;
+                            } else {
+                                menuKey = `${intTime}s×${raw.intervals.length}${restStr ? ' ' + restStr : ''}`;
+                            }
+                        } else if (intDist > 0) {
+                            menuKey = `${intDist}m×${raw.intervals.length}${restStr ? ' ' + restStr : ''}`;
+                        } else {
+                            menuKey = raw.intervalDisplay || 'インターバル';
+                            if (restStr) menuKey += ' ' + restStr;
+                        }
                     }
                 } else {
                     menuKey = raw.intervalDisplay || 'インターバル';
@@ -2026,30 +2058,49 @@ function classifyConcept2Result(result) {
             const intDist = first.distance || 0;
             const intTimeSec = first.time ? Math.round(first.time / 10) : 0;
             let intMenuKey = null;
-            // 距離/時間ルールでマッチ
-            for (const rule of rules) {
-                if (rule.type === 'distance' && intDist >= rule.min && intDist <= rule.max) {
-                    intMenuKey = rule.key;
-                    break;
-                } else if (rule.type === 'time' && intTimeSec >= rule.min && intTimeSec <= rule.max) {
-                    intMenuKey = rule.key;
-                    break;
+
+            // workoutTypeに基づいて適切なルールのみチェック
+            if (workoutType === 'FixedTimeInterval') {
+                for (const rule of rules) {
+                    if (rule.type === 'time' && intTimeSec >= rule.min && intTimeSec <= rule.max) {
+                        intMenuKey = rule.key;
+                        break;
+                    }
+                }
+            } else if (workoutType === 'FixedDistanceInterval') {
+                for (const rule of rules) {
+                    if (rule.type === 'distance' && intDist >= rule.min && intDist <= rule.max) {
+                        intMenuKey = rule.key;
+                        break;
+                    }
+                }
+            } else {
+                for (const rule of rules) {
+                    if (rule.type === 'distance' && intDist >= rule.min && intDist <= rule.max) {
+                        intMenuKey = rule.key;
+                        break;
+                    } else if (rule.type === 'time' && intTimeSec >= rule.min && intTimeSec <= rule.max) {
+                        intMenuKey = rule.key;
+                        break;
+                    }
                 }
             }
+
             // レストタイム
             const restTime = first.rest_time ? Math.round(first.rest_time / 10) : 0;
             const restStr = restTime > 0 ? (restTime >= 60 ? `r${Math.floor(restTime / 60)}min${restTime % 60 > 0 ? (restTime % 60 + 's') : ''}` : `r${restTime}s`) : '';
             if (intMenuKey) {
                 intervalDisplay = `${intMenuKey}×${intervals.length}${restStr ? ' ' + restStr : ''}`;
             } else {
-                if (intDist > 0) {
-                    intervalDisplay = `${intDist}m×${intervals.length}${restStr ? ' ' + restStr : ''}`;
-                } else if (intTimeSec > 0) {
+                // フォールバック: workoutTypeに合わせた表示
+                if (workoutType === 'FixedTimeInterval' && intTimeSec > 0) {
                     if (intTimeSec >= 60) {
                         intervalDisplay = `${Math.round(intTimeSec / 60)}min×${intervals.length}${restStr ? ' ' + restStr : ''}`;
                     } else {
                         intervalDisplay = `${intTimeSec}s×${intervals.length}${restStr ? ' ' + restStr : ''}`;
                     }
+                } else if (intDist > 0) {
+                    intervalDisplay = `${intDist}m×${intervals.length}${restStr ? ' ' + restStr : ''}`;
                 }
             }
         }
