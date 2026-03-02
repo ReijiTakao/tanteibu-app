@@ -1264,8 +1264,8 @@ const CONCEPT2_API = {
         { key: '6000m', type: 'distance', min: 6000, max: 6000 },
         { key: '10000m', type: 'distance', min: 10000, max: 10000 },
         // タイムベースのメニュー（秒で指定、誤差0）
-        { key: '20sec', type: 'time', min: 20, max: 20 },
-        { key: '30sec', type: 'time', min: 30, max: 30 },
+        { key: '20s', type: 'time', min: 20, max: 20 },
+        { key: '30s', type: 'time', min: 30, max: 30 },
         { key: '1min', type: 'time', min: 60, max: 60 },
         { key: '2min', type: 'time', min: 120, max: 120 },
         { key: '3min', type: 'time', min: 180, max: 180 },
@@ -1762,24 +1762,33 @@ function classifyErgoSessions(reclassify = false) {
         // CONCEPT2_API.classificationRulesを使用
         const rules = CONCEPT2_API.classificationRules;
 
-        // === 既存データの日本語menuKeyを英語に自動マイグレーション ===
-        const jpToEn = (key) => {
+        // === 既存データのmenuKeyを正規化（英語統一、フォーマット統一） ===
+        const normalizeMenuKey = (key) => {
             if (!key) return key;
             return key
-                .replace(/(\d+)分/g, '$1min')
-                .replace(/(\d+)秒/g, '$1sec');
+                .replace(/(\d+)分/g, '$1min')     // 分 → min
+                .replace(/(\d+)秒/g, '$1s')       // 秒 → s (生成コードと統一)
+                .replace(/(\d+)sec/g, '$1s')      // sec → s (旧マイグレーション対応)
+                .replace(/\s+×/g, '×')            // × 前のスペース除去
+                .replace(/×\s+/g, '×');           // × 後のスペース除去
         };
         let migrated = false;
         state.ergoRecords.forEach(r => {
-            if (r.menuKey && (/\d+分/.test(r.menuKey) || /\d+秒/.test(r.menuKey))) {
-                r.menuKey = jpToEn(r.menuKey);
-                migrated = true;
+            if (r.menuKey) {
+                const normalized = normalizeMenuKey(r.menuKey);
+                if (normalized !== r.menuKey) {
+                    r.menuKey = normalized;
+                    migrated = true;
+                }
             }
         });
         state.ergoSessions.forEach(s => {
-            if (s.menuKey && (/\d+分/.test(s.menuKey) || /\d+秒/.test(s.menuKey))) {
-                s.menuKey = jpToEn(s.menuKey);
-                migrated = true;
+            if (s.menuKey) {
+                const normalized = normalizeMenuKey(s.menuKey);
+                if (normalized !== s.menuKey) {
+                    s.menuKey = normalized;
+                    migrated = true;
+                }
             }
         });
         if (migrated) {
@@ -2039,7 +2048,7 @@ function classifyConcept2Result(result) {
                     if (intTimeSec >= 60) {
                         intervalDisplay = `${Math.round(intTimeSec / 60)}min×${intervals.length}${restStr ? ' ' + restStr : ''}`;
                     } else {
-                        intervalDisplay = `${intTimeSec}sec×${intervals.length}${restStr ? ' ' + restStr : ''}`;
+                        intervalDisplay = `${intTimeSec}s×${intervals.length}${restStr ? ' ' + restStr : ''}`;
                     }
                 }
             }
@@ -7213,7 +7222,7 @@ function getIntervalSubtypeFromMenuKey(menuKey, sampleRecord) {
     if (/\d+m×\d+/.test(menuKey)) {
         return { label: '距離', class: 'distance-based' };
     }
-    if (/\d+min×\d+/.test(menuKey) || /\d+sec×\d+/.test(menuKey)) {
+    if (/\d+min×\d+/.test(menuKey) || /\d+s×\d+/.test(menuKey)) {
         return { label: '時間', class: 'time-based' };
     }
 
@@ -7318,7 +7327,7 @@ function getIntervalSubtype(record) {
     }
 
     // タイムベース: 「1分×10」「1min×10」などのパターン
-    if (/\d+(分|min)×\d+/.test(menuKey) || /\d+sec×\d+/.test(menuKey)) {
+    if (/\d+(分|min)×\d+/.test(menuKey) || /\d+s×\d+/.test(menuKey)) {
         return { label: '時間', class: 'time-based' };
     }
 
@@ -7612,7 +7621,7 @@ function _populateRankingMenus() {
 // distance category / 距離インターバル(500m×8等) → false
 function _isTimeBasedMenu(selectedMenu) {
     const info = _rankingMenuCategories[selectedMenu];
-    if (!info) return /min|sec|分|秒/.test(selectedMenu); // フォールバック
+    if (!info) return /min|\ds|分|秒/.test(selectedMenu); // フォールバック
     if (info.category === 'time') return true;
     if (info.category === 'interval') {
         return info.intervalSubtype === 'time-based';
@@ -9174,7 +9183,7 @@ function calculateIntervalDetails(workout, defaultType = 'unknown') {
                 display = `${mins}min×${count}`;
             } else {
                 const secs = Math.round(timeVal / 10);
-                display = `${secs}sec×${count}`;
+                display = `${secs}s×${count}`;
             }
             type = 'FixedTimeInterval';
         } else if (isFixedDistance && firstDist > 0) {
@@ -9188,7 +9197,7 @@ function calculateIntervalDetails(workout, defaultType = 'unknown') {
                 display = `${mins}min×${count}`;
             } else {
                 const secs = Math.round(firstTime / 10);
-                display = `${secs}sec×${count}`;
+                display = `${secs}s×${count}`;
             }
             type = 'FixedTimeInterval';
         } else {
