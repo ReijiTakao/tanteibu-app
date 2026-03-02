@@ -5702,7 +5702,7 @@ function renderAllocOarSelects(boatType, existingOarIds, allocatedOarIds) {
         const slotLabel = isScull ? `セット ${i + 1}` : `オール ${i + 1}`;
         html += `<select class="alloc-oar-select" data-oar-index="${i}" style="margin-bottom:4px;width:100%;padding:6px;border-radius:8px;border:1px solid #ccc;font-size:12px;">
             <option value="">${slotLabel}</option>
-            ${filteredOars.map(o => {
+            ${sortOars(filteredOars).map(o => {
             const inUse = allocatedOarIds.has(o.id) && o.id !== savedVal;
             return `<option value="${o.id}" ${inUse ? 'style="color:#f59e0b"' : ''} ${savedVal === o.id ? 'selected' : ''}>${inUse ? '🟡 ' : ''}${o.name}${inUse ? ' (使用中)' : ''}</option>`;
         }).join('')}
@@ -7828,7 +7828,7 @@ function renderTeamRecords() {
         const display = formatDisplayDate(record.date);
         const initials = user?.name?.slice(0, 2) || '??';
 
-        return `< div class="team-record-item" >
+        return `<div class="team-record-item">
             <div class="avatar">${initials}</div>
             <div class="user-info">
                 <div class="name">${user?.name || '不明'}</div>
@@ -7839,7 +7839,7 @@ function renderTeamRecords() {
                 <div class="split-display">Split ${getSplit(record)}</div>
                 <div class="date-display">${display.month}/${display.day}</div>
             </div>
-        </div > `;
+        </div>`;
     }).join('');
 }
 
@@ -9230,9 +9230,20 @@ async function initRigging() {
         saveLocal('boats', boats);
     }
 
+    // ソート: 艇種順(1x, 2x, 2-, 4x, 4+, 4-, 8+) → 名前アルファベット順
+    const boatTypeOrder = { '1x': 0, '2x': 1, '2-': 2, '4x': 3, '4+': 4, '4-': 5, '8+': 6 };
+    const sortedBoats = [...boats].sort((a, b) => {
+        const typeA = (a.type || a.name?.match(/\d[x+\-]/)?.[0] || '').toLowerCase();
+        const typeB = (b.type || b.name?.match(/\d[x+\-]/)?.[0] || '').toLowerCase();
+        const orderA = boatTypeOrder[typeA] ?? 99;
+        const orderB = boatTypeOrder[typeB] ?? 99;
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.name || '').localeCompare(b.name || '');
+    });
+
     // セレクトボックス更新
     boatSelect.innerHTML = '<option value="">選択してください</option>';
-    boats.forEach(boat => {
+    sortedBoats.forEach(boat => {
         const option = document.createElement('option');
         option.value = boat.id;
         option.textContent = boat.name;
