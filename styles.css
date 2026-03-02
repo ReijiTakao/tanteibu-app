@@ -6226,6 +6226,45 @@ textarea {
     transform: scale(0.95);
 }
 
+/* 週ナビゲーション */
+.pn-week-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 6px 0 10px;
+}
+
+.pn-week-nav-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: var(--bg-white);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    color: var(--text-secondary);
+}
+
+.pn-week-nav-btn:active {
+    background: var(--primary-color);
+    color: #fff;
+    border-color: var(--primary-color);
+    transform: scale(0.9);
+}
+
+.pn-week-range {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    min-width: 160px;
+    text-align: center;
+}
+
 /* =========================================
    練習ノート 閲覧モード
    ========================================= */

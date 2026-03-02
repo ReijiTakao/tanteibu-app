@@ -921,8 +921,9 @@ function formatDisplayDate(dateStr) {
 function getWeekStart(date) {
     const d = new Date(date);
     const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    d.setDate(diff);
+    // 火曜日起算: (day + 5) % 7 で火曜からのオフセットを算出
+    const tuesdayOffset = (day + 5) % 7;
+    d.setDate(d.getDate() - tuesdayOffset);
     d.setHours(0, 0, 0, 0);
     return d;
 }
@@ -2389,7 +2390,7 @@ function renderWeekCalendar() {
 
     container.innerHTML = '';
     const today = formatDate(new Date());
-    const dayLabels = ['月', '火', '水', '木', '金', '土', '日'];
+    const dayLabels = ['火', '水', '木', '金', '土', '日', '月'];
 
     // --- カレンダーストリップ（クイック入力） ---
     const typeIconMap = {
@@ -2414,7 +2415,7 @@ function renderWeekCalendar() {
         const isPast = dateStr < today;
         const isFuture = dateStr > today;
         const dow = d.getDay();
-        const dayIdx = dow === 0 ? 6 : dow - 1;
+        const dayIdx = (dow + 5) % 7; // 火曜始まり
         const dayLabelCls = dow === 0 ? 'sunday' : (dow === 6 ? 'saturday' : '');
 
         // ユーザーのその日のスケジュール
@@ -4222,9 +4223,10 @@ function renderMileageRanking(period) {
     let startDate;
     if (period === 'week') {
         const dayOfWeek = today.getDay();
-        const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        // 火曜日起算: (day + 5) % 7 で火曜からのオフセット
+        const tuesdayOffset = (dayOfWeek + 5) % 7;
         startDate = new Date(today);
-        startDate.setDate(today.getDate() - mondayOffset);
+        startDate.setDate(today.getDate() - tuesdayOffset);
     } else if (period === 'month') {
         startDate = new Date(today.getFullYear(), today.getMonth(), 1);
     } else {
@@ -4315,9 +4317,10 @@ function updateMileageWeekSummary() {
 
     const today = new Date();
     const dayOfWeek = today.getDay();
-    const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    // 火曜日起算: (day + 5) % 7 で火曜からのオフセット
+    const tuesdayOffset = (dayOfWeek + 5) % 7;
     const startDate = new Date(today);
-    startDate.setDate(today.getDate() - mondayOffset);
+    startDate.setDate(today.getDate() - tuesdayOffset);
     const startDateStr = startDate.toISOString().slice(0, 10);
     const todayStr = today.toISOString().slice(0, 10);
 
@@ -4534,7 +4537,7 @@ function renderDashCalendarWithSummary(schedules, viewMonth, todayStr, summaryIn
     const month = viewMonth.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    const startDow = (firstDay.getDay() + 6) % 7; // 月曜始まり
+    const startDow = (firstDay.getDay() + 5) % 7; // 火曜始まり
 
     const typeInfo = {
         [SCHEDULE_TYPES.BOAT]: { cls: 'boat', short: '🚣', icon: '🚣' },
@@ -4632,7 +4635,7 @@ function renderDashCalendarWithSummary(schedules, viewMonth, todayStr, summaryIn
             </div>
             <div class="my-dash-summary-grid">${summaryGridHtml}</div>
             <div class="my-dash-cal-weekdays">
-                <span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span><span>日</span>
+                <span>火</span><span>水</span><span>木</span><span>金</span><span>土</span><span>日</span><span>月</span>
             </div>
             <div class="my-dash-cal-grid">${cells}</div>
             <div style="display:flex;justify-content:center;gap:12px;margin-top:4px;font-size:9px;color:var(--text-muted,#888);">
@@ -4648,9 +4651,10 @@ function renderWeeklyPracticeSummary() {
 
     const today = new Date();
     const dayOfWeek = today.getDay();
-    const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    // 火曜日起算: (day + 5) % 7 で火曜からのオフセット
+    const tuesdayOffset = (dayOfWeek + 5) % 7;
     const monday = new Date(today);
-    monday.setDate(today.getDate() - mondayOffset);
+    monday.setDate(today.getDate() - tuesdayOffset);
     monday.setHours(0, 0, 0, 0);
 
     const weekDays = [];
@@ -5385,9 +5389,31 @@ function renderPracticeNotesList() {
     const container = document.getElementById('practice-notes-list');
     if (!container) return;
 
+    // 週ナビゲーション更新
+    updatePnWeekNav();
+    const weekRange = getPracticeNoteWeekRange(practiceNoteWeekOffset);
+    const weekStartStr = weekRange.start.toISOString().slice(0, 10);
+    const weekEndStr = weekRange.end.toISOString().slice(0, 10);
+
+    // 週ナビボタンのイベントリスナー
+    const prevBtn = document.getElementById('pn-prev-week');
+    const nextBtn = document.getElementById('pn-next-week');
+    if (prevBtn) prevBtn.onclick = () => { practiceNoteWeekOffset--; renderPracticeNotesList(); };
+    if (nextBtn) nextBtn.onclick = () => { practiceNoteWeekOffset++; renderPracticeNotesList(); };
+
+    // timeSlot取得ヘルパー（ノート自体にない場合はスケジュールから取得）
+    const getTimeSlot = (note) => {
+        if (note.timeSlot) return note.timeSlot;
+        const sched = state.schedules.find(s => s.id === note.scheduleId);
+        return sched?.timeSlot || '';
+    };
+    // 午後を午前より上にするソート値（午後=0, 午前=1, その他=2）
+    const timeSlotOrder = (ts) => ts === '午後' ? 0 : ts === '午前' ? 1 : 2;
+
     let myNotes = state.practiceNotes
         .filter(n => n.userId === state.currentUser.id)
-        .sort((a, b) => b.date.localeCompare(a.date) || (b.timeSlot || '').localeCompare(a.timeSlot || ''));
+        .filter(n => n.date >= weekStartStr && n.date <= weekEndStr)
+        .sort((a, b) => b.date.localeCompare(a.date) || timeSlotOrder(getTimeSlot(a)) - timeSlotOrder(getTimeSlot(b)));
 
     // フィルター適用
     if (practiceNoteFilter && practiceNoteFilter !== 'all') {
@@ -5402,7 +5428,7 @@ function renderPracticeNotesList() {
         const filterMsg = practiceNoteFilter !== 'all' ? `（${practiceNoteFilter}）` : '';
         container.innerHTML = `
             <div class="empty-state">
-                <p>📝 ${filterMsg}の練習記録はありません</p>
+                <p>📝 この週${filterMsg}の練習記録はありません</p>
             </div>
         `;
         return;
@@ -5416,6 +5442,8 @@ function renderPracticeNotesList() {
 
     let html = '';
     Object.keys(byDate).sort((a, b) => b.localeCompare(a)).forEach(date => {
+        // 日付グループ内で午後→午前の順（最新の練習が上）
+        byDate[date].sort((a, b) => timeSlotOrder(getTimeSlot(a)) - timeSlotOrder(getTimeSlot(b)));
         const display = formatDisplayDate(date);
         let weekdayClass = '';
         if (display.dayOfWeek === 0) weekdayClass = 'sunday';
@@ -6361,6 +6389,31 @@ function shareRowingMenuToCrew(note) {
 // =========================================
 
 let practiceNoteFilter = 'all';
+let practiceNoteWeekOffset = 0; // 0=今週, -1=先週, -2=先々週...
+
+function getPracticeNoteWeekRange(offset) {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const tuesdayOffset = (dayOfWeek + 5) % 7;
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - tuesdayOffset + (offset * 7));
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    return { start: weekStart, end: weekEnd };
+}
+
+function formatPnWeekLabel(offset) {
+    const range = getPracticeNoteWeekRange(offset);
+    const fmt = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
+    const label = offset === 0 ? '今週' : offset === -1 ? '先週' : '';
+    return `${label ? label + ' ' : ''}${fmt(range.start)}〜${fmt(range.end)}`;
+}
+
+function updatePnWeekNav() {
+    const rangeEl = document.getElementById('pn-week-range');
+    if (rangeEl) rangeEl.textContent = formatPnWeekLabel(practiceNoteWeekOffset);
+}
 
 function filterPracticeNotes(filter) {
     practiceNoteFilter = filter;
@@ -7005,12 +7058,13 @@ function renderWeeklyRanking() {
         }
     }
 
-    // 今週の開始日を計算（月曜日）
+    // 今週の開始日を計算（火曜日）
     const now = new Date();
     const dayOfWeek = now.getDay();
-    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    // 火曜日起算: (day + 5) % 7 で火曜からのオフセット
+    const tuesdayOffset = (dayOfWeek + 5) % 7;
     const monday = new Date(now);
-    monday.setDate(now.getDate() + mondayOffset);
+    monday.setDate(now.getDate() - tuesdayOffset);
     monday.setHours(0, 0, 0, 0);
 
     const isTimeMenu = selectedMenu.includes('分');
