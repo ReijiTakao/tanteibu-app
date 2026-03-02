@@ -4240,8 +4240,8 @@ function renderDayMenu(dateStr) {
     if (!hasContent) return '';
 
     let html = '<div class="wm-day-card">';
-    html += '<div class="wm-day-card-header">📋 本日のメニュー</div>';
-    html += '<div class="wm-day-card-body">';
+    html += '<div class="wm-day-card-header" onclick="this.nextElementSibling.classList.toggle(\'hidden\');this.querySelector(\'.wm-day-toggle\').textContent=this.nextElementSibling.classList.contains(\'hidden\')?\'▶\':\'▼\'" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">📋 本日のメニュー<span class="wm-day-toggle" style="font-size:12px;color:#94a3b8;">▶</span></div>';
+    html += '<div class="wm-day-card-body hidden">';
 
     [{ slot: amSlot, label: '🌅 午前' }, { slot: pmSlot, label: '🌇 午後' }].forEach(({ slot, label }) => {
         if (slot && (slot.type || slot.menu)) {
