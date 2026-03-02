@@ -12761,8 +12761,8 @@ function toggleErgoType(recordId) {
         DB.save('ergo_records', state.ergoRecords);
     }
 
-    // Supabase同期
-    if (source === 'ergo_records' && typeof SupabaseDB !== 'undefined' && isSupabaseReady()) {
+    // Supabase同期（ergo_sessions/ergo_records両方対応）
+    if (typeof SupabaseDB !== 'undefined' && isSupabaseReady()) {
         SupabaseDB.saveErgoRecord(record).catch(e => console.error('エルゴ種別同期エラー:', e));
     }
 
