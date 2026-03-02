@@ -7587,45 +7587,57 @@ let _rankingMenuCategories = {}; // menuKey -> { category, intervalSubtype }
 
 // ランキングメニューを実データから動的に生成
 function _populateRankingMenus() {
-    const menuKeys = new Set();
+    const allMenuKeys = new Set();
+    const weeklyMenuKeys = new Set();
     const menuCategories = {}; // menuKey -> category
     const menuIntervalSubtypes = {}; // menuKey -> 'distance-based' | 'time-based'
+
+    // 今週の起点（火曜起算）を計算
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const tuesdayOffset = (dayOfWeek + 5) % 7;
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - tuesdayOffset);
+    weekStart.setHours(0, 0, 0, 0);
 
     // ergoRecords + ergoSessions から全menuKeyを収集
     [...(state.ergoRecords || []), ...(state.ergoSessions || [])].forEach(r => {
         if (r.menuKey && r.menuKey !== 'JustRow' && r.menuKey !== 'JustRow_skip' && r.menuKey !== 'その他') {
-            menuKeys.add(r.menuKey);
+            allMenuKeys.add(r.menuKey);
             if (r.category) menuCategories[r.menuKey] = r.category;
             // インターバルのサブタイプ判定
             if (r.category === 'interval' && !menuIntervalSubtypes[r.menuKey]) {
                 const sub = getIntervalSubtypeFromMenuKey(r.menuKey, r);
-                if (sub) menuIntervalSubtypes[r.menuKey] = sub.class; // 'distance-based' or 'time-based'
+                if (sub) menuIntervalSubtypes[r.menuKey] = sub.class;
+            }
+            // 今週のデータか判定
+            const recordDate = new Date(r.date);
+            if (recordDate >= weekStart) {
+                weeklyMenuKeys.add(r.menuKey);
             }
         }
     });
 
-    if (menuKeys.size === 0) return;
+    if (allMenuKeys.size === 0) return;
 
     // グローバルマップ更新
     _rankingMenuCategories = {};
-    menuKeys.forEach(key => {
+    allMenuKeys.forEach(key => {
         _rankingMenuCategories[key] = {
             category: menuCategories[key] || 'other',
             intervalSubtype: menuIntervalSubtypes[key] || null
         };
     });
 
-    // カテゴリ順でソート: distance → time → interval
+    // ソート関数
     const categoryOrder = { distance: 0, time: 1, interval: 2 };
     const rules = CONCEPT2_API.classificationRules;
     const ruleOrder = {};
     rules.forEach((r, i) => { ruleOrder[r.key] = i; });
-
-    const sorted = [...menuKeys].sort((a, b) => {
+    const sortKeys = (keys) => [...keys].sort((a, b) => {
         const catA = categoryOrder[menuCategories[a]] ?? 3;
         const catB = categoryOrder[menuCategories[b]] ?? 3;
         if (catA !== catB) return catA - catB;
-        // 同カテゴリ内はルール順、なければ名前順
         const orderA = ruleOrder[a] ?? 999;
         const orderB = ruleOrder[b] ?? 999;
         if (orderA !== orderB) return orderA - orderB;
@@ -7635,12 +7647,13 @@ function _populateRankingMenus() {
     // カテゴリラベル
     const catLabels = { distance: '📏 距離', time: '⏱ 時間', interval: '🔄 インターバル' };
 
-    ['ranking-menu', 'all-time-ranking-menu'].forEach(selectId => {
+    // select要素にオプションを設定するヘルパー
+    const populateSelect = (selectId, keys) => {
         const sel = document.getElementById(selectId);
         if (!sel) return;
         const prevValue = sel.value;
+        const sorted = sortKeys(keys);
 
-        // optgroupで分類
         sel.innerHTML = '';
         let lastCat = null;
         let optgroup = null;
@@ -7658,14 +7671,18 @@ function _populateRankingMenus() {
             optgroup.appendChild(opt);
         });
 
-        // 以前の選択値を復元 or デフォルト
-        if (prevValue && menuKeys.has(prevValue)) {
+        if (prevValue && keys.has(prevValue)) {
             sel.value = prevValue;
-        } else if (menuKeys.has('2000m TT')) {
+        } else if (keys.has('2000m TT')) {
             sel.value = '2000m TT';
         }
-    });
+    };
+
+    // 週間: 今週データがあるメニューのみ / 歴代: 全メニュー
+    populateSelect('ranking-menu', weeklyMenuKeys);
+    populateSelect('all-time-ranking-menu', allMenuKeys);
 }
+
 
 // 選択メニューが「時間ベース」かどうか判定（距離が成果指標=ランキング距離順）
 // time category / 時間インターバル(1min×10等) → true
