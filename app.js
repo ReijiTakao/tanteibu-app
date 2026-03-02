@@ -7989,7 +7989,391 @@ function renderTeamRecords() {
     }).join('');
 }
 
-// データビュー切り替え
+// =========================================
+// パフォーマンス推移グラフ
+// =========================================
+
+let _trendsChartInitialized = false;
+
+function initTrendsView() {
+    // メニュー選択の動的生成（初回のみ）
+    const menuSel = document.getElementById('trends-menu-select');
+    if (!menuSel) return;
+
+    if (!_trendsChartInitialized) {
+        // メニューポピュレート
+        _populateTrendsMenus();
+
+        // イベントリスナー
+        menuSel.addEventListener('change', () => renderTrendsChart());
+        document.getElementById('trends-period-select')?.addEventListener('change', () => renderTrendsChart());
+        _trendsChartInitialized = true;
+    }
+
+    // メニューが空なら再ポピュレート
+    if (menuSel.options.length <= 1) {
+        _populateTrendsMenus();
+    }
+
+    renderTrendsChart();
+}
+
+function _populateTrendsMenus() {
+    const menuSel = document.getElementById('trends-menu-select');
+    if (!menuSel) return;
+
+    const prevVal = menuSel.value;
+    const userId = state.currentUser?.id;
+    if (!userId) return;
+
+    // 自分のデータのmenuKeyを収集
+    const menuKeys = new Set();
+    const menuCategories = {};
+    [...(state.ergoRecords || []), ...(state.ergoSessions || [])].forEach(r => {
+        if (r.userId === userId && r.menuKey && r.menuKey !== 'JustRow' && r.menuKey !== 'JustRow_skip' && r.menuKey !== 'その他') {
+            menuKeys.add(r.menuKey);
+            if (r.category) menuCategories[r.menuKey] = r.category;
+        }
+    });
+
+    if (menuKeys.size === 0) return;
+
+    const categoryOrder = { distance: 0, time: 1, interval: 2 };
+    const catLabels = { distance: '📏 距離', time: '⏱ 時間', interval: '🔄 インターバル' };
+
+    const sorted = [...menuKeys].sort((a, b) => {
+        const catA = categoryOrder[menuCategories[a]] ?? 3;
+        const catB = categoryOrder[menuCategories[b]] ?? 3;
+        if (catA !== catB) return catA - catB;
+        return a.localeCompare(b);
+    });
+
+    menuSel.innerHTML = '<option value="">メニューを選択</option>';
+    let lastCat = null;
+    let optgroup = null;
+    sorted.forEach(key => {
+        const cat = menuCategories[key] || 'other';
+        if (cat !== lastCat) {
+            optgroup = document.createElement('optgroup');
+            optgroup.label = catLabels[cat] || '📊 その他';
+            menuSel.appendChild(optgroup);
+            lastCat = cat;
+        }
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = key;
+        optgroup.appendChild(opt);
+    });
+
+    if (prevVal && menuKeys.has(prevVal)) {
+        menuSel.value = prevVal;
+    } else if (menuKeys.has('2000m TT')) {
+        menuSel.value = '2000m TT';
+    }
+}
+
+function renderTrendsChart() {
+    const canvas = document.getElementById('trends-chart');
+    const statsDiv = document.getElementById('trends-stats');
+    const recordsDiv = document.getElementById('trends-records-list');
+    if (!canvas) return;
+
+    const selectedMenu = document.getElementById('trends-menu-select')?.value;
+    const periodDays = parseInt(document.getElementById('trends-period-select')?.value || '90');
+    const userId = state.currentUser?.id;
+
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width || 300;
+    canvas.height = 220;
+
+    // 背景クリア
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (!selectedMenu || !userId) {
+        ctx.fillStyle = '#888';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('メニューを選択してください', canvas.width / 2, canvas.height / 2);
+        if (statsDiv) statsDiv.innerHTML = '';
+        if (recordsDiv) recordsDiv.innerHTML = '';
+        return;
+    }
+
+    // データ収集
+    const allRecords = [...(state.ergoRecords || []), ...(state.ergoSessions || [])]
+        .filter(r => r.userId === userId && r.menuKey === selectedMenu)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // 期間フィルタ
+    let filteredRecords = allRecords;
+    if (periodDays > 0) {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - periodDays);
+        filteredRecords = allRecords.filter(r => new Date(r.date) >= cutoff);
+    }
+
+    if (filteredRecords.length === 0) {
+        ctx.fillStyle = '#888';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('この期間に記録がありません', canvas.width / 2, canvas.height / 2);
+        if (statsDiv) statsDiv.innerHTML = '';
+        if (recordsDiv) recordsDiv.innerHTML = '';
+        return;
+    }
+
+    // 時間ベースメニューか判定
+    const isTimeMenu = _isTimeBasedMenu ? _isTimeBasedMenu(selectedMenu) : false;
+    // 時間ベース→距離を表示、距離ベース→タイムを表示
+    const getMetric = (r) => isTimeMenu ? (r.distance || 0) : (r.time || r.timeSeconds || 0);
+    const metricLabel = isTimeMenu ? '距離 (m)' : 'タイム';
+
+    const dataPoints = filteredRecords.map(r => ({
+        date: r.date,
+        metric: getMetric(r),
+        weight: r.weight || null,
+        record: r
+    })).filter(d => d.metric > 0);
+
+    if (dataPoints.length === 0) {
+        ctx.fillStyle = '#888';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('表示可能なデータがありません', canvas.width / 2, canvas.height / 2);
+        if (statsDiv) statsDiv.innerHTML = '';
+        if (recordsDiv) recordsDiv.innerHTML = '';
+        return;
+    }
+
+    // 描画エリア設定
+    const padding = { top: 25, right: 50, bottom: 35, left: 55 };
+    const plotWidth = canvas.width - padding.left - padding.right;
+    const plotHeight = canvas.height - padding.top - padding.bottom;
+
+    const metrics = dataPoints.map(d => d.metric);
+    let minMetric, maxMetric;
+
+    if (isTimeMenu) {
+        // 距離は高い方が良い
+        minMetric = Math.floor(Math.min(...metrics) * 0.98);
+        maxMetric = Math.ceil(Math.max(...metrics) * 1.02);
+    } else {
+        // タイムは低い方が良い → Y軸反転なし、普通に表示
+        minMetric = Math.floor(Math.min(...metrics) * 0.98);
+        maxMetric = Math.ceil(Math.max(...metrics) * 1.02);
+    }
+    const rangeMetric = maxMetric - minMetric || 1;
+
+    // 日付範囲
+    const dateMin = new Date(dataPoints[0].date);
+    const dateMax = new Date(dataPoints[dataPoints.length - 1].date);
+    const dateRange = dateMax - dateMin || 1;
+
+    // Y軸グリッド
+    ctx.fillStyle = '#aaa';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= 4; i++) {
+        const val = minMetric + (rangeMetric * i / 4);
+        const y = padding.top + plotHeight - (plotHeight * i / 4);
+        if (isTimeMenu) {
+            ctx.fillText(Math.round(val) + 'm', padding.left - 5, y + 3);
+        } else {
+            ctx.fillText(formatTime(val), padding.left - 5, y + 3);
+        }
+        ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(canvas.width - padding.right, y);
+        ctx.stroke();
+    }
+
+    // ポイント座標計算
+    const points = dataPoints.map(d => {
+        const t = new Date(d.date) - dateMin;
+        const x = dataPoints.length === 1
+            ? padding.left + plotWidth / 2
+            : padding.left + (plotWidth * t / dateRange);
+        let y;
+        if (!isTimeMenu) {
+            // タイム: 低い方が上（良い方が上）
+            y = padding.top + (plotHeight * (d.metric - minMetric) / rangeMetric);
+        } else {
+            // 距離: 高い方が上
+            y = padding.top + plotHeight - (plotHeight * (d.metric - minMetric) / rangeMetric);
+        }
+        return { x, y, ...d };
+    });
+
+    // グラデーション塗りつぶし
+    const gradient = ctx.createLinearGradient(0, padding.top, 0, canvas.height - padding.bottom);
+    gradient.addColorStop(0, 'rgba(80, 200, 120, 0.25)');
+    gradient.addColorStop(1, 'rgba(80, 200, 120, 0.02)');
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, canvas.height - padding.bottom);
+    points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(points[points.length - 1].x, canvas.height - padding.bottom);
+    ctx.closePath();
+    ctx.fill();
+
+    // メインライン
+    ctx.strokeStyle = '#50c878';
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    points.forEach((p, i) => {
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
+
+    // データポイント（ドット）
+    points.forEach(p => {
+        ctx.fillStyle = '#50c878';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#1a1a2e';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // 体重ライン（右Y軸）
+    const weightPoints = points.filter(p => p.weight);
+    if (weightPoints.length >= 2) {
+        const weights = weightPoints.map(p => p.weight);
+        const minW = Math.floor(Math.min(...weights) - 1);
+        const maxW = Math.ceil(Math.max(...weights) + 1);
+        const rangeW = maxW - minW || 1;
+
+        // 右Y軸ラベル
+        ctx.fillStyle = '#f5a623';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'left';
+        for (let i = 0; i <= 2; i++) {
+            const val = minW + (rangeW * i / 2);
+            const y = padding.top + plotHeight - (plotHeight * i / 2);
+            ctx.fillText(val.toFixed(0) + 'kg', canvas.width - padding.right + 5, y + 3);
+        }
+
+        // 体重ライン
+        ctx.strokeStyle = 'rgba(245, 166, 35, 0.6)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 3]);
+        ctx.beginPath();
+        weightPoints.forEach((p, i) => {
+            const wy = padding.top + plotHeight - (plotHeight * (p.weight - minW) / rangeW);
+            if (i === 0) ctx.moveTo(p.x, wy);
+            else ctx.lineTo(p.x, wy);
+        });
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    // X軸ラベル
+    ctx.fillStyle = '#aaa';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'left';
+    const fmtDate = (d) => { const dt = new Date(d); return `${dt.getMonth() + 1}/${dt.getDate()}`; };
+    ctx.fillText(fmtDate(dataPoints[0].date), padding.left, canvas.height - 5);
+    ctx.textAlign = 'right';
+    ctx.fillText(fmtDate(dataPoints[dataPoints.length - 1].date), canvas.width - padding.right, canvas.height - 5);
+
+    // 最新値を強調
+    const last = points[points.length - 1];
+    ctx.fillStyle = '#50c878';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'right';
+    const lastLabel = isTimeMenu ? (last.metric + 'm') : formatTime(last.metric);
+    ctx.fillText(lastLabel, last.x - 5, last.y - 10);
+
+    // 凡例
+    ctx.font = '10px sans-serif';
+    ctx.fillStyle = '#50c878';
+    ctx.fillText('● ' + metricLabel, padding.left + 5, 14);
+    if (weightPoints.length >= 2) {
+        ctx.fillStyle = '#f5a623';
+        ctx.fillText('--- 体重', padding.left + 80, 14);
+    }
+
+    // --- 統計表示 ---
+    if (statsDiv) {
+        const best = isTimeMenu
+            ? Math.max(...metrics) // 距離は最大が最高
+            : Math.min(...metrics); // タイムは最小が最高
+        const avg = metrics.reduce((a, b) => a + b, 0) / metrics.length;
+        const latest = metrics[metrics.length - 1];
+        const first = metrics[0];
+        const improvement = isTimeMenu
+            ? latest - first
+            : first - latest; // タイムは減少が改善
+
+        const bestDisplay = isTimeMenu ? best + 'm' : formatTime(best);
+        const avgDisplay = isTimeMenu ? Math.round(avg) + 'm' : formatTime(avg);
+        const latestDisplay = isTimeMenu ? latest + 'm' : formatTime(latest);
+
+        let improvementHtml = '';
+        if (dataPoints.length >= 2) {
+            if (isTimeMenu) {
+                const sign = improvement > 0 ? '+' : '';
+                const color = improvement > 0 ? '#50c878' : '#ff6b6b';
+                improvementHtml = `<span style="color:${color}">${sign}${improvement}m</span>`;
+            } else {
+                const color = improvement > 0 ? '#50c878' : '#ff6b6b';
+                const sign = improvement > 0 ? '▲' : '▼';
+                improvementHtml = `<span style="color:${color}">${sign} ${formatTime(Math.abs(improvement))}</span>`;
+            }
+        }
+
+        statsDiv.innerHTML = `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;">
+                <div style="background:rgba(80,200,120,0.1);padding:10px;border-radius:10px;text-align:center;">
+                    <div style="font-size:11px;color:#888;">🏆 ベスト</div>
+                    <div style="font-size:16px;font-weight:bold;color:#50c878;">${bestDisplay}</div>
+                </div>
+                <div style="background:rgba(74,144,226,0.1);padding:10px;border-radius:10px;text-align:center;">
+                    <div style="font-size:11px;color:#888;">📊 平均</div>
+                    <div style="font-size:16px;font-weight:bold;color:#4a90e2;">${avgDisplay}</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.05);padding:10px;border-radius:10px;text-align:center;">
+                    <div style="font-size:11px;color:#888;">📅 最新</div>
+                    <div style="font-size:16px;font-weight:bold;">${latestDisplay}</div>
+                </div>
+                ${improvementHtml ? `<div style="background:rgba(255,255,255,0.05);padding:10px;border-radius:10px;text-align:center;">
+                    <div style="font-size:11px;color:#888;">📈 変化</div>
+                    <div style="font-size:16px;font-weight:bold;">${improvementHtml}</div>
+                </div>` : ''}
+            </div>`;
+    }
+
+    // --- 記録一覧（直近10件を新しい順に） ---
+    if (recordsDiv) {
+        const recentRecords = [...dataPoints].reverse().slice(0, 10);
+        recordsDiv.innerHTML = recentRecords.map(d => {
+            const dt = new Date(d.date);
+            const dateDisp = `${dt.getMonth() + 1}/${dt.getDate()}`;
+            const metricDisp = isTimeMenu ? (d.metric + 'm') : formatTime(d.metric);
+            const weightDisp = d.weight ? `${d.weight}kg` : '-';
+            return `<div class="ranking-item" style="padding:8px 12px;">
+                <div class="user-info">
+                    <div class="name">${dateDisp}</div>
+                </div>
+                <div style="text-align:right;">
+                    <div class="time">${metricDisp}</div>
+                    <div class="split" style="font-size:11px;color:#888;">⚖️ ${weightDisp}</div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+}
+
+
+
 function initDataViewToggle() {
     document.querySelectorAll('.view-toggle-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -8005,6 +8389,8 @@ function initDataViewToggle() {
             document.getElementById('all-time-data-view').classList.toggle('hidden', view !== 'all-time');
             const allMembersView = document.getElementById('all-members-data-view');
             if (allMembersView) allMembersView.classList.toggle('hidden', view !== 'all-members');
+            const trendsView = document.getElementById('trends-data-view');
+            if (trendsView) trendsView.classList.toggle('hidden', view !== 'trends');
 
             if (view === 'team') {
                 renderWeeklyRanking();
@@ -8013,6 +8399,8 @@ function initDataViewToggle() {
                 renderAllTimeRanking();
             } else if (view === 'all-members') {
                 initAllMembersErgoView();
+            } else if (view === 'trends') {
+                initTrendsView();
             } else {
                 // マイデータに戻る時はナビをリセット
                 navigateErgo('all');

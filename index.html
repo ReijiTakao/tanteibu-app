@@ -299,6 +299,7 @@
                     <button class="view-toggle-btn active" data-view="personal">マイデータ</button>
                     <button class="view-toggle-btn" data-view="team">週間</button>
                     <button class="view-toggle-btn" data-view="all-time">歴代</button>
+                    <button class="view-toggle-btn" data-view="trends">📈 推移</button>
                     <button class="view-toggle-btn" data-view="all-members">全員データ</button>
                 </div>
 
@@ -424,6 +425,28 @@
                         </select>
                     </div>
                     <div id="all-members-ergo-list" class="ergo-records-list" style="margin-top:12px;"></div>
+                </div>
+
+                <!-- 推移グラフビュー -->
+                <div id="trends-data-view" class="data-view hidden">
+                    <h3 class="section-title">📈 パフォーマンス推移</h3>
+                    <div class="ranking-filters" style="flex-wrap:wrap;gap:8px;">
+                        <select id="trends-menu-select" style="flex:1;min-width:120px;">
+                            <option value="">メニューを選択</option>
+                        </select>
+                        <select id="trends-period-select" style="flex:0 0 auto;">
+                            <option value="30">直近30日</option>
+                            <option value="90">直近3ヶ月</option>
+                            <option value="180">直近6ヶ月</option>
+                            <option value="365">直近1年</option>
+                            <option value="0">全期間</option>
+                        </select>
+                    </div>
+                    <div style="margin-top:12px;">
+                        <canvas id="trends-chart" height="220" style="width:100%;border-radius:12px;"></canvas>
+                    </div>
+                    <div id="trends-stats" style="margin-top:12px;"></div>
+                    <div id="trends-records-list" class="ergo-records-list" style="margin-top:12px;"></div>
                 </div>
 
             </div><!-- Close tab-ergo-data -->
