@@ -2453,10 +2453,20 @@ function renderWeekCalendar() {
     stripEl.querySelectorAll('.iws-day').forEach(dayEl => {
         dayEl.addEventListener('click', () => {
             const dateStr = dayEl.dataset.date;
-            const amSchedule = state.schedules.find(s =>
-                s.userId === state.currentUser?.id && s.date === dateStr && s.timeSlot === '午前'
+            const mySchedules = state.schedules.filter(s =>
+                s.userId === state.currentUser?.id && s.date === dateStr
             );
-            openInputModal(dateStr, amSchedule ? '午後' : '午前', amSchedule ? (state.schedules.find(s => s.userId === state.currentUser?.id && s.date === dateStr && s.timeSlot === '午後')?.id || null) : (amSchedule?.id || null));
+            const hasAm = mySchedules.some(s => s.timeSlot === '午前');
+            const hasPm = mySchedules.some(s => s.timeSlot === '午後');
+            if (!hasAm) {
+                openInputModal(dateStr, '午前', null);
+            } else if (!hasPm) {
+                const pmSched = mySchedules.find(s => s.timeSlot === '午後');
+                openInputModal(dateStr, '午後', pmSched?.id || null);
+            } else {
+                // 午前・午後両方入力済み → 追加練習
+                openInputModal(dateStr, '追加', null);
+            }
         });
     });
 
@@ -2482,6 +2492,7 @@ function renderWeekCalendar() {
                 <div class="day-slots">
                     ${createTimeSlotHTML(dateStr, '午前')}
                     ${createTimeSlotHTML(dateStr, '午後')}
+                    ${createExtraSlots(dateStr)}
                 </div>
             `;
 
@@ -2575,6 +2586,27 @@ function createTimeSlotHTML(dateStr, timeSlot) {
     `;
 }
 
+// 追加スロット（午前/午後以外）の表示 + 追加ボタン
+function createExtraSlots(dateStr) {
+    const extras = state.schedules.filter(s =>
+        s.userId === state.currentUser?.id && s.date === dateStr &&
+        s.timeSlot !== '午前' && s.timeSlot !== '午後'
+    );
+    let html = '';
+    extras.forEach(s => {
+        html += createTimeSlotHTML(dateStr, s.timeSlot);
+    });
+    // 追加ボタン（午前・午後の両方が入力済みの場合のみ表示）
+    const hasAm = state.schedules.some(s => s.userId === state.currentUser?.id && s.date === dateStr && s.timeSlot === '午前');
+    const hasPm = state.schedules.some(s => s.userId === state.currentUser?.id && s.date === dateStr && s.timeSlot === '午後');
+    if (hasAm && hasPm) {
+        html += `<div class="time-slot add-slot" data-date="${dateStr}" data-slot="追加">
+            <span class="slot-time add-slot-label">＋ 練習追加</span>
+        </div>`;
+    }
+    return html;
+}
+
 
 
 // =========================================
@@ -2583,6 +2615,15 @@ function createTimeSlotHTML(dateStr, timeSlot) {
 let currentInputData = null;
 
 function openInputModal(dateStr, timeSlot, scheduleId = null) {
+    // 「追加」の場合は連番ラベルを自動生成
+    if (timeSlot === '追加') {
+        const mySchedules = state.schedules.filter(s =>
+            s.userId === state.currentUser?.id && s.date === dateStr &&
+            s.timeSlot !== '午前' && s.timeSlot !== '午後'
+        );
+        const num = mySchedules.length + 1;
+        timeSlot = `追加${num}`;
+    }
 
     const modal = document.getElementById('input-modal');
     const title = document.getElementById('input-modal-title');
@@ -4138,9 +4179,10 @@ function renderOverview() {
     const activeUsers = state.users.filter(u => u.approvalStatus === '承認済み' && u.status !== '退部' && !u.isDemo);
     const registeredUserIds = new Set(schedules.map(s => s.userId));
 
-    // 午前/午後でグルーピング
+    // 午前/午後/追加でグルーピング
     const morningSchedules = [];
     const afternoonSchedules = [];
+    const extraSchedules = []; // 追加練習（3部練）
     const absentSchedules = [];
     const offSchedules = [];
 
@@ -4156,6 +4198,8 @@ function renderOverview() {
                 afternoonSchedules.push(s);
             } else if (slot === '午前' || slot === 'morning') {
                 morningSchedules.push(s);
+            } else if (slot.startsWith('追加')) {
+                extraSchedules.push(s);
             } else if (s.startTime) {
                 // startTime から推定: 12:00 以降は午後
                 const hour = parseInt(s.startTime.split(':')[0]) || 0;
@@ -4241,6 +4285,11 @@ function renderOverview() {
         if (unregAfternoon.length > 0) {
             html += renderUnregisteredBlock('📝 午後 未登録', unregAfternoon);
         }
+    }
+
+    // === 追加セクション（3部練） ===
+    if (extraSchedules.length > 0) {
+        html += renderSlotSection('🔄 追加練習', extraSchedules);
     }
 
     // === OFF（折りたたみ） ===

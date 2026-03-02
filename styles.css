@@ -836,6 +836,19 @@ body {
     background-color: var(--bg-secondary);
 }
 
+.time-slot.add-slot {
+    border: 1px dashed var(--primary-color);
+    background: rgba(59, 130, 246, 0.04);
+    justify-content: center;
+    padding: 8px;
+}
+
+.add-slot-label {
+    color: var(--primary-color);
+    font-size: 12px;
+    font-weight: 600;
+}
+
 .slot-time {
     min-width: 40px;
     font-size: 13px;
