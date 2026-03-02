@@ -4914,7 +4914,8 @@ textarea {
     margin-bottom: 12px;
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--border-color);
-    overflow: hidden;
+    position: relative;
+    z-index: 1;
 }
 
 .wm-widget-header {
