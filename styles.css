@@ -5079,6 +5079,66 @@ textarea {
     margin-right: 4px;
 }
 
+/* 今日の列ハイライト（練習登録タブ） */
+.wm-today {
+    background: rgba(59, 130, 246, 0.08) !important;
+    color: var(--primary-color) !important;
+    font-weight: 700 !important;
+}
+
+.wm-today-cell {
+    background: rgba(59, 130, 246, 0.04);
+}
+
+/* 全体スケジュール: 当日メニューカード */
+.wm-day-card {
+    background: var(--bg-white);
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    margin-bottom: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.wm-day-card-header {
+    background: linear-gradient(135deg, #1e3a5f, #0f172a);
+    color: #f1f5f9;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.wm-day-card-body {
+    padding: 8px 12px;
+}
+
+.wm-day-row {
+    display: flex;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.wm-day-row:last-child {
+    border-bottom: none;
+}
+
+.wm-day-row-label {
+    min-width: 50px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.wm-day-row-content {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
 /* 編集モーダル */
 .wm-modal-content {
     max-width: 95vw;

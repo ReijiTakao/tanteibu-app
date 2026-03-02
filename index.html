@@ -167,6 +167,25 @@
                     <button id="next-week-btn" class="nav-btn">来週 →</button>
                 </div>
                 <div id="week-calendar" class="week-calendar"></div>
+                <!-- 練習登録タブ用 週間メニュー -->
+                <div class="wm-widget" id="wm-widget-input">
+                    <div class="wm-widget-header" onclick="toggleWeeklyMenuExpandInput()">
+                        <span class="wm-widget-title">📋 今週のメニュー</span>
+                        <span class="wm-widget-week" id="wm-week-label-input"></span>
+                        <span class="wm-widget-expand" id="wm-expand-icon-input">▼</span>
+                    </div>
+                    <div class="wm-widget-body hidden" id="wm-widget-body-input">
+                        <div class="wm-nav">
+                            <button class="pn-week-nav-btn" id="wm-prev-week-input">◀</button>
+                            <span class="pn-week-range" id="wm-week-range-input"></span>
+                            <button class="pn-week-nav-btn" id="wm-next-week-input">▶</button>
+                            <button class="wm-edit-btn" id="wm-edit-btn-input"
+                                onclick="wmWeekOffset = wmInputWeekOffset; openWeeklyMenuEditor()">✏️ 編集</button>
+                        </div>
+                        <div class="wm-table-wrap" id="wm-table-container-input"></div>
+                        <div class="wm-notes" id="wm-notes-display-input"></div>
+                    </div>
+                </div>
             </div>
 
             <!-- 2. 全体（閲覧・調整）タブ -->

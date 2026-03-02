@@ -2511,6 +2511,7 @@ function renderWeekCalendar() {
         });
     });
 
+    renderWeeklyMenuInput(); // 週間メニュー表示
 }
 
 function createTimeSlotHTML(dateStr, timeSlot) {
@@ -4127,6 +4128,131 @@ function saveWeeklyMenu() {
 }
 window.saveWeeklyMenu = saveWeeklyMenu;
 
+// =========================================
+// 練習登録タブ用 週間メニュー
+// =========================================
+let wmInputWeekOffset = 0;
+
+function toggleWeeklyMenuExpandInput() {
+    const body = document.getElementById('wm-widget-body-input');
+    const icon = document.getElementById('wm-expand-icon-input');
+    if (body) {
+        body.classList.toggle('hidden');
+        if (icon) icon.textContent = body.classList.contains('hidden') ? '▼' : '▲';
+    }
+}
+window.toggleWeeklyMenuExpandInput = toggleWeeklyMenuExpandInput;
+
+function renderWeeklyMenuInput() {
+    const headerLabel = document.getElementById('wm-week-label-input');
+    if (headerLabel) headerLabel.textContent = getWmWeekLabel(wmInputWeekOffset);
+    const rangeLabel = document.getElementById('wm-week-range-input');
+    if (rangeLabel) rangeLabel.textContent = getWmWeekLabel(wmInputWeekOffset);
+
+    const prevBtn = document.getElementById('wm-prev-week-input');
+    const nextBtn = document.getElementById('wm-next-week-input');
+    if (prevBtn) prevBtn.onclick = () => { wmInputWeekOffset--; renderWeeklyMenuInput(); };
+    if (nextBtn) nextBtn.onclick = () => { wmInputWeekOffset++; renderWeeklyMenuInput(); };
+
+    const editBtn = document.getElementById('wm-edit-btn-input');
+    if (editBtn) editBtn.style.display = canEditWeeklyMenu() ? 'inline-block' : 'none';
+
+    const container = document.getElementById('wm-table-container-input');
+    const notesEl = document.getElementById('wm-notes-display-input');
+    if (!container) return;
+
+    const menu = getWmForWeek(wmInputWeekOffset);
+    if (!menu || !menu.rows || menu.rows.length === 0) {
+        container.innerHTML = `<div class="empty-state" style="padding:12px;"><p style="font-size:13px;color:#888;">この週のメニューはまだ登録されていません</p></div>`;
+        if (notesEl) notesEl.innerHTML = '';
+        return;
+    }
+
+    // 同じテーブル形式で表示（renderWeeklyMenuと同じロジック）
+    const dayLabels = ['火', '水', '木', '金', '土', '日', '月'];
+    const weekStart = getWmWeekStart(wmInputWeekOffset);
+
+    let thead = '<tr><th class="wm-th-label"></th>';
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(weekStart);
+        d.setDate(weekStart.getDate() + i);
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const dateStr = d.toISOString().slice(0, 10);
+        const isToday = dateStr === todayStr;
+        const dayClass = i === 5 ? 'wm-sun' : i === 4 ? 'wm-sat' : '';
+        thead += `<th class="wm-th-day ${dayClass} ${isToday ? 'wm-today' : ''}">${dayLabels[i]} ${d.getMonth() + 1}/${d.getDate()}</th>`;
+    }
+    thead += '</tr>';
+
+    let tbody = '';
+    menu.rows.forEach((rowLabel, ri) => {
+        tbody += `<tr><td class="wm-td-label">${rowLabel}</td>`;
+        for (let di = 0; di < 7; di++) {
+            const d = new Date(weekStart);
+            d.setDate(weekStart.getDate() + di);
+            const todayStr = new Date().toISOString().slice(0, 10);
+            const dateStr = d.toISOString().slice(0, 10);
+            const isToday = dateStr === todayStr;
+            const key = `${ri}-${di}`;
+            const val = menu.cells?.[key] || '';
+            tbody += `<td class="wm-td-cell ${isToday ? 'wm-today-cell' : ''}">${val ? `<div class="wm-cell-text">${escapeHtml(val).replace(/\n/g, '<br>')}</div>` : '<span class="wm-cell-empty">-</span>'}</td>`;
+        }
+        tbody += '</tr>';
+    });
+
+    container.innerHTML = `<table class="wm-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+
+    if (notesEl) {
+        if (menu.notes && menu.notes.trim()) {
+            notesEl.innerHTML = `<div class="wm-notes-content"><span class="wm-notes-icon">📝</span>${escapeHtml(menu.notes).replace(/\n/g, '<br>')}</div>`;
+        } else {
+            notesEl.innerHTML = '';
+        }
+    }
+}
+
+// =========================================
+// 全体スケジュール: 当日のメニュー表示
+// =========================================
+function renderDayMenu(dateStr) {
+    // 指定日が含まれる週のメニューを検索
+    const targetDate = new Date(dateStr + 'T00:00:00');
+    const dow = targetDate.getDay();
+    const tuesdayOffset = (dow + 5) % 7;
+    const weekStart = new Date(targetDate);
+    weekStart.setDate(targetDate.getDate() - tuesdayOffset);
+    const weekStartStr = weekStart.toISOString().slice(0, 10);
+
+    const menu = state.weeklyMenus.find(m => m.weekStart === weekStartStr);
+    if (!menu || !menu.rows || menu.rows.length === 0) return '';
+
+    // 曜日インデックス (火=0 ... 月=6)
+    const dayIndex = tuesdayOffset;
+
+    // その日のセルにデータがあるか確認
+    const hasCells = menu.rows.some((_, ri) => {
+        const key = `${ri}-${dayIndex}`;
+        return menu.cells?.[key] && menu.cells[key].trim();
+    });
+    if (!hasCells) return '';
+
+    let html = '<div class="wm-day-card">';
+    html += '<div class="wm-day-card-header">📋 本日のメニュー</div>';
+    html += '<div class="wm-day-card-body">';
+    menu.rows.forEach((rowLabel, ri) => {
+        const key = `${ri}-${dayIndex}`;
+        const val = menu.cells?.[key] || '';
+        if (val.trim()) {
+            html += `<div class="wm-day-row">
+                <span class="wm-day-row-label">${escapeHtml(rowLabel)}</span>
+                <div class="wm-day-row-content">${escapeHtml(val).replace(/\n/g, '<br>')}</div>
+            </div>`;
+        }
+    });
+    html += '</div></div>';
+    return html;
+}
+
 // 午前/午後セクション描画ヘルパー
 function renderSlotSection(sectionLabel, schedules) {
     if (schedules.length === 0) {
@@ -4250,6 +4376,9 @@ function renderOverview() {
 
     // === 全体告知カード ===
     html += renderTeamScheduleCards(dateStr);
+
+    // === 当日のメニュー ===
+    html += renderDayMenu(dateStr);
 
     // === 午前セクション ===
     html += renderSlotSection('🌅 午前', morningSchedules);
