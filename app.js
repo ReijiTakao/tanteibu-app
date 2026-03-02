@@ -7819,7 +7819,7 @@ function renderWeeklyRanking() {
     if (state.currentUser && state.currentUser.gender === selectedGender) {
         if (myBest) {
             const display = formatDisplayDate(myBest.date);
-            const idtHtml = is2000m ? renderIDTBadge(myBest.weight, selectedGender, myBest.time) : '';
+            const idtHtml = is2000m ? renderIDTBadge(myBest.weight, selectedGender, myBest.time, myBest.id, myBest.userId) : '';
             html += `<div class="my-best-section">
     <div class="ranking-item my-best">
         <div class="rank">YOU</div>
@@ -7849,7 +7849,7 @@ function renderWeeklyRanking() {
         const display = formatDisplayDate(record.date);
         const rankSymbol = idx < 3 ? rankMedals[idx] : `${idx + 1}`;
         const isMe = user && user.id === state.currentUser?.id;
-        const idtHtml = is2000m ? renderIDTBadge(record.weight, selectedGender, record.time) : '';
+        const idtHtml = is2000m ? renderIDTBadge(record.weight, selectedGender, record.time, record.id, record.userId) : '';
 
         return `<div class="ranking-item ${isMe ? 'highlight' : ''}">
             <div class="rank">${rankSymbol}</div>
@@ -8135,7 +8135,7 @@ function renderAllTimeRanking() {
     if (state.currentUser && state.currentUser.gender === selectedGender) {
         if (myRecord) {
             const display = formatDisplayDate(myRecord.date);
-            const idtHtml = is2000m ? renderIDTBadge(myRecord.weight, selectedGender, myRecord.time) : '';
+            const idtHtml = is2000m ? renderIDTBadge(myRecord.weight, selectedGender, myRecord.time, myRecord.id, myRecord.userId) : '';
             html += `<div class="my-best-section">
     <div class="ranking-item my-best">
         <div class="rank">YOU</div>
@@ -8165,7 +8165,7 @@ function renderAllTimeRanking() {
         const display = formatDisplayDate(record.date);
         const rankSymbol = idx < 3 ? rankMedals[idx] : `${idx + 1}`;
         const isMe = user && user.id === state.currentUser?.id;
-        const idtHtml = is2000m ? renderIDTBadge(record.weight, selectedGender, record.time) : '';
+        const idtHtml = is2000m ? renderIDTBadge(record.weight, selectedGender, record.time, record.id, record.userId) : '';
 
         // 体重表示（女子プライバシー対応）
         let weightInfo = '';
@@ -12188,8 +12188,19 @@ function calculateIDTPercent(actualSeconds, idtSeconds) {
 }
 
 // IDTバッジHTML生成（ランキング用）
-function renderIDTBadge(weight, gender, actualSeconds) {
-    if (!weight || !actualSeconds) return '';
+// recordId, userId を渡すと体重編集リンク付きになる
+function renderIDTBadge(weight, gender, actualSeconds, recordId, userId) {
+    const isMe = userId && userId === state.currentUser?.id;
+
+    if (!weight) {
+        // 体重未入力 → 自分の記録なら入力ボタン表示
+        if (isMe && recordId) {
+            return `<span class="idt-badge idt-edit" onclick="editRecordWeight('${recordId}')" style="cursor:pointer;opacity:0.7;">⚖️ 体重入力</span>`;
+        }
+        return '';
+    }
+
+    if (!actualSeconds) return '';
     const idtSeconds = calculateIDTSeconds(weight, gender);
     if (!idtSeconds) return '';
     const idtValue = calculateIDTPercent(actualSeconds, idtSeconds);
@@ -12197,8 +12208,64 @@ function renderIDTBadge(weight, gender, actualSeconds) {
     let cls = 'idt-low';
     if (idtValue >= 100) cls = 'idt-high';
     else if (idtValue >= 95) cls = 'idt-mid';
+
+    // 自分の記録なら体重クリックで編集可能
+    if (isMe && recordId) {
+        return `<span class="idt-badge ${cls}" onclick="editRecordWeight('${recordId}')" style="cursor:pointer;" title="タップして体重を編集">IDT ${idtValue.toFixed(1)} (${weight}kg)</span>`;
+    }
     return `<span class="idt-badge ${cls}">IDT ${idtValue.toFixed(1)}</span>`;
 }
+
+// エルゴ記録の体重を編集
+function editRecordWeight(recordId) {
+    // ergoSessions と ergoRecords から該当レコードを検索
+    let record = state.ergoSessions.find(s => s.id === recordId);
+    let source = 'ergo_sessions';
+    if (!record) {
+        record = state.ergoRecords.find(r => r.id === recordId);
+        source = 'ergo_records';
+    }
+    if (!record) {
+        alert('記録が見つかりません');
+        return;
+    }
+
+    const currentWeight = record.weight || '';
+    const input = prompt(`体重を入力してください (kg)\n日付: ${record.date}`, currentWeight);
+    if (input === null) return; // キャンセル
+
+    const newWeight = parseFloat(input);
+    if (isNaN(newWeight) || newWeight < 30 || newWeight > 150) {
+        alert('30〜150kgの範囲で入力してください');
+        return;
+    }
+
+    // レコードの体重を更新
+    record.weight = newWeight;
+
+    // ローカル保存
+    if (source === 'ergo_sessions') {
+        DB.save('ergo_sessions', state.ergoSessions);
+    } else {
+        DB.save('ergo_records', state.ergoRecords);
+    }
+
+    // 体重履歴にも記録（同日の体重として保存）
+    const history = DB.load('weight_history') || [];
+    const dateStr = record.date?.split('T')[0] || record.date;
+    const existing = history.find(w => w.userId === record.userId && w.date === dateStr);
+    if (existing) {
+        existing.weight = newWeight;
+    } else {
+        history.push({ userId: record.userId, date: dateStr, weight: newWeight });
+    }
+    DB.save('weight_history', history);
+
+    // ランキング再描画
+    renderWeeklyRanking();
+    renderAllTimeRanking();
+}
+
 
 // =========================================
 // データエクスポート（CSV）

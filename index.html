@@ -365,8 +365,10 @@
                         <h3 class="section-title">🏆 週間ランキング</h3>
                         <div class="ranking-filters">
                             <div class="toggle-group gender-toggle" style="margin-bottom: 8px;">
-                                <button class="toggle-btn gender-btn active" data-gender="man">男子</button>
-                                <button class="toggle-btn gender-btn" data-gender="woman">女子</button>
+                                <button class="toggle-btn gender-btn active" data-gender="man"
+                                    onclick="this.parentElement.querySelectorAll('.gender-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active'); renderWeeklyRanking();">男子</button>
+                                <button class="toggle-btn gender-btn" data-gender="woman"
+                                    onclick="this.parentElement.querySelectorAll('.gender-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active'); renderWeeklyRanking();">女子</button>
                             </div>
                             <select id="ranking-menu">
                                 <!-- JSで動的生成 -->
