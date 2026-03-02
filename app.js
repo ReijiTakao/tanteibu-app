@@ -12723,7 +12723,7 @@ function renderErgoTypeBadge(record, userId) {
     if (!ergoType) {
         // 未設定 → 自分の記録なら設定ボタン
         if (isMe && record.id) {
-            return `<span class="ergo-type-badge ergo-type-none" onclick="toggleErgoType('${record.id}')" style="cursor:pointer;" title="タップしてエルゴ種別を設定">?</span>`;
+            return `<span class="ergo-type-badge ergo-type-none" onclick="event.stopPropagation();toggleErgoType('${record.id}')" style="cursor:pointer;" title="タップしてエルゴ種別を設定">?</span>`;
         }
         return '';
     }
@@ -12734,7 +12734,7 @@ function renderErgoTypeBadge(record, userId) {
     const cls = isDynamic ? 'ergo-type-dynamic' : 'ergo-type-static';
 
     if (isMe && record.id) {
-        return `<span class="ergo-type-badge ${cls}" onclick="toggleErgoType('${record.id}')" style="cursor:pointer;" title="${title}（タップで変更）">${label}</span>`;
+        return `<span class="ergo-type-badge ${cls}" onclick="event.stopPropagation();toggleErgoType('${record.id}')" style="cursor:pointer;" title="${title}（タップで変更）">${label}</span>`;
     }
     return `<span class="ergo-type-badge ${cls}" title="${title}">${label}</span>`;
 }
