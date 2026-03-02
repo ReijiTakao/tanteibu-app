@@ -5155,80 +5155,143 @@ textarea {
     margin-bottom: 10px;
 }
 
-.wm-edit-table-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+/* エディタ: 曜日カード */
+.wm-edit-days {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px;
+}
+
+.wm-edit-day-card {
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--bg-primary);
 }
 
-.wm-edit-table {
-    width: 100%;
-    min-width: 700px;
-    border-collapse: collapse;
-}
-
-.wm-edit-table th {
-    padding: 8px 4px;
-    font-size: 12px;
-    font-weight: 600;
-    text-align: center;
+.wm-edit-day-header {
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 700;
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border-color);
-    white-space: nowrap;
 }
 
-.wm-edit-table td {
-    padding: 4px;
+.wm-edit-day-header.wm-sat {
+    color: #3b82f6;
+}
+
+.wm-edit-day-header.wm-sun {
+    color: #ef4444;
+}
+
+.wm-edit-slot {
+    padding: 8px 12px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.04);
 }
 
-.wm-row-label-input {
-    width: 60px;
-    padding: 5px 6px;
+.wm-edit-slot:last-child {
+    border-bottom: none;
+}
+
+.wm-edit-slot-label {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text-secondary);
+}
+
+.wm-edit-type-btns {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+
+.wm-type-select-btn {
+    flex: 1;
+    min-width: 42px;
+    padding: 4px 2px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-primary);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1.2;
+    text-align: center;
+    transition: all 0.15s;
+}
+
+.wm-type-select-btn span {
+    font-size: 9px;
+    display: block;
+    color: var(--text-secondary);
+}
+
+.wm-type-select-btn:hover {
+    border-color: var(--primary-color);
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.wm-type-select-btn.active {
+    border-color: var(--primary-color);
+    background: rgba(59, 130, 246, 0.12);
+    box-shadow: 0 0 0 1px var(--primary-color);
+}
+
+.wm-edit-menu-input {
+    width: 100%;
+    min-height: 40px;
+    padding: 6px 8px;
     border: 1px solid var(--border-color);
     border-radius: 6px;
     font-size: 12px;
-    font-weight: 600;
-    text-align: center;
-}
-
-.wm-cell-input {
-    width: 100%;
-    min-width: 80px;
-    min-height: 50px;
-    padding: 5px 6px;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    font-size: 11px;
     line-height: 1.4;
     resize: vertical;
     box-sizing: border-box;
     font-family: inherit;
 }
 
-.wm-cell-input:focus {
+.wm-edit-menu-input:focus {
     border-color: var(--primary-color);
     outline: none;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
 }
 
-.wm-row-del-btn {
-    background: none;
-    border: none;
-    color: #ef4444;
-    font-size: 14px;
-    cursor: pointer;
-    padding: 4px 8px;
+/* 種別バッジ (テーブル表示用) */
+.wm-type-badge {
+    display: inline-block;
+    padding: 1px 6px;
     border-radius: 4px;
-    opacity: 0.5;
-    transition: opacity 0.15s;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    margin-bottom: 2px;
 }
 
-.wm-row-del-btn:hover,
-.wm-row-del-btn:active {
-    opacity: 1;
-    background: rgba(239, 68, 68, 0.1);
+.wm-type-ergo {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.wm-type-boat {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.wm-type-run {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.wm-type-weight {
+    background: #fce7f3;
+    color: #9d174d;
+}
+
+.wm-type-off {
+    background: #f3f4f6;
+    color: #6b7280;
 }
 
 /* =========================================

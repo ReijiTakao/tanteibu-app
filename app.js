@@ -3919,20 +3919,21 @@ function toggleWeeklyMenuExpand() {
 }
 window.toggleWeeklyMenuExpand = toggleWeeklyMenuExpand;
 
+const WM_TYPES = ['エルゴ', '乗艇', 'ラン', 'ウエイト', 'OFF'];
+const WM_TYPE_ICONS = { 'エルゴ': '🏋️', '乗艇': '🚣', 'ラン': '🏃', 'ウエイト': '💪', 'OFF': '🏖️' };
+const WM_TYPE_CLASSES = { 'エルゴ': 'wm-type-ergo', '乗艇': 'wm-type-boat', 'ラン': 'wm-type-run', 'ウエイト': 'wm-type-weight', 'OFF': 'wm-type-off' };
+
 function renderWeeklyMenu() {
-    // ヘッダーの週ラベル更新
     const headerLabel = document.getElementById('wm-week-label');
     if (headerLabel) headerLabel.textContent = getWmWeekLabel(wmWeekOffset);
     const rangeLabel = document.getElementById('wm-week-range');
     if (rangeLabel) rangeLabel.textContent = getWmWeekLabel(wmWeekOffset);
 
-    // ナビボタン
     const prevBtn = document.getElementById('wm-prev-week');
     const nextBtn = document.getElementById('wm-next-week');
     if (prevBtn) prevBtn.onclick = () => { wmWeekOffset--; renderWeeklyMenu(); };
     if (nextBtn) nextBtn.onclick = () => { wmWeekOffset++; renderWeeklyMenu(); };
 
-    // 編集ボタン表示制御
     const editBtn = document.getElementById('wm-edit-btn');
     if (editBtn) editBtn.style.display = canEditWeeklyMenu() ? 'inline-block' : 'none';
 
@@ -3941,13 +3942,15 @@ function renderWeeklyMenu() {
     if (!container) return;
 
     const menu = getWmForWeek(wmWeekOffset);
-    if (!menu || !menu.rows || menu.rows.length === 0) {
+    const slots = menu?.slots || {};
+    const hasAny = Object.values(slots).some(s => s && (s.type || s.menu));
+
+    if (!hasAny) {
         container.innerHTML = `<div class="empty-state" style="padding:12px;"><p style="font-size:13px;color:#888;">この週のメニューはまだ登録されていません</p></div>`;
         if (notesEl) notesEl.innerHTML = '';
         return;
     }
 
-    // 曜日ヘッダー生成
     const dayLabels = ['火', '水', '木', '金', '土', '日', '月'];
     const weekStart = getWmWeekStart(wmWeekOffset);
 
@@ -3955,29 +3958,35 @@ function renderWeeklyMenu() {
     for (let i = 0; i < 7; i++) {
         const d = new Date(weekStart);
         d.setDate(weekStart.getDate() + i);
-        const dayNum = d.getDate();
         const dayClass = i === 5 ? 'wm-sun' : i === 4 ? 'wm-sat' : '';
-        thead += `<th class="wm-th-day ${dayClass}">${dayLabels[i]} ${d.getMonth() + 1}/${dayNum}</th>`;
+        thead += `<th class="wm-th-day ${dayClass}">${dayLabels[i]} ${d.getMonth() + 1}/${d.getDate()}</th>`;
     }
     thead += '</tr>';
 
-    // 行生成
     let tbody = '';
-    menu.rows.forEach((rowLabel, ri) => {
-        tbody += `<tr><td class="wm-td-label">${rowLabel}</td>`;
+    ['am', 'pm'].forEach(slot => {
+        const slotLabel = slot === 'am' ? '午前' : '午後';
+        tbody += `<tr><td class="wm-td-label">${slotLabel}</td>`;
         for (let di = 0; di < 7; di++) {
-            const key = `${ri}-${di}`;
-            const val = menu.cells?.[key] || '';
-            tbody += `<td class="wm-td-cell">${val ? `<div class="wm-cell-text">${escapeHtml(val).replace(/\n/g, '<br>')}</div>` : '<span class="wm-cell-empty">-</span>'}</td>`;
+            const key = `${di}-${slot}`;
+            const s = slots[key];
+            if (s && (s.type || s.menu)) {
+                const icon = WM_TYPE_ICONS[s.type] || '';
+                const cls = WM_TYPE_CLASSES[s.type] || '';
+                tbody += `<td class="wm-td-cell"><span class="wm-type-badge ${cls}">${icon} ${s.type || ''}</span>`;
+                if (s.menu) tbody += `<div class="wm-cell-text">${escapeHtml(s.menu).replace(/\n/g, '<br>')}</div>`;
+                tbody += '</td>';
+            } else {
+                tbody += '<td class="wm-td-cell"><span class="wm-cell-empty">-</span></td>';
+            }
         }
         tbody += '</tr>';
     });
 
     container.innerHTML = `<table class="wm-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
 
-    // 備考
     if (notesEl) {
-        if (menu.notes && menu.notes.trim()) {
+        if (menu?.notes && menu.notes.trim()) {
             notesEl.innerHTML = `<div class="wm-notes-content"><span class="wm-notes-icon">📝</span>${escapeHtml(menu.notes).replace(/\n/g, '<br>')}</div>`;
         } else {
             notesEl.innerHTML = '';
@@ -3992,8 +4001,7 @@ function escapeHtml(str) {
 function openWeeklyMenuEditor() {
     if (!canEditWeeklyMenu()) return;
     const menu = getWmForWeek(wmWeekOffset);
-    wmEditRows = menu?.rows?.slice() || ['アップ', 'Menu', 'ダウン'];
-    const cells = menu?.cells || {};
+    const slots = menu?.slots || {};
     const notes = menu?.notes || '';
 
     const body = document.getElementById('wm-edit-body');
@@ -4001,32 +4009,39 @@ function openWeeklyMenuEditor() {
     const weekStart = getWmWeekStart(wmWeekOffset);
 
     let html = `<p class="wm-edit-week-label">${getWmWeekLabel(wmWeekOffset)}</p>`;
-    html += '<div class="wm-edit-table-wrap"><table class="wm-edit-table">';
-    // ヘッダー
-    html += '<thead><tr><th></th>';
-    for (let i = 0; i < 7; i++) {
+    html += '<div class="wm-edit-days">';
+
+    for (let di = 0; di < 7; di++) {
         const d = new Date(weekStart);
-        d.setDate(weekStart.getDate() + i);
-        html += `<th>${dayLabels[i]} ${d.getMonth() + 1}/${d.getDate()}</th>`;
+        d.setDate(weekStart.getDate() + di);
+        const dayClass = di === 5 ? 'wm-sun' : di === 4 ? 'wm-sat' : '';
+        html += `<div class="wm-edit-day-card">
+            <div class="wm-edit-day-header ${dayClass}">${dayLabels[di]} ${d.getMonth() + 1}/${d.getDate()}</div>`;
+
+        ['am', 'pm'].forEach(slot => {
+            const key = `${di}-${slot}`;
+            const s = slots[key] || {};
+            const slotLabel = slot === 'am' ? '🌅 午前' : '🌇 午後';
+            html += `<div class="wm-edit-slot">
+                <div class="wm-edit-slot-label">${slotLabel}</div>
+                <div class="wm-edit-type-btns" data-key="${key}">`;
+            WM_TYPES.forEach(t => {
+                const icon = WM_TYPE_ICONS[t];
+                const active = s.type === t ? 'active' : '';
+                html += `<button class="wm-type-select-btn ${active}" data-key="${key}" data-type="${t}" onclick="selectWmType(this)">${icon}<br><span>${t}</span></button>`;
+            });
+            html += `</div>
+                <textarea class="wm-edit-menu-input" data-key="${key}" placeholder="具体的なメニュー...">${escapeHtml(s.menu || '')}</textarea>
+            </div>`;
+        });
+
+        html += '</div>';
     }
-    html += '<th></th></tr></thead><tbody id="wm-edit-rows">';
 
-    wmEditRows.forEach((rowLabel, ri) => {
-        html += `<tr data-row="${ri}">`;
-        html += `<td><input class="wm-row-label-input" value="${escapeHtml(rowLabel)}" data-ri="${ri}" placeholder="行名"></td>`;
-        for (let di = 0; di < 7; di++) {
-            const key = `${ri}-${di}`;
-            const val = cells[key] || '';
-            html += `<td><textarea class="wm-cell-input" data-ri="${ri}" data-di="${di}" placeholder="—">${escapeHtml(val)}</textarea></td>`;
-        }
-        html += `<td><button class="wm-row-del-btn" onclick="removeWeeklyMenuRow(${ri})">✕</button></td>`;
-        html += '</tr>';
-    });
-
-    html += '</tbody></table></div>';
+    html += '</div>';
     html += `<div class="form-group" style="margin-top:12px;">
         <label>📝 全体備考・コーチコメント</label>
-        <textarea id="wm-edit-notes" rows="4" style="width:100%;box-sizing:border-box;" placeholder="UTのクオリティを上げましょう...">${escapeHtml(notes)}</textarea>
+        <textarea id="wm-edit-notes" rows="3" style="width:100%;box-sizing:border-box;" placeholder="練習全体の方針やコメント...">${escapeHtml(notes)}</textarea>
     </div>`;
 
     body.innerHTML = html;
@@ -4034,90 +4049,32 @@ function openWeeklyMenuEditor() {
 }
 window.openWeeklyMenuEditor = openWeeklyMenuEditor;
 
-function addWeeklyMenuRow() {
-    wmEditRows.push('');
-    // モーダルを再構築
-    const cells = collectEditCells();
-    const notes = document.getElementById('wm-edit-notes')?.value || '';
-    // 一時的にstateに保持して再オープン
-    const tempMenu = getWmForWeek(wmWeekOffset) || {};
-    tempMenu.rows = wmEditRows;
-    tempMenu.cells = cells;
-    tempMenu.notes = notes;
-    // 再構築
-    openWeeklyMenuEditorWithData(tempMenu);
+function selectWmType(btn) {
+    const key = btn.dataset.key;
+    const btns = document.querySelectorAll(`.wm-type-select-btn[data-key="${key}"]`);
+    const wasActive = btn.classList.contains('active');
+    btns.forEach(b => b.classList.remove('active'));
+    if (!wasActive) btn.classList.add('active');
 }
-window.addWeeklyMenuRow = addWeeklyMenuRow;
-
-function removeWeeklyMenuRow(ri) {
-    const cells = collectEditCells();
-    const notes = document.getElementById('wm-edit-notes')?.value || '';
-    wmEditRows.splice(ri, 1);
-    // セルのインデックスを再マッピング
-    const newCells = {};
-    Object.entries(cells).forEach(([key, val]) => {
-        const [r, d] = key.split('-').map(Number);
-        if (r === ri) return;
-        const newR = r > ri ? r - 1 : r;
-        newCells[`${newR}-${d}`] = val;
-    });
-    openWeeklyMenuEditorWithData({ rows: wmEditRows, cells: newCells, notes });
-}
-window.removeWeeklyMenuRow = removeWeeklyMenuRow;
-
-function openWeeklyMenuEditorWithData(data) {
-    const body = document.getElementById('wm-edit-body');
-    const dayLabels = ['火', '水', '木', '金', '土', '日', '月'];
-    const weekStart = getWmWeekStart(wmWeekOffset);
-    const cells = data.cells || {};
-    const notes = data.notes || '';
-    wmEditRows = data.rows || [];
-
-    let html = `<p class="wm-edit-week-label">${getWmWeekLabel(wmWeekOffset)}</p>`;
-    html += '<div class="wm-edit-table-wrap"><table class="wm-edit-table"><thead><tr><th></th>';
-    for (let i = 0; i < 7; i++) {
-        const d = new Date(weekStart);
-        d.setDate(weekStart.getDate() + i);
-        html += `<th>${dayLabels[i]} ${d.getMonth() + 1}/${d.getDate()}</th>`;
-    }
-    html += '<th></th></tr></thead><tbody id="wm-edit-rows">';
-    wmEditRows.forEach((rowLabel, ri) => {
-        html += `<tr data-row="${ri}"><td><input class="wm-row-label-input" value="${escapeHtml(rowLabel)}" data-ri="${ri}" placeholder="行名"></td>`;
-        for (let di = 0; di < 7; di++) {
-            const key = `${ri}-${di}`;
-            html += `<td><textarea class="wm-cell-input" data-ri="${ri}" data-di="${di}" placeholder="—">${escapeHtml(cells[key] || '')}</textarea></td>`;
-        }
-        html += `<td><button class="wm-row-del-btn" onclick="removeWeeklyMenuRow(${ri})">✕</button></td></tr>`;
-    });
-    html += '</tbody></table></div>';
-    html += `<div class="form-group" style="margin-top:12px;"><label>📝 全体備考・コーチコメント</label><textarea id="wm-edit-notes" rows="4" style="width:100%;box-sizing:border-box;" placeholder="UTのクオリティを上げましょう...">${escapeHtml(notes)}</textarea></div>`;
-    body.innerHTML = html;
-}
-
-function collectEditCells() {
-    const cells = {};
-    document.querySelectorAll('.wm-cell-input').forEach(ta => {
-        const ri = ta.dataset.ri;
-        const di = ta.dataset.di;
-        if (ta.value.trim()) cells[`${ri}-${di}`] = ta.value;
-    });
-    return cells;
-}
+window.selectWmType = selectWmType;
 
 async function saveWeeklyMenu() {
-    // 行ラベルを収集
-    const rows = [];
-    document.querySelectorAll('.wm-row-label-input').forEach(input => {
-        rows.push(input.value || `行${rows.length + 1}`);
+    const slots = {};
+    document.querySelectorAll('.wm-edit-menu-input').forEach(ta => {
+        const key = ta.dataset.key;
+        const activeBtn = document.querySelector(`.wm-type-select-btn[data-key="${key}"].active`);
+        const type = activeBtn?.dataset.type || '';
+        const menu = ta.value.trim();
+        if (type || menu) {
+            slots[key] = { type, menu };
+        }
     });
-    const cells = collectEditCells();
     const notes = document.getElementById('wm-edit-notes')?.value || '';
     const weekStart = getWmWeekStart(wmWeekOffset).toISOString().slice(0, 10);
 
     let menu = state.weeklyMenus.find(m => m.weekStart === weekStart);
     if (menu) {
-        menu.rows = rows;
-        menu.cells = cells;
+        menu.slots = slots;
         menu.notes = notes;
         menu.updatedBy = state.currentUser?.id;
         menu.updatedAt = new Date().toISOString();
@@ -4125,8 +4082,7 @@ async function saveWeeklyMenu() {
         menu = {
             id: 'wm-' + Date.now(),
             weekStart,
-            rows,
-            cells,
+            slots,
             notes,
             updatedBy: state.currentUser?.id,
             updatedAt: new Date().toISOString()
@@ -4135,12 +4091,12 @@ async function saveWeeklyMenu() {
     }
 
     DB.save('weekly_menus', state.weeklyMenus);
-    // Supabase同期
     try {
         await window.SupabaseConfig?.db?.saveWeeklyMenu(menu);
     } catch (e) { console.warn('Weekly menu Supabase sync failed:', e); }
     document.getElementById('wm-edit-modal').classList.add('hidden');
     renderWeeklyMenu();
+    renderWeeklyMenuInput();
     showToast('週間メニューを保存しました', 'success');
 }
 window.saveWeeklyMenu = saveWeeklyMenu;
@@ -4179,21 +4135,23 @@ function renderWeeklyMenuInput() {
     if (!container) return;
 
     const menu = getWmForWeek(wmInputWeekOffset);
-    if (!menu || !menu.rows || menu.rows.length === 0) {
+    const slots = menu?.slots || {};
+    const hasAny = Object.values(slots).some(s => s && (s.type || s.menu));
+
+    if (!hasAny) {
         container.innerHTML = `<div class="empty-state" style="padding:12px;"><p style="font-size:13px;color:#888;">この週のメニューはまだ登録されていません</p></div>`;
         if (notesEl) notesEl.innerHTML = '';
         return;
     }
 
-    // 同じテーブル形式で表示（renderWeeklyMenuと同じロジック）
     const dayLabels = ['火', '水', '木', '金', '土', '日', '月'];
     const weekStart = getWmWeekStart(wmInputWeekOffset);
+    const todayStr = new Date().toISOString().slice(0, 10);
 
     let thead = '<tr><th class="wm-th-label"></th>';
     for (let i = 0; i < 7; i++) {
         const d = new Date(weekStart);
         d.setDate(weekStart.getDate() + i);
-        const todayStr = new Date().toISOString().slice(0, 10);
         const dateStr = d.toISOString().slice(0, 10);
         const isToday = dateStr === todayStr;
         const dayClass = i === 5 ? 'wm-sun' : i === 4 ? 'wm-sat' : '';
@@ -4202,17 +4160,26 @@ function renderWeeklyMenuInput() {
     thead += '</tr>';
 
     let tbody = '';
-    menu.rows.forEach((rowLabel, ri) => {
-        tbody += `<tr><td class="wm-td-label">${rowLabel}</td>`;
+    ['am', 'pm'].forEach(slot => {
+        const slotLabel = slot === 'am' ? '午前' : '午後';
+        tbody += `<tr><td class="wm-td-label">${slotLabel}</td>`;
         for (let di = 0; di < 7; di++) {
             const d = new Date(weekStart);
             d.setDate(weekStart.getDate() + di);
-            const todayStr = new Date().toISOString().slice(0, 10);
             const dateStr = d.toISOString().slice(0, 10);
             const isToday = dateStr === todayStr;
-            const key = `${ri}-${di}`;
-            const val = menu.cells?.[key] || '';
-            tbody += `<td class="wm-td-cell ${isToday ? 'wm-today-cell' : ''}">${val ? `<div class="wm-cell-text">${escapeHtml(val).replace(/\n/g, '<br>')}</div>` : '<span class="wm-cell-empty">-</span>'}</td>`;
+            const key = `${di}-${slot}`;
+            const s = slots[key];
+            const todayCls = isToday ? 'wm-today-cell' : '';
+            if (s && (s.type || s.menu)) {
+                const icon = WM_TYPE_ICONS[s.type] || '';
+                const cls = WM_TYPE_CLASSES[s.type] || '';
+                tbody += `<td class="wm-td-cell ${todayCls}"><span class="wm-type-badge ${cls}">${icon} ${s.type || ''}</span>`;
+                if (s.menu) tbody += `<div class="wm-cell-text">${escapeHtml(s.menu).replace(/\n/g, '<br>')}</div>`;
+                tbody += '</td>';
+            } else {
+                tbody += `<td class="wm-td-cell ${todayCls}"><span class="wm-cell-empty">-</span></td>`;
+            }
         }
         tbody += '</tr>';
     });
@@ -4220,7 +4187,7 @@ function renderWeeklyMenuInput() {
     container.innerHTML = `<table class="wm-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
 
     if (notesEl) {
-        if (menu.notes && menu.notes.trim()) {
+        if (menu?.notes && menu.notes.trim()) {
             notesEl.innerHTML = `<div class="wm-notes-content"><span class="wm-notes-icon">📝</span>${escapeHtml(menu.notes).replace(/\n/g, '<br>')}</div>`;
         } else {
             notesEl.innerHTML = '';
@@ -4232,7 +4199,6 @@ function renderWeeklyMenuInput() {
 // 全体スケジュール: 当日のメニュー表示
 // =========================================
 function renderDayMenu(dateStr) {
-    // 指定日が含まれる週のメニューを検索
     const targetDate = new Date(dateStr + 'T00:00:00');
     const dow = targetDate.getDay();
     const tuesdayOffset = (dow + 5) % 7;
@@ -4241,31 +4207,34 @@ function renderDayMenu(dateStr) {
     const weekStartStr = weekStart.toISOString().slice(0, 10);
 
     const menu = state.weeklyMenus.find(m => m.weekStart === weekStartStr);
-    if (!menu || !menu.rows || menu.rows.length === 0) return '';
+    if (!menu) return '';
 
-    // 曜日インデックス (火=0 ... 月=6)
+    const slots = menu.slots || {};
     const dayIndex = tuesdayOffset;
+    const amSlot = slots[`${dayIndex}-am`];
+    const pmSlot = slots[`${dayIndex}-pm`];
 
-    // その日のセルにデータがあるか確認
-    const hasCells = menu.rows.some((_, ri) => {
-        const key = `${ri}-${dayIndex}`;
-        return menu.cells?.[key] && menu.cells[key].trim();
-    });
-    if (!hasCells) return '';
+    const hasContent = (amSlot && (amSlot.type || amSlot.menu)) || (pmSlot && (pmSlot.type || pmSlot.menu));
+    if (!hasContent) return '';
 
     let html = '<div class="wm-day-card">';
     html += '<div class="wm-day-card-header">📋 本日のメニュー</div>';
     html += '<div class="wm-day-card-body">';
-    menu.rows.forEach((rowLabel, ri) => {
-        const key = `${ri}-${dayIndex}`;
-        const val = menu.cells?.[key] || '';
-        if (val.trim()) {
+
+    [{ slot: amSlot, label: '🌅 午前' }, { slot: pmSlot, label: '🌇 午後' }].forEach(({ slot, label }) => {
+        if (slot && (slot.type || slot.menu)) {
+            const icon = WM_TYPE_ICONS[slot.type] || '';
+            const cls = WM_TYPE_CLASSES[slot.type] || '';
             html += `<div class="wm-day-row">
-                <span class="wm-day-row-label">${escapeHtml(rowLabel)}</span>
-                <div class="wm-day-row-content">${escapeHtml(val).replace(/\n/g, '<br>')}</div>
+                <span class="wm-day-row-label">${label}</span>
+                <div class="wm-day-row-content">
+                    <span class="wm-type-badge ${cls}">${icon} ${slot.type || ''}</span>
+                    ${slot.menu ? `<div style="margin-top:4px;">${escapeHtml(slot.menu).replace(/\n/g, '<br>')}</div>` : ''}
+                </div>
             </div>`;
         }
     });
+
     html += '</div></div>';
     return html;
 }

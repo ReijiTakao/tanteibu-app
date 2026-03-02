@@ -961,8 +961,7 @@ const SupabaseDB = {
         return (data || []).map(r => ({
             id: r.id,
             weekStart: r.week_start,
-            rows: r.rows || [],
-            cells: r.cells || {},
+            slots: r.slots || {},
             notes: r.notes || '',
             updatedBy: r.updated_by,
             updatedAt: r.updated_at,
@@ -975,8 +974,7 @@ const SupabaseDB = {
         const row = {
             id: menu.id,
             week_start: menu.weekStart,
-            rows: menu.rows || [],
-            cells: menu.cells || {},
+            slots: menu.slots || {},
             notes: menu.notes || '',
             updated_by: menu.updatedBy || null,
             updated_at: menu.updatedAt || new Date().toISOString()

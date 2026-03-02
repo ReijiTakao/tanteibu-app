@@ -2,8 +2,7 @@
 CREATE TABLE IF NOT EXISTS weekly_menus (
     id TEXT PRIMARY KEY,
     week_start DATE NOT NULL,
-    rows JSONB DEFAULT '[]'::jsonb,
-    cells JSONB DEFAULT '{}'::jsonb,
+    slots JSONB DEFAULT '{}'::jsonb,
     notes TEXT DEFAULT '',
     updated_by TEXT REFERENCES profiles(id),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
