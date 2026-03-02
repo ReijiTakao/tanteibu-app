@@ -179,6 +179,26 @@
                         <button id="overview-today-btn" class="nav-btn-sm today-btn">今日</button>
                     </div>
                 </div>
+                <!-- 週間メニューウィジェット -->
+                <div class="wm-widget" id="wm-widget">
+                    <div class="wm-widget-header" onclick="toggleWeeklyMenuExpand()">
+                        <span class="wm-widget-title">📋 週間メニュー</span>
+                        <span class="wm-widget-week" id="wm-week-label"></span>
+                        <span class="wm-widget-expand" id="wm-expand-icon">▼</span>
+                    </div>
+                    <div class="wm-widget-body hidden" id="wm-widget-body">
+                        <div class="wm-nav">
+                            <button class="pn-week-nav-btn" id="wm-prev-week">◀</button>
+                            <span class="pn-week-range" id="wm-week-range"></span>
+                            <button class="pn-week-nav-btn" id="wm-next-week">▶</button>
+                            <button class="wm-edit-btn" id="wm-edit-btn" onclick="openWeeklyMenuEditor()">✏️ 編集</button>
+                        </div>
+                        <div class="wm-table-wrap" id="wm-table-container">
+                            <!-- JSで動的生成 -->
+                        </div>
+                        <div class="wm-notes" id="wm-notes-display"></div>
+                    </div>
+                </div>
                 <div id="schedule-timeline" class="schedule-timeline">
                     <!-- JSで動的生成 -->
                 </div>
@@ -224,6 +244,25 @@
                 </div>
             </div>
 
+            <!-- 週間メニュー編集モーダル -->
+            <div id="wm-edit-modal" class="modal hidden">
+                <div class="modal-overlay" onclick="document.getElementById('wm-edit-modal').classList.add('hidden')">
+                </div>
+                <div class="modal-content wm-modal-content">
+                    <div class="modal-header">
+                        <h3>📋 週間メニュー編集</h3>
+                        <button class="modal-close"
+                            onclick="document.getElementById('wm-edit-modal').classList.add('hidden')">×</button>
+                    </div>
+                    <div class="modal-body" id="wm-edit-body">
+                        <!-- JSで動的生成 -->
+                    </div>
+                    <div class="modal-footer">
+                        <button class="secondary-btn" onclick="addWeeklyMenuRow()">＋ 行を追加</button>
+                        <button class="primary-btn" onclick="saveWeeklyMenu()">保存</button>
+                    </div>
+                </div>
+            </div>
 
 
             <!-- 3. 配艇表タブ -->

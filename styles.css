@@ -4893,6 +4893,272 @@ textarea {
 }
 
 /* =========================================
+   週間練習メニューウィジェット
+   ========================================= */
+.wm-widget {
+    background: var(--bg-white);
+    border-radius: var(--border-radius);
+    margin-bottom: 12px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.wm-widget-header {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    cursor: pointer;
+    gap: 8px;
+    background: linear-gradient(135deg, #1e3a5f, #0f172a);
+}
+
+.wm-widget-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #f1f5f9;
+}
+
+.wm-widget-week {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-left: auto;
+}
+
+.wm-widget-expand {
+    font-size: 12px;
+    color: #94a3b8;
+    transition: transform 0.2s ease;
+}
+
+.wm-widget-body {
+    padding: 8px 12px 12px;
+}
+
+.wm-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 4px 0 10px;
+}
+
+.wm-edit-btn {
+    margin-left: auto;
+    padding: 5px 12px;
+    border: 1px solid var(--primary-color);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--primary-color);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.wm-edit-btn:active {
+    background: var(--primary-color);
+    color: #fff;
+}
+
+/* 閲覧テーブル */
+.wm-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.wm-table {
+    width: 100%;
+    min-width: 600px;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.wm-table thead {
+    background: var(--bg-secondary);
+}
+
+.wm-th-label {
+    width: 60px;
+    min-width: 60px;
+    padding: 8px 6px;
+    font-weight: 700;
+    text-align: center;
+    color: var(--text-secondary);
+    border-right: 1px solid var(--border-color);
+    position: sticky;
+    left: 0;
+    background: var(--bg-secondary);
+    z-index: 1;
+}
+
+.wm-th-day {
+    padding: 8px 4px;
+    font-weight: 600;
+    text-align: center;
+    color: var(--text-primary);
+    border-right: 1px solid rgba(0, 0, 0, 0.04);
+    white-space: nowrap;
+    min-width: 80px;
+}
+
+.wm-sun {
+    color: #ef4444;
+}
+
+.wm-sat {
+    color: #3b82f6;
+}
+
+.wm-td-label {
+    padding: 8px 6px;
+    font-weight: 700;
+    font-size: 11px;
+    text-align: center;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    white-space: nowrap;
+}
+
+.wm-td-cell {
+    padding: 6px;
+    border-right: 1px solid rgba(0, 0, 0, 0.04);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    vertical-align: top;
+}
+
+.wm-cell-text {
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.wm-cell-empty {
+    font-size: 11px;
+    color: #ccc;
+}
+
+/* 備考 */
+.wm-notes {
+    margin-top: 8px;
+}
+
+.wm-notes-content {
+    background: rgba(59, 130, 246, 0.04);
+    border: 1px solid rgba(59, 130, 246, 0.1);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+.wm-notes-icon {
+    margin-right: 4px;
+}
+
+/* 編集モーダル */
+.wm-modal-content {
+    max-width: 95vw;
+    width: 900px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.wm-edit-week-label {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.wm-edit-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.wm-edit-table {
+    width: 100%;
+    min-width: 700px;
+    border-collapse: collapse;
+}
+
+.wm-edit-table th {
+    padding: 8px 4px;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.wm-edit-table td {
+    padding: 4px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.wm-row-label-input {
+    width: 60px;
+    padding: 5px 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.wm-cell-input {
+    width: 100%;
+    min-width: 80px;
+    min-height: 50px;
+    padding: 5px 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 1.4;
+    resize: vertical;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.wm-cell-input:focus {
+    border-color: var(--primary-color);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.wm-row-del-btn {
+    background: none;
+    border: none;
+    color: #ef4444;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+}
+
+.wm-row-del-btn:hover,
+.wm-row-del-btn:active {
+    opacity: 1;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+/* =========================================
    マイレージウィジェット (ノートタブ内)
    ========================================= */
 .mileage-widget {

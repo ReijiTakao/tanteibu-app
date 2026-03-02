@@ -200,7 +200,8 @@ let state = {
     practiceNotes: [],
     teamSchedules: [],
     boatAllocations: [],
-    auditLogs: []
+    auditLogs: [],
+    weeklyMenus: []
 };
 
 // =========================================
@@ -294,6 +295,7 @@ const DB = {
         state.ergoSessions = this.load('ergoSessions') || [];
         state.teamSchedules = this.load('team_schedules') || [];
         state.boatAllocations = this.load('boat_allocations') || [];
+        state.weeklyMenus = this.load('weekly_menus') || [];
         state.currentUser = this.load('current_user');
 
         // 承認済みユーザーがいない場合もデモデータを再作成（デモモード用）
@@ -3817,6 +3819,273 @@ function deleteTeamSchedule() {
 }
 window.deleteTeamSchedule = deleteTeamSchedule;
 
+// =========================================
+// 週間練習メニュー
+// =========================================
+let wmWeekOffset = 0;
+let wmEditRows = [];
+
+function canEditWeeklyMenu() {
+    const role = state.currentUser?.role;
+    return [ROLES.ADMIN, ROLES.COACH, ROLES.COX, ROLES.DATA_ANALYST].includes(role);
+}
+
+function getWmWeekStart(offset) {
+    const today = new Date();
+    const dow = today.getDay();
+    const tuesdayOffset = (dow + 5) % 7;
+    const start = new Date(today);
+    start.setDate(today.getDate() - tuesdayOffset + (offset * 7));
+    start.setHours(0, 0, 0, 0);
+    return start;
+}
+
+function getWmWeekLabel(offset) {
+    const start = getWmWeekStart(offset);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    const fmt = d => `${d.getMonth() + 1}/${d.getDate()}`;
+    const tag = offset === 0 ? '今週' : offset === -1 ? '先週' : offset === 1 ? '来週' : '';
+    return `${tag ? tag + ' ' : ''}${fmt(start)}〜${fmt(end)}`;
+}
+
+function getWmForWeek(offset) {
+    const weekStart = getWmWeekStart(offset).toISOString().slice(0, 10);
+    return state.weeklyMenus.find(m => m.weekStart === weekStart);
+}
+
+function toggleWeeklyMenuExpand() {
+    const body = document.getElementById('wm-widget-body');
+    const icon = document.getElementById('wm-expand-icon');
+    if (body) {
+        body.classList.toggle('hidden');
+        if (icon) icon.textContent = body.classList.contains('hidden') ? '▼' : '▲';
+    }
+}
+window.toggleWeeklyMenuExpand = toggleWeeklyMenuExpand;
+
+function renderWeeklyMenu() {
+    // ヘッダーの週ラベル更新
+    const headerLabel = document.getElementById('wm-week-label');
+    if (headerLabel) headerLabel.textContent = getWmWeekLabel(wmWeekOffset);
+    const rangeLabel = document.getElementById('wm-week-range');
+    if (rangeLabel) rangeLabel.textContent = getWmWeekLabel(wmWeekOffset);
+
+    // ナビボタン
+    const prevBtn = document.getElementById('wm-prev-week');
+    const nextBtn = document.getElementById('wm-next-week');
+    if (prevBtn) prevBtn.onclick = () => { wmWeekOffset--; renderWeeklyMenu(); };
+    if (nextBtn) nextBtn.onclick = () => { wmWeekOffset++; renderWeeklyMenu(); };
+
+    // 編集ボタン表示制御
+    const editBtn = document.getElementById('wm-edit-btn');
+    if (editBtn) editBtn.style.display = canEditWeeklyMenu() ? 'inline-block' : 'none';
+
+    const container = document.getElementById('wm-table-container');
+    const notesEl = document.getElementById('wm-notes-display');
+    if (!container) return;
+
+    const menu = getWmForWeek(wmWeekOffset);
+    if (!menu || !menu.rows || menu.rows.length === 0) {
+        container.innerHTML = `<div class="empty-state" style="padding:12px;"><p style="font-size:13px;color:#888;">この週のメニューはまだ登録されていません</p></div>`;
+        if (notesEl) notesEl.innerHTML = '';
+        return;
+    }
+
+    // 曜日ヘッダー生成
+    const dayLabels = ['火', '水', '木', '金', '土', '日', '月'];
+    const weekStart = getWmWeekStart(wmWeekOffset);
+
+    let thead = '<tr><th class="wm-th-label"></th>';
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(weekStart);
+        d.setDate(weekStart.getDate() + i);
+        const dayNum = d.getDate();
+        const dayClass = i === 5 ? 'wm-sun' : i === 4 ? 'wm-sat' : '';
+        thead += `<th class="wm-th-day ${dayClass}">${dayLabels[i]} ${d.getMonth() + 1}/${dayNum}</th>`;
+    }
+    thead += '</tr>';
+
+    // 行生成
+    let tbody = '';
+    menu.rows.forEach((rowLabel, ri) => {
+        tbody += `<tr><td class="wm-td-label">${rowLabel}</td>`;
+        for (let di = 0; di < 7; di++) {
+            const key = `${ri}-${di}`;
+            const val = menu.cells?.[key] || '';
+            tbody += `<td class="wm-td-cell">${val ? `<div class="wm-cell-text">${escapeHtml(val).replace(/\n/g, '<br>')}</div>` : '<span class="wm-cell-empty">-</span>'}</td>`;
+        }
+        tbody += '</tr>';
+    });
+
+    container.innerHTML = `<table class="wm-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+
+    // 備考
+    if (notesEl) {
+        if (menu.notes && menu.notes.trim()) {
+            notesEl.innerHTML = `<div class="wm-notes-content"><span class="wm-notes-icon">📝</span>${escapeHtml(menu.notes).replace(/\n/g, '<br>')}</div>`;
+        } else {
+            notesEl.innerHTML = '';
+        }
+    }
+}
+
+function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function openWeeklyMenuEditor() {
+    if (!canEditWeeklyMenu()) return;
+    const menu = getWmForWeek(wmWeekOffset);
+    wmEditRows = menu?.rows?.slice() || ['アップ', 'Menu', 'ダウン'];
+    const cells = menu?.cells || {};
+    const notes = menu?.notes || '';
+
+    const body = document.getElementById('wm-edit-body');
+    const dayLabels = ['火', '水', '木', '金', '土', '日', '月'];
+    const weekStart = getWmWeekStart(wmWeekOffset);
+
+    let html = `<p class="wm-edit-week-label">${getWmWeekLabel(wmWeekOffset)}</p>`;
+    html += '<div class="wm-edit-table-wrap"><table class="wm-edit-table">';
+    // ヘッダー
+    html += '<thead><tr><th></th>';
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(weekStart);
+        d.setDate(weekStart.getDate() + i);
+        html += `<th>${dayLabels[i]} ${d.getMonth() + 1}/${d.getDate()}</th>`;
+    }
+    html += '<th></th></tr></thead><tbody id="wm-edit-rows">';
+
+    wmEditRows.forEach((rowLabel, ri) => {
+        html += `<tr data-row="${ri}">`;
+        html += `<td><input class="wm-row-label-input" value="${escapeHtml(rowLabel)}" data-ri="${ri}" placeholder="行名"></td>`;
+        for (let di = 0; di < 7; di++) {
+            const key = `${ri}-${di}`;
+            const val = cells[key] || '';
+            html += `<td><textarea class="wm-cell-input" data-ri="${ri}" data-di="${di}" placeholder="—">${escapeHtml(val)}</textarea></td>`;
+        }
+        html += `<td><button class="wm-row-del-btn" onclick="removeWeeklyMenuRow(${ri})">✕</button></td>`;
+        html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    html += `<div class="form-group" style="margin-top:12px;">
+        <label>📝 全体備考・コーチコメント</label>
+        <textarea id="wm-edit-notes" rows="4" style="width:100%;box-sizing:border-box;" placeholder="UTのクオリティを上げましょう...">${escapeHtml(notes)}</textarea>
+    </div>`;
+
+    body.innerHTML = html;
+    document.getElementById('wm-edit-modal').classList.remove('hidden');
+}
+window.openWeeklyMenuEditor = openWeeklyMenuEditor;
+
+function addWeeklyMenuRow() {
+    wmEditRows.push('');
+    // モーダルを再構築
+    const cells = collectEditCells();
+    const notes = document.getElementById('wm-edit-notes')?.value || '';
+    // 一時的にstateに保持して再オープン
+    const tempMenu = getWmForWeek(wmWeekOffset) || {};
+    tempMenu.rows = wmEditRows;
+    tempMenu.cells = cells;
+    tempMenu.notes = notes;
+    // 再構築
+    openWeeklyMenuEditorWithData(tempMenu);
+}
+window.addWeeklyMenuRow = addWeeklyMenuRow;
+
+function removeWeeklyMenuRow(ri) {
+    const cells = collectEditCells();
+    const notes = document.getElementById('wm-edit-notes')?.value || '';
+    wmEditRows.splice(ri, 1);
+    // セルのインデックスを再マッピング
+    const newCells = {};
+    Object.entries(cells).forEach(([key, val]) => {
+        const [r, d] = key.split('-').map(Number);
+        if (r === ri) return;
+        const newR = r > ri ? r - 1 : r;
+        newCells[`${newR}-${d}`] = val;
+    });
+    openWeeklyMenuEditorWithData({ rows: wmEditRows, cells: newCells, notes });
+}
+window.removeWeeklyMenuRow = removeWeeklyMenuRow;
+
+function openWeeklyMenuEditorWithData(data) {
+    const body = document.getElementById('wm-edit-body');
+    const dayLabels = ['火', '水', '木', '金', '土', '日', '月'];
+    const weekStart = getWmWeekStart(wmWeekOffset);
+    const cells = data.cells || {};
+    const notes = data.notes || '';
+    wmEditRows = data.rows || [];
+
+    let html = `<p class="wm-edit-week-label">${getWmWeekLabel(wmWeekOffset)}</p>`;
+    html += '<div class="wm-edit-table-wrap"><table class="wm-edit-table"><thead><tr><th></th>';
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(weekStart);
+        d.setDate(weekStart.getDate() + i);
+        html += `<th>${dayLabels[i]} ${d.getMonth() + 1}/${d.getDate()}</th>`;
+    }
+    html += '<th></th></tr></thead><tbody id="wm-edit-rows">';
+    wmEditRows.forEach((rowLabel, ri) => {
+        html += `<tr data-row="${ri}"><td><input class="wm-row-label-input" value="${escapeHtml(rowLabel)}" data-ri="${ri}" placeholder="行名"></td>`;
+        for (let di = 0; di < 7; di++) {
+            const key = `${ri}-${di}`;
+            html += `<td><textarea class="wm-cell-input" data-ri="${ri}" data-di="${di}" placeholder="—">${escapeHtml(cells[key] || '')}</textarea></td>`;
+        }
+        html += `<td><button class="wm-row-del-btn" onclick="removeWeeklyMenuRow(${ri})">✕</button></td></tr>`;
+    });
+    html += '</tbody></table></div>';
+    html += `<div class="form-group" style="margin-top:12px;"><label>📝 全体備考・コーチコメント</label><textarea id="wm-edit-notes" rows="4" style="width:100%;box-sizing:border-box;" placeholder="UTのクオリティを上げましょう...">${escapeHtml(notes)}</textarea></div>`;
+    body.innerHTML = html;
+}
+
+function collectEditCells() {
+    const cells = {};
+    document.querySelectorAll('.wm-cell-input').forEach(ta => {
+        const ri = ta.dataset.ri;
+        const di = ta.dataset.di;
+        if (ta.value.trim()) cells[`${ri}-${di}`] = ta.value;
+    });
+    return cells;
+}
+
+function saveWeeklyMenu() {
+    // 行ラベルを収集
+    const rows = [];
+    document.querySelectorAll('.wm-row-label-input').forEach(input => {
+        rows.push(input.value || `行${rows.length + 1}`);
+    });
+    const cells = collectEditCells();
+    const notes = document.getElementById('wm-edit-notes')?.value || '';
+    const weekStart = getWmWeekStart(wmWeekOffset).toISOString().slice(0, 10);
+
+    let menu = state.weeklyMenus.find(m => m.weekStart === weekStart);
+    if (menu) {
+        menu.rows = rows;
+        menu.cells = cells;
+        menu.notes = notes;
+        menu.updatedBy = state.currentUser?.id;
+        menu.updatedAt = new Date().toISOString();
+    } else {
+        menu = {
+            id: 'wm-' + Date.now(),
+            weekStart,
+            rows,
+            cells,
+            notes,
+            updatedBy: state.currentUser?.id,
+            updatedAt: new Date().toISOString()
+        };
+        state.weeklyMenus.push(menu);
+    }
+
+    DB.save('weekly_menus', state.weeklyMenus);
+    document.getElementById('wm-edit-modal').classList.add('hidden');
+    renderWeeklyMenu();
+    showToast('週間メニューを保存しました', 'success');
+}
+window.saveWeeklyMenu = saveWeeklyMenu;
+
 // 午前/午後セクション描画ヘルパー
 function renderSlotSection(sectionLabel, schedules) {
     if (schedules.length === 0) {
@@ -3857,6 +4126,7 @@ function renderSlotSection(sectionLabel, schedules) {
 }
 
 function renderOverview() {
+    renderWeeklyMenu(); // 週間メニュー更新
     const dateStr = document.getElementById('overview-date').value;
     const container = document.getElementById('schedule-timeline');
     const boatSection = document.getElementById('available-boats-section');
