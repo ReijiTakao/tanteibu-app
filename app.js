@@ -4213,27 +4213,58 @@ function renderTimeBlock(timeLabel, entries) {
 }
 
 // ======= マイレージランキング =======
+let mileagePeriodOffset = 0; // 0=今週/今月, -1=先週/先月...
+let mileageCurrentPeriod = 'week';
+
 function renderMileageRanking(period) {
-    period = period || document.querySelector('.period-btn.active')?.dataset.period || 'week';
+    if (period) {
+        mileageCurrentPeriod = period;
+        mileagePeriodOffset = 0; // 期間切替時はオフセットリセット
+    }
+    period = mileageCurrentPeriod || 'week';
     const container = document.getElementById('mileage-ranking');
     if (!container) return;
 
     // 期間フィルタの日付範囲を計算
     const today = new Date();
-    let startDate;
+    let startDate, endDate;
+    let periodLabel = '';
+
     if (period === 'week') {
         const dayOfWeek = today.getDay();
-        // 火曜日起算: (day + 5) % 7 で火曜からのオフセット
         const tuesdayOffset = (dayOfWeek + 5) % 7;
         startDate = new Date(today);
-        startDate.setDate(today.getDate() - tuesdayOffset);
+        startDate.setDate(today.getDate() - tuesdayOffset + (mileagePeriodOffset * 7));
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 6);
+        const fmt = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
+        const weekLabel = mileagePeriodOffset === 0 ? '今週' : mileagePeriodOffset === -1 ? '先週' : '';
+        periodLabel = `${weekLabel ? weekLabel + ' ' : ''}${fmt(startDate)}〜${fmt(endDate)}`;
     } else if (period === 'month') {
-        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        const targetMonth = new Date(today.getFullYear(), today.getMonth() + mileagePeriodOffset, 1);
+        startDate = targetMonth;
+        endDate = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0);
+        const monthLabel = mileagePeriodOffset === 0 ? '今月' : mileagePeriodOffset === -1 ? '先月' : '';
+        periodLabel = `${monthLabel ? monthLabel + ' ' : ''}${targetMonth.getFullYear()}/${targetMonth.getMonth() + 1}`;
     } else {
-        startDate = new Date(2020, 0, 1); // 累計：全期間
+        startDate = new Date(2020, 0, 1);
+        endDate = today;
+        periodLabel = '累計';
     }
+
+    // ナビゲーションの表示/非表示
+    const nav = document.getElementById('mileage-period-nav');
+    if (nav) nav.style.display = (period === 'all') ? 'none' : 'flex';
+    const label = document.getElementById('mileage-period-label');
+    if (label) label.textContent = periodLabel;
+    const prevBtn = document.getElementById('mileage-prev-period');
+    const nextBtn = document.getElementById('mileage-next-period');
+    if (prevBtn) prevBtn.onclick = () => { mileagePeriodOffset--; renderMileageRanking(); };
+    if (nextBtn) nextBtn.onclick = () => { mileagePeriodOffset++; renderMileageRanking(); };
+
     const startDateStr = startDate.toISOString().slice(0, 10);
-    const todayStr = today.toISOString().slice(0, 10);
+    const endDateStr = endDate.toISOString().slice(0, 10);
 
     // 全ユーザーの距離を集計
     const userDistances = {};
@@ -4243,7 +4274,7 @@ function renderMileageRanking(period) {
 
     state.practiceNotes.forEach(note => {
         if (!note.rowingDistance || note.rowingDistance <= 0) return;
-        if (note.date < startDateStr || note.date > todayStr) return;
+        if (note.date < startDateStr || note.date > endDateStr) return;
         if (!userDistances[note.userId]) return;
         userDistances[note.userId].total += note.rowingDistance;
         userDistances[note.userId].sessions += 1;
@@ -4256,8 +4287,7 @@ function renderMileageRanking(period) {
 
     if (sorted.length === 0) {
         container.innerHTML = `<div class="mileage-empty">
-            <p>まだ練習距離の記録がありません</p>
-            <p class="text-muted">練習ノート → 漕いだ距離を入力するとランキングに反映されます</p>
+            <p>この期間の練習距離の記録はありません</p>
         </div>`;
         return;
     }

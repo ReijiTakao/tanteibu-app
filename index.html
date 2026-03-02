@@ -405,9 +405,14 @@
                         </div>
                         <div class="mileage-widget-body hidden" id="mileage-widget-body">
                             <div class="mileage-period-toggle">
-                                <button class="period-btn active" data-period="week">今週</button>
-                                <button class="period-btn" data-period="month">今月</button>
+                                <button class="period-btn active" data-period="week">週</button>
+                                <button class="period-btn" data-period="month">月</button>
                                 <button class="period-btn" data-period="all">累計</button>
+                            </div>
+                            <div class="pn-week-nav" id="mileage-period-nav">
+                                <button class="pn-week-nav-btn" id="mileage-prev-period">◀</button>
+                                <span class="pn-week-range" id="mileage-period-label"></span>
+                                <button class="pn-week-nav-btn" id="mileage-next-period">▶</button>
                             </div>
                             <div id="mileage-ranking" class="mileage-ranking">
                                 <!-- JSで動的生成 -->
