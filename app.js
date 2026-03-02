@@ -7857,6 +7857,7 @@ function renderWeeklyRanking() {
         if (myBest) {
             const display = formatDisplayDate(myBest.date);
             const idtHtml = is2000m ? renderIDTBadge(myBest.weight, selectedGender, myBest.time, myBest.id, myBest.userId) : '';
+            const ergoTypeBadge = renderErgoTypeBadge(myBest, myBest.userId);
             html += `<div class="my-best-section">
     <div class="ranking-item my-best">
         <div class="rank">YOU</div>
@@ -7867,7 +7868,7 @@ function renderWeeklyRanking() {
         <div>
             <div class="time">${isTimeMenu ? ((myBest.distance || 0) + 'm') : formatTime(myBest.time)}</div>
             <div class="split">Split ${getSplit(myBest)}</div>
-            ${idtHtml}
+            ${idtHtml} ${ergoTypeBadge}
         </div>
     </div>
             </div>`;
@@ -7887,6 +7888,7 @@ function renderWeeklyRanking() {
         const rankSymbol = idx < 3 ? rankMedals[idx] : `${idx + 1}`;
         const isMe = user && user.id === state.currentUser?.id;
         const idtHtml = is2000m ? renderIDTBadge(record.weight, selectedGender, record.time, record.id, record.userId) : '';
+        const ergoTypeBadge = renderErgoTypeBadge(record, record.userId);
 
         return `<div class="ranking-item ${isMe ? 'highlight' : ''}">
             <div class="rank">${rankSymbol}</div>
@@ -7897,7 +7899,7 @@ function renderWeeklyRanking() {
             <div>
                 <div class="time">${isTimeMenu ? ((record.distance || 0) + 'm') : formatTime(record.time)}</div>
                 <div class="split">Split ${getSplit(record)}</div>
-                ${idtHtml}
+                ${idtHtml} ${ergoTypeBadge}
             </div>
         </div>`;
     }).join('');
@@ -8561,6 +8563,7 @@ function renderAllTimeRanking() {
         if (myRecord) {
             const display = formatDisplayDate(myRecord.date);
             const idtHtml = is2000m ? renderIDTBadge(myRecord.weight, selectedGender, myRecord.time, myRecord.id, myRecord.userId) : '';
+            const ergoTypeBadge = renderErgoTypeBadge(myRecord, myRecord.userId);
             html += `<div class="my-best-section">
     <div class="ranking-item my-best">
         <div class="rank">YOU</div>
@@ -8571,7 +8574,7 @@ function renderAllTimeRanking() {
         <div>
             <div class="time">${isTimeMenu ? ((myRecord.distance || 0) + 'm') : (myRecord.timeDisplay || formatTime(myRecord.time))}</div>
             <div class="split">Split ${myRecord.split || getSplit(myRecord)}</div>
-            ${idtHtml}
+            ${idtHtml} ${ergoTypeBadge}
         </div>
     </div>
             </div>`;
@@ -8591,6 +8594,7 @@ function renderAllTimeRanking() {
         const rankSymbol = idx < 3 ? rankMedals[idx] : `${idx + 1}`;
         const isMe = user && user.id === state.currentUser?.id;
         const idtHtml = is2000m ? renderIDTBadge(record.weight, selectedGender, record.time, record.id, record.userId) : '';
+        const ergoTypeBadge = renderErgoTypeBadge(record, record.userId);
 
         // 体重表示（女子プライバシー対応）
         let weightInfo = '';
@@ -8615,7 +8619,7 @@ function renderAllTimeRanking() {
             <div>
                 <div class="time">${isTimeMenu ? ((record.distance || 0) + 'm') : (record.timeDisplay || formatTime(record.time))}</div>
                 <div class="split">Split ${record.split || getSplit(record)}</div>
-                ${idtHtml}
+                ${idtHtml} ${ergoTypeBadge}
             </div>
         </div>`;
     }).join('');
@@ -12705,10 +12709,70 @@ function editRecordWeight(recordId) {
     renderAllTimeRanking();
 }
 
+// =========================================
+// エルゴ種別（ダイナミック/固定）バッジ
+// =========================================
 
-// =========================================
-// データエクスポート（CSV）
-// =========================================
+function renderErgoTypeBadge(record, userId) {
+    const isMe = userId && userId === state.currentUser?.id;
+    const ergoType = record.ergoType;
+
+    if (!ergoType) {
+        // 未設定 → 自分の記録なら設定ボタン
+        if (isMe && record.id) {
+            return `<span class="ergo-type-badge ergo-type-none" onclick="toggleErgoType('${record.id}')" style="cursor:pointer;" title="タップしてエルゴ種別を設定">🖥️?</span>`;
+        }
+        return '';
+    }
+
+    const isDynamic = ergoType === 'ダイナミック';
+    const label = isDynamic ? 'D' : 'S';
+    const title = isDynamic ? 'ダイナミック' : '固定';
+    const cls = isDynamic ? 'ergo-type-dynamic' : 'ergo-type-static';
+
+    if (isMe && record.id) {
+        return `<span class="ergo-type-badge ${cls}" onclick="toggleErgoType('${record.id}')" style="cursor:pointer;" title="${title}（タップで変更）">${label}</span>`;
+    }
+    return `<span class="ergo-type-badge ${cls}" title="${title}">${label}</span>`;
+}
+
+function toggleErgoType(recordId) {
+    let record = state.ergoSessions?.find(s => s.id === recordId);
+    let source = 'ergo_sessions';
+    if (!record) {
+        record = state.ergoRecords?.find(r => r.id === recordId);
+        source = 'ergo_records';
+    }
+    if (!record) return;
+
+    // 循環: 未設定 → ダイナミック → 固定 → 未設定
+    const cycle = [null, 'ダイナミック', '固定'];
+    const currentIdx = cycle.indexOf(record.ergoType || null);
+    const nextIdx = (currentIdx + 1) % cycle.length;
+    record.ergoType = cycle[nextIdx];
+
+    // ローカル保存
+    if (source === 'ergo_sessions') {
+        DB.save('ergo_sessions', state.ergoSessions);
+    } else {
+        DB.save('ergo_records', state.ergoRecords);
+    }
+
+    // Supabase同期
+    if (source === 'ergo_records' && typeof SupabaseDB !== 'undefined' && isSupabaseReady()) {
+        SupabaseDB.saveErgoRecord(record).catch(e => console.error('エルゴ種別同期エラー:', e));
+    }
+
+    // 切り替え結果のトースト
+    const label = record.ergoType ? (record.ergoType === 'ダイナミック' ? '🔄 ダイナミック' : '🔒 固定') : '❌ 未設定';
+    showToast(`エルゴ種別: ${label}`, 'info');
+
+    // 再描画
+    renderWeeklyRanking();
+    renderAllTimeRanking();
+}
+
+
 
 function getExportDateRange() {
     const from = document.getElementById('export-date-from')?.value || '';
