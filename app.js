@@ -7355,11 +7355,14 @@ function renderRecordCard(r, clickable = false) {
     // インターバルのサブタイプを取得（距離ベース/タイムベース）
     const intervalSubtype = getIntervalSubtype(r);
 
+    const ergoTypeBadge = renderErgoTypeBadge(r, r.userId);
+
     return `<div class="ergo-record-item ${categoryClass} ${clickableClass}" ${onclick}>
         <div class="header">
             <div class="menu-info">
                 <span class="menu-key">${r.menuKey || r.distance + 'm'}</span>
                 ${intervalSubtype ? `<span class="interval-type ${intervalSubtype.class}">${intervalSubtype.label}</span>` : ''}
+                ${ergoTypeBadge}
             </div>
             <div class="date-info">
                 <span class="date-year">${display.year}</span>
