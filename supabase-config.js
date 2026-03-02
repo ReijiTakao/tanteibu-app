@@ -950,6 +950,60 @@ const SupabaseDB = {
         }).catch(() => false);
     },
 
+    // --- 週間メニュー ---
+    async loadWeeklyMenus() {
+        if (!isSupabaseReady()) return [];
+        const { data, error } = await _supabaseClient
+            .from('weekly_menus')
+            .select('*')
+            .order('week_start', { ascending: false });
+        if (error) { console.error('Load weekly_menus error:', error); return []; }
+        return (data || []).map(r => ({
+            id: r.id,
+            weekStart: r.week_start,
+            rows: r.rows || [],
+            cells: r.cells || {},
+            notes: r.notes || '',
+            updatedBy: r.updated_by,
+            updatedAt: r.updated_at,
+            createdAt: r.created_at
+        }));
+    },
+
+    async saveWeeklyMenu(menu) {
+        if (!isSupabaseReady()) return null;
+        const row = {
+            id: menu.id,
+            week_start: menu.weekStart,
+            rows: menu.rows || [],
+            cells: menu.cells || {},
+            notes: menu.notes || '',
+            updated_by: menu.updatedBy || null,
+            updated_at: menu.updatedAt || new Date().toISOString()
+        };
+        return withSyncIndicator(async () => {
+            const { data, error } = await _supabaseClient
+                .from('weekly_menus')
+                .upsert(row, { onConflict: 'id' })
+                .select()
+                .single();
+            if (error) { console.error('Save weekly_menu error:', error); throw error; }
+            return data;
+        }).catch(e => { console.error('Supabase op failed:', e); throw e; });
+    },
+
+    async deleteWeeklyMenu(id) {
+        if (!isSupabaseReady()) return false;
+        return withSyncIndicator(async () => {
+            const { error } = await _supabaseClient
+                .from('weekly_menus')
+                .delete()
+                .eq('id', id);
+            if (error) { console.error('Delete weekly_menu error:', error); throw error; }
+            return true;
+        }).catch(() => false);
+    },
+
     // --- アプリ設定 ---
     async loadSetting(key) {
         if (!isSupabaseReady()) return null;

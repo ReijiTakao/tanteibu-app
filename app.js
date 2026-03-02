@@ -502,6 +502,19 @@ const DB = {
                 }
             } catch (e) { console.warn('Boat allocations sync failed:', e); }
 
+            // 週間メニュー
+            try {
+                const weeklyMenus = await window.SupabaseConfig.db.loadWeeklyMenus();
+                if (weeklyMenus.length) {
+                    weeklyMenus.forEach(wm => {
+                        const idx = state.weeklyMenus.findIndex(local => local.id === wm.id);
+                        if (idx !== -1) state.weeklyMenus[idx] = wm;
+                        else state.weeklyMenus.push(wm);
+                    });
+                    this.saveLocal('weekly_menus', state.weeklyMenus);
+                }
+            } catch (e) { console.warn('Weekly menus sync failed:', e); }
+
         } catch (e) {
             console.error('syncFromSupabase failed:', e);
             showToast('同期エラー: ' + (e?.message || JSON.stringify(e)), 'error');
@@ -4091,7 +4104,7 @@ function collectEditCells() {
     return cells;
 }
 
-function saveWeeklyMenu() {
+async function saveWeeklyMenu() {
     // 行ラベルを収集
     const rows = [];
     document.querySelectorAll('.wm-row-label-input').forEach(input => {
@@ -4122,6 +4135,10 @@ function saveWeeklyMenu() {
     }
 
     DB.save('weekly_menus', state.weeklyMenus);
+    // Supabase同期
+    try {
+        await window.SupabaseConfig?.db?.saveWeeklyMenu(menu);
+    } catch (e) { console.warn('Weekly menu Supabase sync failed:', e); }
     document.getElementById('wm-edit-modal').classList.add('hidden');
     renderWeeklyMenu();
     showToast('週間メニューを保存しました', 'success');
