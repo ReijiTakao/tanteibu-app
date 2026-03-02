@@ -6430,11 +6430,10 @@ function navigateToErgoRecord(recId) {
     // エルゴデータタブに切り替え
     switchTab('ergo-data');
 
-    // 遷移後に該当レコードのスプリットモーダルを開く
+    // 遷移後に該当レコードの詳細モーダルを開く
     setTimeout(() => {
-        const rec = state.ergoRecords.find(r => r.id === recId);
-        if (rec && typeof showSplits === 'function') {
-            showSplits(rec);
+        if (typeof openErgoDetail === 'function') {
+            openErgoDetail(recId);
         } else {
             showToast('エルゴデータタブに移動しました', 'info');
         }
@@ -6519,12 +6518,14 @@ function showErgoSelectList(noteId) {
     if (availableRecords.length === 0) {
         selectList.innerHTML = '<p class="text-muted">紐付け可能なエルゴデータがありません</p>';
     } else {
-        selectList.innerHTML = availableRecords.map(rec => `
+        // 高さ制限付きスクロールリスト
+        selectList.innerHTML = `<div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 4px;">` +
+            availableRecords.map(rec => `
             <div class="ergo-select-item" data-record-id="${rec.id}">
                 <span>📊 ${rec.date || '日付不明'} | ${rec.distance || '?'}m — ${rec.timeDisplay || '?'} ${rec.menuKey ? `(${rec.menuKey})` : ''} ${rec.source === 'concept2' || rec.source === 'Concept2' ? '(C2)' : '(手入力)'}</span>
                 <button class="secondary-btn small-btn">追加</button>
             </div>
-        `).join('');
+        `).join('') + `</div>`;
 
         selectList.querySelectorAll('.ergo-select-item button').forEach(btn => {
             btn.addEventListener('click', () => {
