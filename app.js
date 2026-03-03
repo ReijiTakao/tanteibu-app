@@ -2799,14 +2799,10 @@ function openInputModal(dateStr, timeSlot, scheduleId = null) {
     document.getElementById('ergo-menu-group').classList.add('hidden');
     const ergoMenuInput = document.getElementById('input-ergo-menu');
     if (ergoMenuInput) ergoMenuInput.value = '';
-    document.getElementById('boat-group').classList.add('hidden');
-    document.getElementById('oar-group').classList.add('hidden');
-    document.getElementById('crew-group').classList.add('hidden');
     document.getElementById('meal-type-group').classList.add('hidden');
     document.getElementById('video-duration-group').classList.add('hidden');
 
     document.getElementById('delete-schedule-btn').classList.add('hidden');
-    document.getElementById('seat-assignment-container').innerHTML = '';
 
     if (schedule) {
         document.getElementById('delete-schedule-btn').classList.remove('hidden');
@@ -2837,19 +2833,15 @@ function openInputModal(dateStr, timeSlot, scheduleId = null) {
             if (ergoMenuInput) ergoMenuInput.value = schedule.ergoMenu;
         }
 
-        if (schedule.boatType) {
-            const boatTypeBtn = document.querySelector(`.boat-type-btn[data-value="${schedule.boatType}"]`);
-            if (boatTypeBtn) boatTypeBtn.classList.add('active');
-        }
-
-        if (schedule.boatId) document.getElementById('input-boat').value = schedule.boatId;
-        // oarIds復元（複数オール）
-        if (schedule.oarIds || schedule.oarId) {
+        // 配艇選択の復元
+        if (schedule.allocationId) {
             setTimeout(() => {
-                const oarIds = schedule.oarIds || (schedule.oarId ? [schedule.oarId] : []);
-                const selects = document.querySelectorAll('.input-oar-select');
-                oarIds.forEach((id, i) => { if (selects[i]) selects[i].value = id; });
-            }, 50);
+                const allocSelect = document.getElementById('input-allocation');
+                if (allocSelect) {
+                    allocSelect.value = schedule.allocationId;
+                    onAllocationSelected(schedule.allocationId);
+                }
+            }, 100);
         }
 
         // 炊事の復元
@@ -2865,16 +2857,6 @@ function openInputModal(dateStr, timeSlot, scheduleId = null) {
             const vidBtn = document.querySelector(`.video-duration-btn[data-value="${schedule.videoDuration}"]`);
             if (vidBtn) vidBtn.classList.add('active');
         }
-
-        // シート情報を復元
-        const crewMap = schedule.crewDetailsMap || {};
-        if (Object.keys(crewMap).length === 0 && schedule.crewIds) {
-            const seats = getSeatDefinitions(schedule.boatType);
-            schedule.crewIds.forEach((uid, idx) => {
-                if (seats[idx]) crewMap[seats[idx].id] = uid;
-            });
-        }
-        renderSeatInputs(schedule.boatType, crewMap);
 
         // エルゴ記録を読み込み
         const records = state.ergoRecords.filter(r => r.scheduleId === schedule.id);
@@ -2897,22 +2879,16 @@ function handleScheduleTypeChange(type) {
     document.getElementById('absence-reason-group').classList.toggle('hidden', !isAbsent);
     document.getElementById('ergo-type-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.ERGO);
     document.getElementById('ergo-menu-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.ERGO);
-    document.getElementById('boat-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.BOAT);
-    document.getElementById('oar-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.BOAT);
-    document.getElementById('crew-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.BOAT);
     document.getElementById('meal-type-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.MEAL);
     document.getElementById('video-duration-group').classList.toggle('hidden', type !== SCHEDULE_TYPES.VIDEO);
 
-    // 配艇セレクタの表示切替
+    // 配艇セレクタの表示切替（乗艇時のみ表示）
     const allocGroup = document.getElementById('allocation-select-group');
     if (allocGroup) allocGroup.classList.toggle('hidden', type !== SCHEDULE_TYPES.BOAT);
 
-    // 乗艇選択時は配艇セレクタをポピュレート＋シートUI表示
+    // 乗艇選択時は配艇セレクタをポピュレート
     if (type === SCHEDULE_TYPES.BOAT) {
         populateAllocationSelect();
-        const activeBoatTypeBtn = document.querySelector('.boat-type-btn.active');
-        const boatType = activeBoatTypeBtn ? activeBoatTypeBtn.dataset.value : '8+';
-        renderSeatInputs(boatType);
     }
 }
 
@@ -2927,7 +2903,7 @@ function populateAllocationSelect() {
     const myAllocs = allocations.filter(a => (a.crewIds || []).includes(userId));
     const otherAllocs = allocations.filter(a => !(a.crewIds || []).includes(userId));
 
-    let html = '<option value="">配艇を選択（手動入力も可）</option>';
+    let html = '<option value="">配艇を選択してください</option>';
 
     if (myAllocs.length > 0) {
         html += '<optgroup label="⭐ あなたの配艇">';
@@ -2958,10 +2934,6 @@ function onAllocationSelected(allocId) {
     const preview = document.getElementById('allocation-preview');
     if (!allocId) {
         if (preview) preview.innerHTML = '';
-        // 手動入力モードに戻す
-        document.getElementById('boat-group').classList.remove('hidden');
-        document.getElementById('oar-group').classList.remove('hidden');
-        document.getElementById('crew-group').classList.remove('hidden');
         return;
     }
 
@@ -2970,37 +2942,7 @@ function onAllocationSelected(allocId) {
 
     const boat = (state.boats || []).find(b => b.id === alloc.boatId);
 
-    // 艇種ボタンを自動設定
-    if (alloc.boatType) {
-        document.querySelectorAll('.boat-type-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.value === alloc.boatType);
-        });
-    }
-
-    // 船の選択を自動設定
-    if (typeof populateBoatOarSelects === 'function') populateBoatOarSelects();
-    setTimeout(() => {
-        const boatSelect = document.getElementById('input-boat');
-        if (boatSelect && alloc.boatId) boatSelect.value = alloc.boatId;
-
-        // オール自動セット
-        const oarSelects = document.querySelectorAll('#oar-selects-container select');
-        (alloc.oarIds || []).forEach((oid, i) => {
-            if (oarSelects[i]) oarSelects[i].value = oid;
-        });
-
-        // シート自動セット
-        if (alloc.boatType) renderSeatInputs(alloc.boatType);
-        setTimeout(() => {
-            const crewMap = alloc.crewDetailsMap || {};
-            Object.entries(crewMap).forEach(([seat, uid]) => {
-                const seatSelect = document.querySelector(`[data-seat="${seat}"]`);
-                if (seatSelect) seatSelect.value = uid;
-            });
-        }, 50);
-    }, 50);
-
-    // プレビュー表示
+    // プレビュー表示（読み取り専用）
     const crewNames = Object.entries(alloc.crewDetailsMap || {}).map(([seat, uid]) => {
         const u = (state.users || []).find(u => u.id === uid);
         return u ? `<span class="ba-crew-member"><span class="ba-seat">${seat}</span>${u.name}</span>` : '';
@@ -3020,11 +2962,6 @@ function onAllocationSelected(allocId) {
             </div>
         `;
     }
-
-    // 手動入力UIは隠す（配艇から自動入力されるため）
-    document.getElementById('boat-group').classList.add('hidden');
-    document.getElementById('oar-group').classList.add('hidden');
-    document.getElementById('crew-group').classList.add('hidden');
 }
 
 function addErgoRecordInput(existingRecord = null) {
@@ -3233,6 +3170,15 @@ function saveSchedule() {
         }
     }
 
+    // 乗艇の場合は配艇が必須
+    if (scheduleType === SCHEDULE_TYPES.BOAT) {
+        const allocId = document.getElementById('input-allocation')?.value;
+        if (!allocId) {
+            showToast('配艇を選択してください', 'error');
+            return;
+        }
+    }
+
     const newSchedule = {
         id: schedule?.id || generateId(),
         userId: state.currentUser.id,
@@ -3245,11 +3191,11 @@ function saveSchedule() {
 
         ergoType: document.querySelector('.ergo-type-btn.active')?.dataset.value || null,
         ergoMenu: document.getElementById('input-ergo-menu')?.value?.trim() || null,
-        boatType: document.querySelector('.boat-type-btn.active')?.dataset.value || null,
-        boatId: document.getElementById('input-boat').value || null,
-        oarIds: Array.from(document.querySelectorAll('.input-oar-select')).map(s => s.value).filter(v => v),
-        oarId: document.querySelector('.input-oar-select')?.value || null, // 後方互換
         allocationId: document.getElementById('input-allocation')?.value || null,
+        boatType: null,
+        boatId: null,
+        oarIds: [],
+        oarId: null,
         crewIds: [],
         crewDetailsMap: {},
         mealTypes: Array.from(document.querySelectorAll('.meal-type-btn.active')).map(b => b.dataset.value),
@@ -3258,17 +3204,17 @@ function saveSchedule() {
         updatedAt: new Date().toISOString()
     };
 
-    // クルー情報（シート割り当て）を取得
-    if (scheduleType === SCHEDULE_TYPES.BOAT) {
-        const seatInputs = document.querySelectorAll('.seat-user-id');
-        seatInputs.forEach(input => {
-            const userId = input.value;
-            const seatId = input.dataset.seatId;
-            if (userId) {
-                newSchedule.crewDetailsMap[seatId] = userId;
-                newSchedule.crewIds.push(userId);
-            }
-        });
+    // 乗艇の場合: 配艇からboatType/boatId/oarIds/crewIds/crewDetailsMapを自動取得
+    if (scheduleType === SCHEDULE_TYPES.BOAT && newSchedule.allocationId) {
+        const alloc = (state.boatAllocations || []).find(a => a.id === newSchedule.allocationId);
+        if (alloc) {
+            newSchedule.boatType = alloc.boatType || null;
+            newSchedule.boatId = alloc.boatId || null;
+            newSchedule.oarIds = alloc.oarIds || [];
+            newSchedule.oarId = (alloc.oarIds || [])[0] || null;
+            newSchedule.crewIds = alloc.crewIds || [];
+            newSchedule.crewDetailsMap = alloc.crewDetailsMap || {};
+        }
     }
 
     if (schedule) {

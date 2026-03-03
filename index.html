@@ -1057,64 +1057,15 @@
 
                 <!-- 乗艇の場合 -->
                 <div class="form-group hidden" id="allocation-select-group">
-                    <label>📋 配艇から選択</label>
+                    <label>📋 配艇（必須）</label>
                     <select id="input-allocation" onchange="onAllocationSelected(this.value)"
                         style="width:100%;padding:8px;border-radius:8px;border:1px solid #ccc;font-size:13px;">
-                        <option value="">配艇を選択...</option>
+                        <option value="">配艇を選択してください</option>
                     </select>
                     <div id="allocation-preview" style="margin-top:8px;"></div>
                 </div>
 
-                <div class="form-group hidden" id="boat-group">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                        <label style="margin-bottom:0;">艇種</label>
-                        <button type="button" onclick="loadLastBoatSchedule()" class="text-btn small-btn"
-                            style="font-size:12px;">🔄 前回の乗艇を読み込む</button>
-                    </div>
-                    <div class="toggle-group" id="boat-type-group" style="margin-bottom: 8px;">
-                        <button class="toggle-btn boat-type-btn" data-value="1x">1x</button>
-                        <button class="toggle-btn boat-type-btn" data-value="2x">2x</button>
-                        <button class="toggle-btn boat-type-btn" data-value="2-">2-</button>
-                        <button class="toggle-btn boat-type-btn" data-value="4x">4x</button>
-                        <button class="toggle-btn boat-type-btn" data-value="4+">4+</button>
-                        <button class="toggle-btn boat-type-btn" data-value="4-">4-</button>
-                        <button class="toggle-btn boat-type-btn" data-value="8+">8+</button>
-                    </div>
-                    <label>艇 (任意)</label>
-                    <select id="input-boat">
-                        <option value="">選択してください</option>
-                    </select>
-                </div>
-
-
-
-                <div class="form-group hidden" id="oar-group">
-                    <label>オール <span id="oar-count-label"
-                            style="font-weight:400;font-size:12px;color:var(--text-muted);"></span></label>
-                    <div id="oar-selects-container">
-                        <!-- JSで艇種に応じた本数分のselectを動的生成 -->
-                    </div>
-                </div>
-
-                <div class="form-group hidden" id="crew-group">
-                    <div class="label-with-action">
-                        <label>クルー編成</label>
-                        <button id="manage-crew-presets-btn" class="text-btn small-btn">📂 プリセット読込/保存</button>
-                    </div>
-
-                    <!-- シート割り当てUI（ボート種別に応じて動的生成） -->
-                    <div id="seat-assignment-container" class="seat-assignment-container">
-                        <!-- JSで生成: Stroke, 7, ... Bow, Cox -->
-                    </div>
-
-                    <div class="crew-search-wrapper">
-                        <label class="sub-label">メンバー検索・追加</label>
-                        <div id="crew-search-container" class="crew-search-container">
-                            <input type="text" id="crew-search" placeholder="名前で検索...">
-                            <div id="crew-search-results" class="crew-list hidden"></div>
-                        </div>
-                    </div>
-                </div>
+                <!-- 船情報は配艇から自動取得（手動入力は削除済み） -->
 
 
 
