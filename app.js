@@ -401,14 +401,27 @@ const DB = {
                     if (r.rawData?.concept2Id && !r.concept2Id) {
                         r.concept2Id = r.rawData.concept2Id;
                     }
-                    // concept2Idでの重複チェック（ローカルのc2_xxx形式IDとの照合）
-                    const existing = r.concept2Id
-                        ? state.ergoRecords.findIndex(local => local.concept2Id === r.concept2Id)
-                        : state.ergoRecords.findIndex(local => local.id === r.id);
+                    // 3段階の重複チェック: concept2Id → rawId → id
+                    let existing = -1;
+                    if (r.concept2Id) {
+                        existing = state.ergoRecords.findIndex(local => local.concept2Id === r.concept2Id);
+                    }
+                    if (existing === -1 && r.rawId) {
+                        existing = state.ergoRecords.findIndex(local => local.rawId === r.rawId);
+                    }
+                    if (existing === -1) {
+                        existing = state.ergoRecords.findIndex(local => local.id === r.id);
+                    }
                     if (existing !== -1) {
-                        // 既存データを更新（ローカルIDを保持）
+                        // 既存データを更新（ローカルIDを保持、ergoTypeはSupabase優先）
                         const localId = state.ergoRecords[existing].id;
-                        state.ergoRecords[existing] = { ...r, id: localId };
+                        const localErgoType = state.ergoRecords[existing].ergoType;
+                        state.ergoRecords[existing] = { ...r, id: localId, ergoType: r.ergoType || localErgoType };
+                        // ergo_sessionsにもergoTypeを反映
+                        if (r.ergoType && r.rawId) {
+                            const session = state.ergoSessions?.find(s => s.rawId === r.rawId);
+                            if (session) session.ergoType = r.ergoType;
+                        }
                     } else {
                         // 新規データ: concept2Idがあればc2_形式IDを復元
                         if (r.concept2Id) {
@@ -418,6 +431,9 @@ const DB = {
                     }
                 });
                 this.saveLocal('ergo_records', state.ergoRecords);
+                if (state.ergoSessions?.length) {
+                    this.saveLocal('ergo_sessions', state.ergoSessions);
+                }
             }
 
             // クルーノート
@@ -6062,6 +6078,14 @@ function renderPracticeNotesList() {
             } else if (typeLabel === SCHEDULE_TYPES.ERGO) {
                 // --- エルゴカード ---
                 if (hasErgo) {
+                    // 紐付けエルゴのmenuKeyを取得してタイトルに表示
+                    const menuKeys = [...new Set(note.ergoRecordIds.map(recId => {
+                        const rec = state.ergoRecords.find(r => r.id === recId);
+                        return rec?.menuKey || null;
+                    }).filter(Boolean))];
+                    if (menuKeys.length > 0) {
+                        cardBodyHtml += `<div class="pn-card-menu-title" style="font-weight:600;margin-bottom:4px;">${menuKeys.join(' / ')}</div>`;
+                    }
                     cardBodyHtml += `<div class="pn-card-ergo-list">`;
                     note.ergoRecordIds.forEach(recId => {
                         const rec = state.ergoRecords.find(r => r.id === recId);
@@ -6155,11 +6179,22 @@ function openPracticeNoteModal(noteId) {
     const timeLabel = schedule?.startTime || note.timeSlot || '';
     const memoText = schedule?.memo ? `<div class="pn-memo">📋 ${schedule.memo}</div>` : '';
 
+    // エルゴの場合、menuKeyをタイトルに追加
+    let ergoMenuLabel = '';
+    if (typeLabel === SCHEDULE_TYPES.ERGO && note.ergoRecordIds?.length) {
+        const menuKeys = [...new Set(note.ergoRecordIds.map(recId => {
+            const rec = state.ergoRecords.find(r => r.id === recId);
+            return rec?.menuKey || null;
+        }).filter(Boolean))];
+        if (menuKeys.length) ergoMenuLabel = menuKeys.join(' / ');
+    }
+
     // 閲覧モードのサマリー
     document.getElementById('practice-note-read-summary').innerHTML = `
         <div class="pn-summary-header">
             <span class="pn-summary-date">${display.month}/${display.day} (${display.weekday})</span>
             <span class="slot-type-badge">${typeLabel}</span>
+            ${ergoMenuLabel ? `<span style="font-weight:600;color:var(--text-primary);">${ergoMenuLabel}</span>` : ''}
             ${timeLabel ? `<span class="pn-summary-time">${timeLabel}</span>` : ''}
         </div>
         ${memoText}
@@ -12759,34 +12794,47 @@ function renderErgoTypeBadge(record, userId) {
 }
 
 function toggleErgoType(recordId) {
-    let record = state.ergoSessions?.find(s => s.id === recordId);
-    let source = 'ergo_sessions';
-    if (!record) {
-        record = state.ergoRecords?.find(r => r.id === recordId);
-        source = 'ergo_records';
+    // ergo_records を優先的に検索（Supabase同期対象）
+    let record = state.ergoRecords?.find(r => r.id === recordId);
+    let sessionRecord = state.ergoSessions?.find(s => s.id === recordId);
+
+    // ergo_sessionsにしか無い場合は、対応するergo_recordを探す
+    if (!record && sessionRecord) {
+        record = state.ergoRecords?.find(r =>
+            r.rawId === sessionRecord.rawId ||
+            (r.concept2Id && sessionRecord.rawId && r.rawId === sessionRecord.rawId)
+        );
     }
-    if (!record) return;
+
+    // どちらにも見つからない場合
+    if (!record && !sessionRecord) return;
 
     // 循環: 未設定 → ダイナミック → 固定 → 未設定
     const cycle = [null, 'ダイナミック', '固定'];
-    const currentIdx = cycle.indexOf(record.ergoType || null);
+    const currentType = (record || sessionRecord).ergoType || null;
+    const currentIdx = cycle.indexOf(currentType);
     const nextIdx = (currentIdx + 1) % cycle.length;
-    record.ergoType = cycle[nextIdx];
+    const newErgoType = cycle[nextIdx];
 
-    // ローカル保存
-    if (source === 'ergo_sessions') {
+    // ergo_sessionsの更新
+    if (sessionRecord) {
+        sessionRecord.ergoType = newErgoType;
         DB.save('ergo_sessions', state.ergoSessions);
-    } else {
-        DB.save('ergo_records', state.ergoRecords);
     }
 
-    // Supabase同期（ergo_sessions/ergo_records両方対応）
-    if (typeof SupabaseDB !== 'undefined' && isSupabaseReady()) {
-        SupabaseDB.saveErgoRecord(record).catch(e => console.error('エルゴ種別同期エラー:', e));
+    // ergo_recordsの更新
+    if (record) {
+        record.ergoType = newErgoType;
+        DB.save('ergo_records', state.ergoRecords);
+
+        // Supabase同期（ergo_recordsのレコードを使用 → concept2Idが保持されて重複防止）
+        if (typeof SupabaseDB !== 'undefined' && isSupabaseReady()) {
+            SupabaseDB.saveErgoRecord(record).catch(e => console.error('エルゴ種別同期エラー:', e));
+        }
     }
 
     // 切り替え結果のトースト
-    const label = record.ergoType ? (record.ergoType === 'ダイナミック' ? '🔄 ダイナミック' : '🔒 固定') : '❌ 未設定';
+    const label = newErgoType ? (newErgoType === 'ダイナミック' ? '🔄 ダイナミック' : '🔒 固定') : '❌ 未設定';
     showToast(`エルゴ種別: ${label}`, 'info');
 
     // 再描画（全ビュー対応）
