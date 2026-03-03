@@ -113,10 +113,47 @@ async function handleEmailLogin() {
         showToast('ログインに失敗しました', 'error');
         btn.disabled = false;
     } else {
-        if (statusEl) statusEl.textContent = 'ログイン成功！';
+        if (statusEl) statusEl.textContent = 'ログイン成功！データを読み込み中...';
         showToast('ログイン成功', 'success');
+
+        // onAuthStateChangeが未登録の場合に備え、直接画面遷移を行う
+        try {
+            const session = await window.SupabaseConfig.getSession();
+            if (session) {
+                const authSuccess = await handleAuthSession(session);
+                if (authSuccess && state.currentUser?.approvalStatus === '承認済み') {
+                    // Supabaseから最新データを同期
+                    try {
+                        await DB.syncFromSupabase();
+                    } catch (syncErr) {
+                        console.warn('Post-login sync failed:', syncErr);
+                    }
+                    initMainScreen();
+                    updateConcept2UI();
+                    showScreen('main-screen');
+
+                    // onAuthStateChangeも登録しておく（以降のセッション変更を監視）
+                    window.SupabaseConfig.onAuthStateChange(async (ev, sess) => {
+                        if (ev === 'SIGNED_OUT') {
+                            state.currentUser = null;
+                            DB.save('current_user', null);
+                            showScreen('login-screen');
+                        }
+                    });
+                } else {
+                    if (statusEl) statusEl.textContent = 'アカウントが承認されていません';
+                    showToast('アカウントが承認されていません', 'error');
+                }
+            } else {
+                if (statusEl) statusEl.textContent = 'セッション取得に失敗しました';
+                showToast('セッション取得に失敗しました', 'error');
+            }
+        } catch (postLoginErr) {
+            console.error('Post-login processing failed:', postLoginErr);
+            if (statusEl) statusEl.textContent = 'ログイン後の処理に失敗しました';
+            showToast('ログイン後の処理に失敗しました', 'error');
+        }
         btn.disabled = false;
-        // onAuthStateChange の SIGNED_IN イベントで自動的にメイン画面へ遷移
     }
 }
 
