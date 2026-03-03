@@ -116,42 +116,76 @@ async function handleEmailLogin() {
         if (statusEl) statusEl.textContent = 'ログイン成功！データを読み込み中...';
         showToast('ログイン成功', 'success');
 
-        // onAuthStateChangeが未登録の場合に備え、直接画面遷移を行う
-        try {
-            const session = await window.SupabaseConfig.getSession();
-            if (session) {
-                const authSuccess = await handleAuthSession(session);
-                if (authSuccess && state.currentUser?.approvalStatus === '承認済み') {
-                    // Supabaseから最新データを同期
-                    try {
-                        await DB.syncFromSupabase();
-                    } catch (syncErr) {
-                        console.warn('Post-login sync failed:', syncErr);
-                    }
-                    initMainScreen();
-                    updateConcept2UI();
-                    showScreen('main-screen');
+        // ログイン成功後の画面遷移処理（各ステップを個別にtry-catchで堅牢化）
+        let session = null;
+        let authSuccess = false;
 
-                    // onAuthStateChangeも登録しておく（以降のセッション変更を監視）
-                    window.SupabaseConfig.onAuthStateChange(async (ev, sess) => {
-                        if (ev === 'SIGNED_OUT') {
-                            state.currentUser = null;
-                            DB.save('current_user', null);
-                            showScreen('login-screen');
-                        }
-                    });
-                } else {
-                    if (statusEl) statusEl.textContent = 'アカウントが承認されていません';
-                    showToast('アカウントが承認されていません', 'error');
-                }
-            } else {
-                if (statusEl) statusEl.textContent = 'セッション取得に失敗しました';
-                showToast('セッション取得に失敗しました', 'error');
+        // Step 1: セッション取得
+        try {
+            console.log('[Login] Step 1: Getting session...');
+            session = await window.SupabaseConfig.getSession();
+            console.log('[Login] Session:', session ? 'OK' : 'null');
+        } catch (e) {
+            console.error('[Login] Step 1 failed (getSession):', e);
+        }
+
+        // Step 2: プロフィール認証
+        if (session) {
+            try {
+                console.log('[Login] Step 2: handleAuthSession...');
+                authSuccess = await handleAuthSession(session);
+                console.log('[Login] Auth result:', authSuccess, 'approvalStatus:', state.currentUser?.approvalStatus);
+            } catch (e) {
+                console.error('[Login] Step 2 failed (handleAuthSession):', e);
             }
-        } catch (postLoginErr) {
-            console.error('Post-login processing failed:', postLoginErr);
-            if (statusEl) statusEl.textContent = 'ログイン後の処理に失敗しました';
-            showToast('ログイン後の処理に失敗しました', 'error');
+        }
+
+        // Step 3: 画面遷移（プロフィール取得成功の場合）
+        if (authSuccess && state.currentUser?.approvalStatus === '承認済み') {
+            // データ同期（失敗してもOK）
+            try {
+                console.log('[Login] Step 3: Syncing from Supabase...');
+                await DB.syncFromSupabase();
+            } catch (syncErr) {
+                console.warn('[Login] Sync failed (non-critical):', syncErr);
+            }
+
+            // メイン画面初期化・表示
+            try {
+                console.log('[Login] Step 4: Initializing main screen...');
+                initMainScreen();
+                updateConcept2UI();
+                showScreen('main-screen');
+                console.log('[Login] ✅ Main screen displayed');
+            } catch (screenErr) {
+                console.error('[Login] Step 4 failed (initMainScreen):', screenErr);
+                // それでもメイン画面表示を試みる
+                try { showScreen('main-screen'); } catch (e) { /* ignore */ }
+            }
+
+            // ログアウト監視を登録
+            try {
+                window.SupabaseConfig.onAuthStateChange(async (ev, sess) => {
+                    if (ev === 'SIGNED_OUT') {
+                        state.currentUser = null;
+                        DB.save('current_user', null);
+                        showScreen('login-screen');
+                    }
+                });
+            } catch (e) {
+                console.warn('[Login] onAuthStateChange registration failed:', e);
+            }
+        } else if (session && !authSuccess) {
+            // セッションはあるがプロフィール取得に失敗
+            if (statusEl) statusEl.textContent = 'プロフィール取得に失敗しました。ページを再読み込みしてください。';
+            showToast('プロフィール取得に失敗しました', 'error');
+        } else if (authSuccess && state.currentUser?.approvalStatus !== '承認済み') {
+            if (statusEl) statusEl.textContent = 'アカウントが承認されていません';
+            showToast('アカウントが承認されていません', 'error');
+        } else {
+            // セッション取得自体に失敗
+            if (statusEl) statusEl.textContent = 'セッション取得に失敗しました。ページを再読み込みしてください。';
+            showToast('ページを再読み込みしてください', 'error');
         }
         btn.disabled = false;
     }
