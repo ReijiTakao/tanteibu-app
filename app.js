@@ -3683,12 +3683,12 @@ function filterCrew(query) {
 const CREW_PRESETS_KEY = 'crew_presets';
 
 // プリセットモーダルを開く
-document.getElementById('manage-crew-presets-btn').addEventListener('click', () => {
+document.getElementById('manage-crew-presets-btn')?.addEventListener('click', () => {
     openCrewPresetModal();
 });
 
-document.getElementById('crew-preset-close').addEventListener('click', () => {
-    document.getElementById('crew-preset-modal').classList.add('hidden');
+document.getElementById('crew-preset-close')?.addEventListener('click', () => {
+    document.getElementById('crew-preset-modal')?.classList.add('hidden');
 });
 
 document.querySelectorAll('#crew-preset-modal .tab-btn').forEach(btn => {
@@ -3705,7 +3705,7 @@ document.querySelectorAll('#crew-preset-modal .tab-btn').forEach(btn => {
     });
 });
 
-document.getElementById('save-new-preset-btn').addEventListener('click', () => {
+document.getElementById('save-new-preset-btn')?.addEventListener('click', () => {
     saveCrewPreset();
 });
 
@@ -3873,7 +3873,7 @@ window.loadPresetToForm = function (id) { // onclickから呼ぶためglobalに
 window.deletePreset = deletePreset; // global exposure
 
 // 検索入力イベントのリスナー再登録（動的要素対応のため、または既存のリスナーを確認）
-document.getElementById('crew-search').addEventListener('input', (e) => {
+document.getElementById('crew-search')?.addEventListener('input', (e) => {
     filterCrew(e.target.value);
 });
 
