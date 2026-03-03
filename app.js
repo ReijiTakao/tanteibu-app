@@ -9460,13 +9460,18 @@ const initializeApp = async () => {
 
         // Supabaseクライアントの初期化（遅延読込対応付き）
         let supabaseReady = false;
-        if (window.SupabaseConfig) {
-            supabaseReady = window.SupabaseConfig.init();
-            if (!supabaseReady) {
-                // CDN遅延読み込みに対応: リトライして接続を試みる
-                console.log('⏳ Supabase SDK 初回初期化失敗。リトライします...');
-                supabaseReady = await window.SupabaseConfig.ensureReady(5, 1000);
+        try {
+            if (window.SupabaseConfig) {
+                supabaseReady = window.SupabaseConfig.init();
+                if (!supabaseReady) {
+                    // CDN遅延読み込みに対応: リトライして接続を試みる
+                    console.log('⏳ Supabase SDK 初回初期化失敗。リトライします...');
+                    supabaseReady = await window.SupabaseConfig.ensureReady(5, 1000);
+                }
             }
+        } catch (supabaseInitErr) {
+            console.error('Supabase initialization error (non-fatal):', supabaseInitErr);
+            supabaseReady = false;
         }
 
         // デモモード時のみデモデータを作成
@@ -9478,60 +9483,64 @@ const initializeApp = async () => {
 
         // Supabase認証セッションのチェック
         let loggedIn = false;
-        if (supabaseReady) {
-            const session = await window.SupabaseConfig.getSession();
-            if (session) {
-                const authSuccess = await handleAuthSession(session);
-                if (authSuccess) {
-                    loggedIn = true;
-                    // Supabaseからプロフィール一覧をロード
-                    try {
-                        const profiles = await window.SupabaseConfig.db.loadProfiles();
-                        if (profiles.length > 0) {
-                            state.users = profiles.map(p => ({
-                                id: p.id,
-                                authId: p.auth_id,
-                                name: p.name,
-                                grade: p.grade,
-                                gender: p.gender || 'man',
-                                role: migrateRole(p.role || '漕手'),
-                                status: p.status || '在籍',
-                                approvalStatus: p.approval_status || '承認済み',
-                                concept2Connected: p.concept2_connected || false,
-                                concept2Token: p.concept2_access_token || null,
-                                concept2LastSync: p.concept2_last_sync || null,
-                                side: p.side || null,
-                                weight: p.weight || null
-                            }));
-                            DB.saveLocal('users', state.users);
-                        }
-                    } catch (e) {
-                        console.warn('Failed to load profiles from Supabase:', e);
-                    }
-                }
-            }
-
-            // 認証状態変更の監視（ログイン/ログアウト時に自動反映）
-            window.SupabaseConfig.onAuthStateChange(async (event, session) => {
-                if (event === 'SIGNED_IN' && session) {
+        try {
+            if (supabaseReady) {
+                const session = await window.SupabaseConfig.getSession();
+                if (session) {
                     const authSuccess = await handleAuthSession(session);
-                    if (authSuccess && state.currentUser?.approvalStatus === '承認済み') {
-                        // Supabaseから最新データを同期してからUI初期化
+                    if (authSuccess) {
+                        loggedIn = true;
+                        // Supabaseからプロフィール一覧をロード
                         try {
-                            await DB.syncFromSupabase();
+                            const profiles = await window.SupabaseConfig.db.loadProfiles();
+                            if (profiles.length > 0) {
+                                state.users = profiles.map(p => ({
+                                    id: p.id,
+                                    authId: p.auth_id,
+                                    name: p.name,
+                                    grade: p.grade,
+                                    gender: p.gender || 'man',
+                                    role: migrateRole(p.role || '漕手'),
+                                    status: p.status || '在籍',
+                                    approvalStatus: p.approval_status || '承認済み',
+                                    concept2Connected: p.concept2_connected || false,
+                                    concept2Token: p.concept2_access_token || null,
+                                    concept2LastSync: p.concept2_last_sync || null,
+                                    side: p.side || null,
+                                    weight: p.weight || null
+                                }));
+                                DB.saveLocal('users', state.users);
+                            }
                         } catch (e) {
-                            console.warn('Post-login sync failed:', e);
+                            console.warn('Failed to load profiles from Supabase:', e);
                         }
-                        initMainScreen();
-                        updateConcept2UI();
-                        showScreen('main-screen');
                     }
-                } else if (event === 'SIGNED_OUT') {
-                    state.currentUser = null;
-                    DB.save('current_user', null);
-                    showScreen('login-screen');
                 }
-            });
+
+                // 認証状態変更の監視（ログイン/ログアウト時に自動反映）
+                window.SupabaseConfig.onAuthStateChange(async (event, session) => {
+                    if (event === 'SIGNED_IN' && session) {
+                        const authSuccess = await handleAuthSession(session);
+                        if (authSuccess && state.currentUser?.approvalStatus === '承認済み') {
+                            // Supabaseから最新データを同期してからUI初期化
+                            try {
+                                await DB.syncFromSupabase();
+                            } catch (e) {
+                                console.warn('Post-login sync failed:', e);
+                            }
+                            initMainScreen();
+                            updateConcept2UI();
+                            showScreen('main-screen');
+                        }
+                    } else if (event === 'SIGNED_OUT') {
+                        state.currentUser = null;
+                        DB.save('current_user', null);
+                        showScreen('login-screen');
+                    }
+                });
+            }
+        } catch (sessionErr) {
+            console.error('Session check error (non-fatal):', sessionErr);
         }
 
         // デモモードからの前回ログイン状態復帰
