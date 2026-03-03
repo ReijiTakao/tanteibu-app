@@ -9592,10 +9592,20 @@ const initializeApp = async () => {
             showScreen('login-screen');
         }
 
+    } catch (e) {
+        console.error('App init error:', e);
+        const container = document.getElementById('user-select-list');
+        if (container) container.innerHTML = `<div style="color:red">Error: ${e.message}</div>`;
+    }
+
+    // =========================================
+    // イベントリスナー登録（初期化の成否に関わらず必ず実行）
+    // =========================================
+    try {
         // ログイン関連
-        document.getElementById('skip-concept2-btn').addEventListener('click', skipConcept2);
-        document.getElementById('connect-concept2-btn').addEventListener('click', connectConcept2);
-        document.getElementById('logout-btn').addEventListener('click', handleLogout);
+        document.getElementById('skip-concept2-btn')?.addEventListener('click', skipConcept2);
+        document.getElementById('connect-concept2-btn')?.addEventListener('click', connectConcept2);
+        document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
         document.getElementById('reset-data-btn')?.addEventListener('click', () => {
             showConfirmModal('⚠️ 全てのローカルデータを削除します。この操作は取り消せません。よろしいですか？', () => {
                 showConfirmModal('本当に全データを削除しますか？（最終確認）', () => {
@@ -9617,20 +9627,20 @@ const initializeApp = async () => {
         });
 
         // 週ナビ
-        document.getElementById('prev-week-btn').addEventListener('click', () => {
+        document.getElementById('prev-week-btn')?.addEventListener('click', () => {
             state.currentWeekStart.setDate(state.currentWeekStart.getDate() - 7);
             renderWeekCalendar();
         });
-        document.getElementById('next-week-btn').addEventListener('click', () => {
+        document.getElementById('next-week-btn')?.addEventListener('click', () => {
             state.currentWeekStart.setDate(state.currentWeekStart.getDate() + 7);
             renderWeekCalendar();
         });
 
         // 入力モーダル
-        document.getElementById('input-modal-close').addEventListener('click', closeInputModal);
-        document.querySelector('#input-modal .modal-overlay').addEventListener('click', closeInputModal);
-        document.getElementById('save-schedule-btn').addEventListener('click', saveSchedule);
-        document.getElementById('delete-schedule-btn').addEventListener('click', deleteSchedule);
+        document.getElementById('input-modal-close')?.addEventListener('click', closeInputModal);
+        document.querySelector('#input-modal .modal-overlay')?.addEventListener('click', closeInputModal);
+        document.getElementById('save-schedule-btn')?.addEventListener('click', saveSchedule);
+        document.getElementById('delete-schedule-btn')?.addEventListener('click', deleteSchedule);
 
         // 予定種別切替
         document.querySelectorAll('.schedule-type-btn').forEach(btn => {
@@ -9671,7 +9681,7 @@ const initializeApp = async () => {
         });
 
         // クルー検索
-        document.getElementById('crew-search').addEventListener('input', (e) => filterCrew(e.target.value));
+        document.getElementById('crew-search')?.addEventListener('input', (e) => filterCrew(e.target.value));
 
         // サブタブ切替（ノートタブ内）
         document.querySelectorAll('.note-subtab-btn').forEach(btn => {
@@ -9692,7 +9702,7 @@ const initializeApp = async () => {
         });
 
         // 全体タブ
-        document.getElementById('overview-date').addEventListener('change', renderOverview);
+        document.getElementById('overview-date')?.addEventListener('change', renderOverview);
 
         // マイレージ期間切替
         document.querySelectorAll('.period-btn').forEach(btn => {
@@ -9729,12 +9739,9 @@ const initializeApp = async () => {
             deleteMasterItem(e);
         });
 
-    } catch (e) {
-        console.error('App init error:', e);
-        // showToast('アプリの初期化に失敗しました: ' + e.message, 'error');
-        // fallback
-        const container = document.getElementById('user-select-list');
-        if (container) container.innerHTML = `< div style = "color:red" > Error: ${e.message}</div > `;
+        console.log('✅ All event listeners registered successfully');
+    } catch (listenerErr) {
+        console.error('Event listener registration error:', listenerErr);
     }
 };
 
