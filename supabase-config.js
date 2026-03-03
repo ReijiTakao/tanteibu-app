@@ -24,15 +24,51 @@ function initSupabaseClient() {
     if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
         _supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         window.supabaseClient = _supabaseClient;
+        console.log('✅ Supabase client initialized (window.supabase)');
         return true;
     } else if (typeof window.supabase_js !== 'undefined') {
         _supabaseClient = window.supabase_js.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         window.supabaseClient = _supabaseClient;
+        console.log('✅ Supabase client initialized (window.supabase_js)');
         return true;
     } else {
         console.error('❌ Supabase SDK not loaded. Checked window.supabase and window.supabase_js');
         return false;
     }
+}
+
+/**
+ * Supabase SDKを動的に読み込み、クライアントを初期化する（リトライ付き）
+ * CDNの遅延読み込みやキャッシュ問題に対応
+ */
+async function ensureSupabaseReady(maxRetries = 3, intervalMs = 1000) {
+    // 既に初期化済みならすぐ返す
+    if (isSupabaseReady()) return true;
+
+    // SDKがまだ読み込まれていない場合、既存のscriptタグの完了を待つ
+    for (let i = 0; i < maxRetries; i++) {
+        console.log(`⏳ Supabase SDK 読み込み待機中... (${i + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, intervalMs));
+        if (initSupabaseClient()) return true;
+    }
+
+    // リトライでもダメなら、scriptタグを動的に追加して再読み込み
+    console.log('🔄 Supabase SDK を再読み込みします...');
+    try {
+        await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+        // スクリプト読み込み後に初期化を試行
+        if (initSupabaseClient()) return true;
+    } catch (e) {
+        console.error('❌ Supabase SDK 再読み込み失敗:', e);
+    }
+
+    return false;
 }
 
 /**
@@ -1086,6 +1122,7 @@ const SupabaseDB = {
 window.SupabaseConfig = {
     init: initSupabaseClient,
     isReady: isSupabaseReady,
+    ensureReady: ensureSupabaseReady,
     signUp: signUpWithEmail,
     signIn: signInWithEmail,
     signOut: signOutUser,

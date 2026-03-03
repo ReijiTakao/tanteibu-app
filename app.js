@@ -80,9 +80,26 @@ async function handleEmailLogin() {
     }
 
     if (!window.SupabaseConfig || !window.SupabaseConfig.isReady()) {
-        if (statusEl) statusEl.textContent = 'サーバーに接続できません。ネット接続を確認してください。';
-        showToast('サーバー未接続', 'error');
-        return;
+        // SDK遅延読み込み対応: リトライを試行
+        if (statusEl) statusEl.textContent = 'サーバーに接続中...';
+        btn.disabled = true;
+        try {
+            const ready = await window.SupabaseConfig?.ensureReady(3, 800);
+            if (!ready) {
+                if (statusEl) statusEl.textContent = 'サーバーに接続できません。ページを再読み込みしてください。';
+                showToast('サーバーに接続できません。ページを再読み込みしてください。', 'error');
+                btn.disabled = false;
+                return;
+            }
+            // ensureReady成功後、DB.useSupabaseも有効にする
+            DB.useSupabase = true;
+        } catch (e) {
+            console.error('Supabase ensureReady failed:', e);
+            if (statusEl) statusEl.textContent = 'サーバーに接続できません。ページを再読み込みしてください。';
+            showToast('サーバーに接続できません', 'error');
+            btn.disabled = false;
+            return;
+        }
     }
 
     btn.disabled = true;
@@ -9370,10 +9387,15 @@ const initializeApp = async () => {
             if (resetBtn) resetBtn.classList.remove('hidden');
         }
 
-        // Supabaseクライアントの初期化
+        // Supabaseクライアントの初期化（遅延読込対応付き）
         let supabaseReady = false;
         if (window.SupabaseConfig) {
             supabaseReady = window.SupabaseConfig.init();
+            if (!supabaseReady) {
+                // CDN遅延読み込みに対応: リトライして接続を試みる
+                console.log('⏳ Supabase SDK 初回初期化失敗。リトライします...');
+                supabaseReady = await window.SupabaseConfig.ensureReady(5, 1000);
+            }
         }
 
         // デモモード時のみデモデータを作成
