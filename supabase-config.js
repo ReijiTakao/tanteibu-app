@@ -479,6 +479,19 @@ const SupabaseDB = {
         }).catch(() => false);
     },
 
+    async deleteErgoRecordsByUser(userId, source) {
+        if (!isSupabaseReady()) return false;
+        return withSyncIndicator(async () => {
+            const { error } = await _supabaseClient
+                .from('ergo_records')
+                .delete()
+                .eq('user_id', userId)
+                .eq('source', source);
+            if (error) { console.error('Delete ergo records by user error:', error); throw error; }
+            return true;
+        }).catch(() => false);
+    },
+
     // --- クルーノート ---
     _toCrewNoteRow(n) {
         return {
@@ -809,7 +822,7 @@ const SupabaseDB = {
                 .select('id')
                 .eq('boat_id', riggingData.boat_id)
                 .eq('user_id', riggingData.user_id)
-                .single();
+                .maybeSingle();
 
             const upsertData = { ...riggingData };
             if (existing) {

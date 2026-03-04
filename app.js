@@ -488,7 +488,7 @@ const DB = {
                 const processedConcept2Ids = new Set();
                 // ローカルに既存のconcept2Idを事前に収集
                 state.ergoRecords.forEach(local => {
-                    if (local.concept2Id) processedConcept2Ids.add(local.concept2Id);
+                    if (local.concept2Id && local.concept2Id !== '') processedConcept2Ids.add(local.concept2Id);
                 });
 
                 allRecords.forEach(r => {
@@ -526,7 +526,7 @@ const DB = {
                         }
                     } else {
                         // 新規データ: concept2Idがあればc2_形式IDを復元
-                        if (r.concept2Id) {
+                        if (r.concept2Id && r.concept2Id !== '') {
                             r.id = 'c2_' + r.concept2Id;
                             processedConcept2Ids.add(r.concept2Id);
                         }
@@ -1947,6 +1947,16 @@ function classifyErgoSessions(reclassify = false) {
 
         // 再分類の場合はConcept2由来のデータのみクリア（手入力レコードは保持）
         if (reclassify) {
+            // Supabaseからも該当ユーザーのConcept2レコードを削除
+            if (DB.useSupabase && window.SupabaseConfig?.db) {
+                try {
+                    await window.SupabaseConfig.db.deleteErgoRecordsByUser(
+                        state.currentUser.id, 'Concept2'
+                    );
+                } catch (e) {
+                    console.warn('Supabase ergo cleanup failed:', e);
+                }
+            }
             state.ergoSessions = state.ergoSessions.filter(s =>
                 s.userId !== state.currentUser.id || s.source !== 'Concept2'
             );
