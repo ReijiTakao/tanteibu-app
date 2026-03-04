@@ -1582,7 +1582,7 @@ function processConceptData(results) {
     DB.save('ergoRaw', state.ergoRaw);
 
     // 分類ロジックのバージョン管理：ロジック変更時にバージョンを上げると既存データを自動再分類
-    const CLASSIFY_VERSION = 2; // v2: workoutTypeベースのインターバル分類修正
+    const CLASSIFY_VERSION = 3; // v3: カロリー・ワット・ドラッグファクタ対応
     const savedVersion = parseInt(localStorage.getItem('ergo_classify_v') || '0');
     const needReclassify = savedVersion < CLASSIFY_VERSION;
     if (needReclassify) {
@@ -1742,6 +1742,10 @@ async function fetchConcept2Data() {
                         intervals: workout.intervals || [], // インターバルデータ
                         restTime: result.rest_time || 0,
                         restDistance: result.rest_distance || 0,
+                        // カロリー・ワット・ドラッグファクタ
+                        calories: result.calories_total || result.calories || workout.calories_total || null,
+                        avgWatts: workout.avg_watts || result.avg_watts || null,
+                        dragFactor: result.drag_factor || workout.drag_factor || null,
                         source: result.source,
                         verified: result.verified,
                         userId: state.currentUser.id,
@@ -2094,7 +2098,20 @@ function classifyErgoSessions(reclassify = false) {
                 weight: dayWeight,
                 menuKey: menuKey,
                 category: category,
-                source: 'Concept2'
+                source: 'Concept2',
+                // カロリー・ワット・ドラッグファクタ
+                calories: raw.calories || null,
+                watts: raw.avgWatts || null,
+                dragFactor: raw.dragFactor || null,
+                // rawDataに詳細を含める（詳細画面用）
+                rawData: {
+                    concept2Id: String(raw.concept2Id || ''),
+                    splits: raw.splits || [],
+                    intervals: raw.intervals || [],
+                    calories: raw.calories || null,
+                    avg_watts: raw.avgWatts || null,
+                    drag_factor: raw.dragFactor || null
+                }
             });
             newlyAddedRecordIds.push(newRecordId);
         });
