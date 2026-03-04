@@ -1945,10 +1945,14 @@ function classifyErgoSessions(reclassify = false) {
 
         const userRaw = state.ergoRaw.filter(r => r.userId === state.currentUser.id);
 
-        // 再分類の場合は既存データをクリア
+        // 再分類の場合はConcept2由来のデータのみクリア（手入力レコードは保持）
         if (reclassify) {
-            state.ergoSessions = state.ergoSessions.filter(s => s.userId !== state.currentUser.id);
-            state.ergoRecords = state.ergoRecords.filter(r => r.userId !== state.currentUser.id);
+            state.ergoSessions = state.ergoSessions.filter(s =>
+                s.userId !== state.currentUser.id || s.source !== 'Concept2'
+            );
+            state.ergoRecords = state.ergoRecords.filter(r =>
+                r.userId !== state.currentUser.id || (r.source !== 'Concept2' && r.source !== 'concept2')
+            );
         }
 
         userRaw.forEach(raw => {
