@@ -1567,7 +1567,7 @@ async function validateAndConnectConcept2ViaEdgeFunction(accessToken) {
 }
 
 // Concept2データを処理
-function processConceptData(results) {
+async function processConceptData(results) {
     results.forEach(raw => {
         const existing = state.ergoRaw.find(r => r.concept2Id === raw.concept2Id);
         if (!existing) {
@@ -1588,7 +1588,7 @@ function processConceptData(results) {
     if (needReclassify) {
         console.log(`🔄 エルゴ分類ロジック更新 (v${savedVersion}→v${CLASSIFY_VERSION}): 既存データを再分類`);
     }
-    classifyErgoSessions(needReclassify);
+    await classifyErgoSessions(needReclassify);
     if (needReclassify) {
         localStorage.setItem('ergo_classify_v', String(CLASSIFY_VERSION));
         DB.save('ergo_records', state.ergoRecords);
@@ -1775,7 +1775,7 @@ async function fetchConcept2Data() {
             DB.save('current_user', state.currentUser);
 
             // セッションに分類（全データ再分類）
-            classifyErgoSessions(true);
+            await classifyErgoSessions(true);
             renderErgoRecords();
             updateConcept2UI();
 
@@ -1903,7 +1903,7 @@ async function refreshConcept2Token() {
 }
 
 // エルゴセッションを分類（拡張メニュー対応）
-function classifyErgoSessions(reclassify = false) {
+async function classifyErgoSessions(reclassify = false) {
     const newlyAddedRecordIds = []; // 新規追加されたレコードIDを追跡
     try {
         // CONCEPT2_API.classificationRulesを使用
@@ -2614,7 +2614,7 @@ function initMainScreen() {
 // 手動で全エルゴデータを再分類
 function reclassifyAllErgoData() {
     showConfirmModal('全エルゴデータの分類をやり直します。よろしいですか？', async () => {
-        classifyErgoSessions(true);
+        await classifyErgoSessions(true);
         DB.save('ergo_records', state.ergoRecords);
         DB.save('ergoSessions', state.ergoSessions);
 
