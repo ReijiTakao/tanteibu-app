@@ -2027,9 +2027,9 @@ function classifyErgoSessions(reclassify = false) {
                     // レストタイムを取得
                     const restTime = firstInterval.rest_time ? Math.round(firstInterval.rest_time / 10) : 0;
                     const restStr = restTime > 0 ? (restTime >= 60 ? `r${Math.floor(restTime / 60)}min${restTime % 60 > 0 ? (restTime % 60 + 's') : ''}` : `r${restTime}s`) : '';
-                    // 特殊メニュー: 4min×レスト10s → ステアーズクライミング
+                    // 特殊メニュー: 4min×レスト10s → Stairs Climbing
                     if (intMenuKey === '4min' && restTime === 10) {
-                        menuKey = 'ステアーズクライミング';
+                        menuKey = 'Stairs Climbing';
                     } else if (intMenuKey) {
                         menuKey = `${intMenuKey}×${raw.intervals.length}${restStr ? ' ' + restStr : ''}`;
                     } else {
@@ -2256,9 +2256,9 @@ function classifyConcept2Result(result) {
             // レストタイム
             const restTime = first.rest_time ? Math.round(first.rest_time / 10) : 0;
             const restStr = restTime > 0 ? (restTime >= 60 ? `r${Math.floor(restTime / 60)}min${restTime % 60 > 0 ? (restTime % 60 + 's') : ''}` : `r${restTime}s`) : '';
-            // 特殊メニュー: 4min×レスト10s → ステアーズクライミング
+            // 特殊メニュー: 4min×レスト10s → Stairs Climbing
             if (intMenuKey === '4min' && restTime === 10) {
-                intervalDisplay = 'ステアーズクライミング';
+                intervalDisplay = 'Stairs Climbing';
             } else if (intMenuKey) {
                 intervalDisplay = `${intMenuKey}×${intervals.length}${restStr ? ' ' + restStr : ''}`;
             } else {
