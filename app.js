@@ -2029,7 +2029,7 @@ function classifyErgoSessions(reclassify = false) {
                     const restStr = restTime > 0 ? (restTime >= 60 ? `r${Math.floor(restTime / 60)}min${restTime % 60 > 0 ? (restTime % 60 + 's') : ''}` : `r${restTime}s`) : '';
                     // 特殊メニュー: 4min×レスト10s → ステアーズクライミング
                     if (intMenuKey === '4min' && restTime === 10) {
-                        menuKey = `ステアーズクライミング×${raw.intervals.length}`;
+                        menuKey = 'ステアーズクライミング';
                     } else if (intMenuKey) {
                         menuKey = `${intMenuKey}×${raw.intervals.length}${restStr ? ' ' + restStr : ''}`;
                     } else {
@@ -2258,7 +2258,7 @@ function classifyConcept2Result(result) {
             const restStr = restTime > 0 ? (restTime >= 60 ? `r${Math.floor(restTime / 60)}min${restTime % 60 > 0 ? (restTime % 60 + 's') : ''}` : `r${restTime}s`) : '';
             // 特殊メニュー: 4min×レスト10s → ステアーズクライミング
             if (intMenuKey === '4min' && restTime === 10) {
-                intervalDisplay = `ステアーズクライミング×${intervals.length}`;
+                intervalDisplay = 'ステアーズクライミング';
             } else if (intMenuKey) {
                 intervalDisplay = `${intMenuKey}×${intervals.length}${restStr ? ' ' + restStr : ''}`;
             } else {
