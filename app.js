@@ -3919,10 +3919,11 @@ function renderTeamScheduleCards(dateStr) {
     if (entries.length > 0) {
         html += '<div class="team-schedule-section">';
         entries.forEach(entry => {
-            const slotLabel = entry.timeSlot === '午前' ? '🌅 午前' : entry.timeSlot === '午後' ? '🌇 午後' : '📋 全体';
+            const slotLabel = entry.timeSlot === '午前' ? '午前' : entry.timeSlot === '午後' ? '午後' : '全日';
+            const slotCls = entry.timeSlot === '午前' ? 'slot-am' : entry.timeSlot === '午後' ? 'slot-pm' : 'slot-all';
             html += `<div class="team-schedule-card">
                 <div class="team-schedule-header">
-                    <span class="team-schedule-slot">${slotLabel}</span>
+                    <span class="team-schedule-slot ${slotCls}">${slotLabel}</span>
                     ${isAdmin ? `<button class="team-schedule-edit-btn" onclick="openTeamScheduleModal('${dateStr}', '${entry.id}')">✏️</button>` : ''}
                 </div>
                 <div class="team-schedule-content">${(entry.content || '').replace(/\n/g, '<br>')}</div>
@@ -3933,7 +3934,7 @@ function renderTeamScheduleCards(dateStr) {
 
     // 管理者用追加ボタン
     if (isAdmin) {
-        html += `<button class="team-schedule-add-btn" onclick="openTeamScheduleModal('${dateStr}')">📢 全体スケジュールを追加</button>`;
+        html += `<button class="team-schedule-add-btn" onclick="openTeamScheduleModal('${dateStr}')">＋ 全体スケジュールを追加</button>`;
     }
 
     return html;
@@ -4165,7 +4166,7 @@ function openWeeklyMenuEditor() {
         ['am', 'pm'].forEach(slot => {
             const key = `${di}-${slot}`;
             const s = slots[key] || {};
-            const slotLabel = slot === 'am' ? '🌅 午前' : '🌇 午後';
+            const slotLabel = slot === 'am' ? 'AM' : 'PM';
             html += `<div class="wm-edit-slot">
                 <div class="wm-edit-slot-label">${slotLabel}</div>
                 <div class="wm-edit-type-btns" data-key="${key}">`;
@@ -4362,10 +4363,10 @@ function renderDayMenu(dateStr) {
     if (!hasContent) return '';
 
     let html = '<div class="wm-day-card">';
-    html += '<div class="wm-day-card-header" onclick="this.nextElementSibling.classList.toggle(\'hidden\');this.querySelector(\'.wm-day-toggle\').textContent=this.nextElementSibling.classList.contains(\'hidden\')?\'▶\':\'▼\'" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">📋 本日のメニュー<span class="wm-day-toggle" style="font-size:12px;color:#94a3b8;">▶</span></div>';
+    html += '<div class="wm-day-card-header" onclick="this.nextElementSibling.classList.toggle(\'hidden\');this.querySelector(\'.wm-day-toggle\').textContent=this.nextElementSibling.classList.contains(\'hidden\')?\'▶\':\'▼\'" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">本日のメニュー<span class="wm-day-toggle" style="font-size:12px;color:#94a3b8;">▶</span></div>';
     html += '<div class="wm-day-card-body hidden">';
 
-    [{ slot: amSlot, label: '🌅 午前' }, { slot: pmSlot, label: '🌇 午後' }].forEach(({ slot, label }) => {
+    [{ slot: amSlot, label: 'AM' }, { slot: pmSlot, label: 'PM' }].forEach(({ slot, label }) => {
         if (slot && (slot.type || slot.menu)) {
             const icon = WM_TYPE_ICONS[slot.type] || '';
             const cls = WM_TYPE_CLASSES[slot.type] || '';
@@ -4384,9 +4385,10 @@ function renderDayMenu(dateStr) {
 }
 
 // 午前/午後セクション描画ヘルパー
-function renderSlotSection(sectionLabel, schedules) {
+function renderSlotSection(sectionLabel, schedules, slotType) {
+    const slotClass = slotType === 'morning' ? 'slot-morning' : slotType === 'afternoon' ? 'slot-afternoon' : 'slot-extra';
     if (schedules.length === 0) {
-        return `<div class="slot-section">
+        return `<div class="slot-section ${slotClass}">
             <div class="slot-section-header">${sectionLabel} <span class="slot-count-badge">0人</span></div>
             <div class="empty-state" style="padding:8px;"><p style="font-size:13px;color:#888;">予定なし</p></div>
         </div>`;
@@ -4416,7 +4418,7 @@ function renderSlotSection(sectionLabel, schedules) {
         blocksHtml += renderTimeBlock('未定', noTimeSchedules);
     }
 
-    return `<div class="slot-section">
+    return `<div class="slot-section ${slotClass}">
         <div class="slot-section-header">${sectionLabel} <span class="slot-count-badge">${schedules.length}人</span></div>
         ${blocksHtml}
     </div>`;
@@ -4511,11 +4513,11 @@ function renderOverview() {
     html += renderDayMenu(dateStr);
 
     // === 午前セクション ===
-    html += renderSlotSection('🌅 午前', morningSchedules);
+    html += renderSlotSection('午前', morningSchedules, 'morning');
 
     // 午前の参加不可
     if (absentMorning.length > 0) {
-        html += renderAbsentBlock('❌ 午前 参加不可', absentMorning);
+        html += renderAbsentBlock('参加不可（午前）', absentMorning);
     }
 
     // 午前の未登録
@@ -4525,16 +4527,16 @@ function renderOverview() {
         const unregMorning = unregisteredUsers.filter(u => !morningRegisteredIds.has(u.id));
         // 午後に登録しているユーザーも午前の未登録から除外しない（両方に出る）
         if (unregMorning.length > 0) {
-            html += renderUnregisteredBlock('📝 午前 未登録', unregMorning);
+            html += renderUnregisteredBlock('未登録（午前）', unregMorning);
         }
     }
 
     // === 午後セクション ===
-    html += renderSlotSection('🌇 午後', afternoonSchedules);
+    html += renderSlotSection('午後', afternoonSchedules, 'afternoon');
 
     // 午後の参加不可
     if (absentAfternoon.length > 0) {
-        html += renderAbsentBlock('❌ 午後 参加不可', absentAfternoon);
+        html += renderAbsentBlock('参加不可（午後）', absentAfternoon);
     }
 
     // 午後の未登録
@@ -4542,24 +4544,24 @@ function renderOverview() {
         const afternoonRegisteredIds = new Set([...afternoonSchedules.map(s => s.userId), ...absentAfternoon.map(s => s.userId)]);
         const unregAfternoon = unregisteredUsers.filter(u => !afternoonRegisteredIds.has(u.id));
         if (unregAfternoon.length > 0) {
-            html += renderUnregisteredBlock('📝 午後 未登録', unregAfternoon);
+            html += renderUnregisteredBlock('未登録（午後）', unregAfternoon);
         }
     }
 
     // === 追加セクション（3部練） ===
     if (extraSchedules.length > 0) {
-        html += renderSlotSection('🔄 追加練習', extraSchedules);
+        html += renderSlotSection('追加練習', extraSchedules, 'extra');
     }
 
     // === OFF（折りたたみ） ===
     if (offSchedules.length > 0) {
         const offChips = offSchedules.map(s => {
             const u = state.users.find(u => u.id === s.userId);
-            return `<span class="ov-chip off-chip">🏖️ ${u?.name || '?'}</span>`;
+            return `<span class="ov-chip off-chip">${u?.name || '?'}</span>`;
         }).join('');
         html += `<div class="timeline-block absent-block">
             <div class="ov-card-header" onclick="this.parentElement.classList.toggle('expanded')">
-                <span class="timeline-time-label">🏖️ OFF</span>
+                <span class="timeline-time-label">OFF</span>
                 <div class="ov-summary-badges">
                     <span class="ov-badge off-badge">${offSchedules.length}人</span>
                     <span class="ov-expand-icon">▶</span>
@@ -4571,12 +4573,12 @@ function renderOverview() {
 
     // === timeSlot不明の参加不可（両方 or 不明） ===
     if (absentBoth.length > 0) {
-        html += renderAbsentBlock('❌ 参加不可', absentBoth);
+        html += renderAbsentBlock('参加不可', absentBoth);
     }
 
     // === timeSlot不明の場合の未登録（午前/午後スケジュールが無い場合のフォールバック） ===
     if (!hasMorning && !hasAfternoon && unregisteredUsers.length > 0) {
-        html += renderUnregisteredBlock('📝 未登録', unregisteredUsers);
+        html += renderUnregisteredBlock('未登録', unregisteredUsers);
     }
 
     container.innerHTML = html;
@@ -4625,7 +4627,7 @@ function renderAbsentBlock(title, absentList) {
 
 function renderUnregisteredBlock(title, users) {
     const unregChips = users.map(u =>
-        `<span class="ov-chip unregistered-chip">⚠️ ${u.name}</span>`
+        `<span class="ov-chip unregistered-chip">${u.name}</span>`
     ).join('');
     return `<div class="timeline-block absent-block">
         <div class="ov-card-header" onclick="this.parentElement.classList.toggle('expanded')">
@@ -4669,7 +4671,7 @@ function showAbsenceDetail(name, detail) {
 }
 
 function renderTimeBlock(timeLabel, entries) {
-    const displayTime = timeLabel === '未定' ? '🕐 時間未定' : `⏰ ${timeLabel}`;
+    const displayTime = timeLabel === '未定' ? '時間未定' : timeLabel;
 
     // タイプ別にグループ分け
     const typeGroups = {};

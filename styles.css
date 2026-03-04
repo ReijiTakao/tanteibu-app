@@ -1200,19 +1200,50 @@ body {
 
 /* 午前/午後セクション */
 .slot-section {
-    margin-bottom: 12px;
+    margin-bottom: 16px;
+    border-radius: var(--border-radius);
+    overflow: hidden;
 }
 
 .slot-section-header {
     font-size: 14px;
     font-weight: 700;
     color: var(--text-primary);
-    padding: 8px 0 6px;
-    border-bottom: 1.5px solid rgba(59, 130, 246, 0.2);
-    margin-bottom: 6px;
+    padding: 10px 14px;
+    margin-bottom: 0;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    border-left: 4px solid rgba(59, 130, 246, 0.3);
+    background: rgba(59, 130, 246, 0.04);
+}
+
+/* 午前セクション - ブルー系 */
+.slot-morning .slot-section-header {
+    border-left-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.06);
+}
+
+/* 午後セクション - オレンジ系 */
+.slot-afternoon .slot-section-header {
+    border-left-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.06);
+}
+
+.slot-afternoon .slot-count-badge {
+    background: rgba(245, 158, 11, 0.15);
+    color: #b45309;
+}
+
+/* 追加練習セクション - パープル系 */
+.slot-extra .slot-section-header {
+    border-left-color: #8b5cf6;
+    background: rgba(139, 92, 246, 0.06);
+}
+
+.slot-extra .slot-count-badge {
+    background: rgba(139, 92, 246, 0.15);
+    color: #7c3aed;
 }
 
 .slot-count-badge {
@@ -1236,57 +1267,81 @@ body {
 }
 
 .unregistered-chip {
-    background: rgba(245, 158, 11, 0.08);
+    background: rgba(245, 158, 11, 0.06);
     color: var(--text-secondary);
-    border: 1px dashed rgba(245, 158, 11, 0.3);
+    border: 1px dashed rgba(245, 158, 11, 0.25);
     font-style: italic;
+    font-size: 11px;
 }
 
 /* 全体スケジュール告知 */
 .team-schedule-section {
-    margin-bottom: 12px;
+    margin-bottom: 14px;
 }
 
 .team-schedule-card {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.06), rgba(6, 182, 212, 0.04));
-    border: 1px solid rgba(59, 130, 246, 0.15);
+    background: var(--bg-white);
+    border: 1px solid rgba(0, 0, 0, 0.06);
     border-left: 4px solid var(--accent-color);
     border-radius: var(--border-radius);
     padding: 12px 14px;
     margin-bottom: 8px;
+    box-shadow: var(--shadow-sm);
 }
 
 .team-schedule-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 }
 
 .team-schedule-slot {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 700;
-    color: var(--accent-color);
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+}
+
+/* 告知カード - 午前ピル */
+.team-schedule-slot.slot-am {
+    background: rgba(59, 130, 246, 0.12);
+    color: #2563eb;
+}
+
+/* 告知カード - 午後ピル */
+.team-schedule-slot.slot-pm {
+    background: rgba(245, 158, 11, 0.12);
+    color: #b45309;
+}
+
+/* 告知カード - 全日ピル */
+.team-schedule-slot.slot-all {
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
 }
 
 .team-schedule-edit-btn {
     background: none;
     border: none;
-    font-size: 16px;
+    font-size: 14px;
     cursor: pointer;
-    padding: 2px 6px;
-    border-radius: 4px;
+    padding: 4px 8px;
+    border-radius: 6px;
     transition: background 0.2s;
+    opacity: 0.5;
 }
 
 .team-schedule-edit-btn:hover {
     background: rgba(0, 0, 0, 0.05);
+    opacity: 1;
 }
 
 .team-schedule-content {
-    font-size: 14px;
+    font-size: 13px;
     color: var(--text-primary);
-    line-height: 1.6;
+    line-height: 1.7;
     white-space: pre-wrap;
 }
 
@@ -1294,20 +1349,20 @@ body {
     display: block;
     width: 100%;
     padding: 10px;
-    background: rgba(59, 130, 246, 0.04);
-    border: 2px dashed rgba(59, 130, 246, 0.2);
+    background: transparent;
+    border: 1.5px dashed rgba(59, 130, 246, 0.2);
     border-radius: var(--border-radius);
     font-size: 13px;
     font-weight: 600;
     color: var(--accent-color);
     cursor: pointer;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
     transition: all 0.2s;
 }
 
 .team-schedule-add-btn:hover {
-    background: rgba(59, 130, 246, 0.08);
-    border-color: rgba(59, 130, 246, 0.3);
+    background: rgba(59, 130, 246, 0.04);
+    border-color: rgba(59, 130, 246, 0.35);
 }
 
 /* クルーカード */
