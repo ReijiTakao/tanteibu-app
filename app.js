@@ -7638,7 +7638,7 @@ function openErgoDetail(recordId) {
                 else if (idtValue >= 95) idtClass = 'idt-mid';
 
                 idtDiv.innerHTML = `
-        < div class="idt-detail-label" >⚖️ IDT（体重 ${weight} kg）</div >
+        <div class="idt-detail-label">⚖️ IDT（体重 ${weight} kg）</div>
             <div style="display:flex;align-items:baseline;gap:12px;">
                 <span class="idt-detail-value ${idtClass}">${idtValue.toFixed(1)}</span>
             </div>
@@ -7677,25 +7677,25 @@ function renderSplits(record, raw) {
 
     // テーブルヘッダー生成
     const renderHeader = () => `
-        < div class="c2-table-row header" >
+        <div class="c2-table-row header">
             <span class="c2-col">時間</span>
             <span class="c2-col">距離</span>
             <span class="c2-col">ペース</span>
             <span class="c2-col">ワット</span>
             <span class="c2-col">Cal</span>
             <span class="c2-col">SR</span>
-        </div > `;
+        </div>`;
 
     // 行生成
     const renderRow = (time, dist, pace, watts, cal, sr, className = '') => `
-        < div class="c2-table-row ${className}" >
+        <div class="c2-table-row ${className}">
             <span class="c2-col">${formatTime(time)}</span>
             <span class="c2-col">${dist}m</span>
             <span class="c2-col">${formatTime(pace)}</span>
             <span class="c2-col">${watts || '-'}</span>
             <span class="c2-col">${cal || '-'}</span>
             <span class="c2-col">${sr}</span>
-        </div > `;
+        </div>`;
 
     let html = '<div class="c2-table">' + renderHeader();
 
@@ -8012,7 +8012,7 @@ function renderWeeklyRanking() {
             const display = formatDisplayDate(myBest.date);
             const idtHtml = is2000m ? renderIDTBadge(myBest.weight, selectedGender, myBest.time, myBest.id, myBest.userId) : '';
             const ergoTypeBadge = renderErgoTypeBadge(myBest, myBest.userId);
-            html += `< div class="my-best-section" >
+            html += `<div class="my-best-section">
         <div class="ranking-item my-best">
             <div class="rank">YOU</div>
             <div class="user-info">
@@ -8025,14 +8025,14 @@ function renderWeeklyRanking() {
                 ${idtHtml} ${ergoTypeBadge}
             </div>
         </div>
-            </div > `;
+            </div>`;
         } else {
-            html += `< div class="my-best-section" >
+            html += `<div class="my-best-section">
         <div class="ranking-item my-best empty">
             <div class="rank">YOU</div>
             <div class="user-info"><div class="name">今週の記録なし</div></div>
         </div>
-            </div > `;
+            </div>`;
         }
     }
 
@@ -8044,7 +8044,7 @@ function renderWeeklyRanking() {
         const idtHtml = is2000m ? renderIDTBadge(record.weight, selectedGender, record.time, record.id, record.userId) : '';
         const ergoTypeBadge = renderErgoTypeBadge(record, record.userId);
 
-        return `< div class="ranking-item ${isMe ? 'highlight' : ''}" >
+        return `<div class="ranking-item ${isMe ? 'highlight' : ''}">
             <div class="rank">${rankSymbol}</div>
             <div class="user-info">
                 <div class="name">${user?.name || '不明'}</div>
@@ -8055,7 +8055,7 @@ function renderWeeklyRanking() {
                 <div class="split">Split ${getSplit(record)}</div>
                 ${idtHtml} ${ergoTypeBadge}
             </div>
-        </div > `;
+        </div>`;
     }).join('');
 
     container.innerHTML = html;
@@ -8083,13 +8083,13 @@ function _getIDTPercent(record, user) {
 // ソートトグルHTML
 function _renderSortToggle(rankingType) {
     const mode = rankingType === 'weekly' ? weeklyRankingSortMode : allTimeRankingSortMode;
-    return `< div style = "display:flex;align-items:center;margin-bottom:8px;" >
+    return `<div style="display:flex;align-items:center;margin-bottom:8px;">
         <span style="font-size:12px;color:#888;">並び替え:</span>
         <div class="sort-toggle">
             <button class="sort-toggle-btn ${mode === 'time' ? 'active' : ''}" onclick="set${rankingType === 'weekly' ? 'Weekly' : 'AllTime'}RankingSort('time')">⏱ タイム順</button>
             <button class="sort-toggle-btn ${mode === 'idt' ? 'active' : ''}" onclick="set${rankingType === 'weekly' ? 'Weekly' : 'AllTime'}RankingSort('idt')">📊 IDT順</button>
         </div>
-    </div > `;
+    </div>`;
 }
 
 function setWeeklyRankingSort(mode) {
@@ -8130,7 +8130,7 @@ function renderTeamRecords() {
         const display = formatDisplayDate(record.date);
         const initials = user?.name?.slice(0, 2) || '??';
 
-        return `< div class="team-record-item" >
+        return `<div class="team-record-item">
             <div class="avatar">${initials}</div>
             <div class="user-info">
                 <div class="name">${user?.name || '不明'}</div>
@@ -8141,7 +8141,7 @@ function renderTeamRecords() {
                 <div class="split-display">Split ${getSplit(record)}</div>
                 <div class="date-display">${display.month}/${display.day}</div>
             </div>
-        </div > `;
+        </div>`;
     }).join('');
 }
 
@@ -9157,7 +9157,7 @@ function openMasterEditModal(item = null) {
     } else if (currentMasterType === 'oars') {
         const status = item?.status || (item?.availability === '使用不可' ? 'broken' : 'available');
         form.innerHTML = `
-    < div class="form-group" >
+    <div class="form-group">
                 <label>オール名</label>
                 <input type="text" id="master-name" value="${item?.name || ''}" placeholder="例: スカル1号">
             </div>
@@ -9191,7 +9191,7 @@ function openMasterEditModal(item = null) {
 `;
     } else if (currentMasterType === 'ergos') {
         form.innerHTML = `
-    < div class="form-group" >
+    <div class="form-group">
                 <label>エルゴ名</label>
                 <input type="text" id="master-name" value="${item?.name || ''}" placeholder="例: ダイナミック1">
             </div>
