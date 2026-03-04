@@ -51,8 +51,8 @@
     --glass-blur: blur(16px);
 
     /* サイズ */
-    --header-height: 60px;
-    --nav-height: 72px;
+    --header-height: 48px;
+    --nav-height: 60px;
     --border-radius: 16px;
     --border-radius-sm: 10px;
     --border-radius-xs: 6px;
@@ -137,12 +137,12 @@ body {
 }
 
 .login-header {
-    margin-bottom: 48px;
+    margin-bottom: 28px;
 }
 
 .logo {
-    font-size: 72px;
-    margin-bottom: 20px;
+    font-size: 56px;
+    margin-bottom: 14px;
     animation: float 3s ease-in-out infinite;
     filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2));
 }
@@ -234,6 +234,54 @@ body {
     margin-top: 8px;
     color: rgba(255, 255, 255, 0.7);
     min-height: 20px;
+}
+
+/* ログインフォームのダークテーマ対応 */
+#login-screen .auth-form .form-group label {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 4px;
+    display: block;
+}
+
+#login-screen .auth-form input {
+    width: 100%;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    color: white;
+    font-size: 15px;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+#login-screen .auth-form input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+#login-screen .auth-form input:focus {
+    outline: none;
+    border-color: rgba(59, 130, 246, 0.6);
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.15);
+}
+
+#login-screen .auth-form .form-group {
+    margin-bottom: 14px;
+}
+
+.auth-switch {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 12px;
+}
+
+.auth-switch a {
+    color: rgba(59, 130, 246, 0.9);
+    font-weight: 600;
 }
 
 .demo-divider {
@@ -467,7 +515,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 20px;
+    padding: 0 12px;
     z-index: 100;
     box-shadow: 0 4px 20px rgba(15, 23, 42, 0.25);
 }
@@ -483,7 +531,7 @@ body {
 }
 
 .main-header h1 {
-    font-size: 17px;
+    font-size: 15px;
     font-weight: 700;
     letter-spacing: 0.02em;
 }
@@ -582,7 +630,7 @@ body {
 
 .main-content {
     flex: 1;
-    padding: 16px;
+    padding: 10px;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     position: relative;
@@ -612,9 +660,9 @@ body {
 }
 
 .tab-title {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
-    margin-bottom: 16px;
+    margin-bottom: 10px;
     color: var(--text-primary);
     flex-shrink: 0;
 }
@@ -658,7 +706,7 @@ body {
     align-items: center;
     justify-content: center;
     flex: 1;
-    padding: 8px 2px 6px;
+    padding: 5px 1px 3px;
     background: none;
     border: none;
     color: var(--text-muted);
@@ -690,8 +738,8 @@ body {
 }
 
 .nav-icon {
-    font-size: 20px;
-    margin-bottom: 3px;
+    font-size: 18px;
+    margin-bottom: 2px;
     transition: transform var(--transition-fast);
 }
 
@@ -703,7 +751,7 @@ body {
     font-size: 9px;
     font-weight: 600;
     white-space: nowrap;
-    letter-spacing: 0.01em;
+    letter-spacing: -0.02em;
 }
 
 /* =========================================
@@ -770,7 +818,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
+    padding: 10px 12px;
     background-color: var(--bg-secondary);
     cursor: pointer;
     user-select: none;
@@ -2099,8 +2147,8 @@ body {
 .settings-section {
     background: var(--card-gradient);
     border-radius: var(--border-radius);
-    padding: 18px;
-    margin-bottom: 16px;
+    padding: 14px;
+    margin-bottom: 12px;
     box-shadow: var(--shadow-sm);
     border: 1px solid rgba(0, 0, 0, 0.04);
     transition: all var(--transition-normal);
@@ -2119,8 +2167,9 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 0;
+    padding: 10px 0;
     border-bottom: 1px solid var(--bg-secondary);
+    gap: 8px;
 }
 
 .settings-item:last-of-type {
@@ -2129,7 +2178,9 @@ body {
 
 .settings-label {
     color: var(--text-secondary);
-    font-size: 14px;
+    font-size: 13px;
+    flex-shrink: 0;
+    min-width: 60px;
 }
 
 .settings-value {
@@ -2219,7 +2270,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 18px 22px;
+    padding: 14px 16px;
     border-bottom: 1px solid var(--bg-secondary);
     position: sticky;
     top: 0;
@@ -2253,15 +2304,15 @@ body {
 }
 
 .modal-body {
-    padding: 20px;
+    padding: 16px;
 }
 
 .modal-footer {
     display: flex;
     gap: 10px;
-    padding: 16px 20px;
+    padding: 12px 16px;
     border-top: 1px solid var(--bg-secondary);
-    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
 }
 
 .modal-footer .danger-btn {
@@ -2872,7 +2923,7 @@ textarea {
 /* =========================================
    モバイルレスポンシブ
    ========================================= */
-@media (max-width: 400px) {
+@media (max-width: 480px) {
 
     /* エルゴ記録入力を2列に */
     .ergo-record-input .record-fields {
@@ -2884,13 +2935,33 @@ textarea {
         grid-template-columns: repeat(2, 1fr);
     }
 
-    /* ナビラベルを非表示 */
+    /* ナビラベルを縮小 */
     .nav-label {
         font-size: 8px;
     }
 
     .nav-icon {
         font-size: 16px;
+    }
+
+    /* 設定アイテムの縦並び化 */
+    .settings-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .settings-item select {
+        width: 100%;
+    }
+
+    /* 日カードをさらに詰める */
+    .day-header {
+        padding: 8px 10px;
+    }
+
+    .day-date {
+        font-size: 13px;
     }
 }
 
@@ -2983,23 +3054,27 @@ textarea {
     display: flex;
     background-color: var(--bg-secondary);
     border-radius: var(--border-radius-sm);
-    padding: 4px;
-    margin-bottom: 16px;
+    padding: 3px;
+    margin-bottom: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .view-toggle-btn {
     flex: 1;
-    padding: 12px 16px;
-    min-height: 44px;
+    padding: 8px 10px;
+    min-height: 40px;
+    min-width: max-content;
     background: none;
     border: none;
     border-radius: var(--border-radius-xs);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--text-secondary);
     cursor: pointer;
     transition: all var(--transition-fast);
     -webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
+    white-space: nowrap;
 }
 
 .view-toggle-btn.active {
@@ -3916,23 +3991,24 @@ textarea {
 .note-subtabs {
     display: flex;
     gap: 0;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     background: var(--bg-secondary);
     border-radius: 10px;
-    padding: 3px;
+    padding: 2px;
 }
 
 .note-subtab-btn {
     flex: 1;
-    padding: 8px 12px;
+    padding: 7px 8px;
     border: none;
     background: none;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 12px;
     color: var(--text-secondary);
     cursor: pointer;
     border-radius: 8px;
     transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
 .note-subtab-btn.active {
@@ -6747,8 +6823,8 @@ textarea {
    ========================================= */
 .pn-filter-bar {
     display: flex;
-    gap: 6px;
-    padding: 8px 0 12px;
+    gap: 5px;
+    padding: 6px 0 8px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
 }

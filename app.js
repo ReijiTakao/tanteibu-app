@@ -484,14 +484,28 @@ const DB = {
 
             const allRecords = await window.SupabaseConfig.db.loadErgoRecords();
             if (allRecords.length) {
+                // Supabase側の重複を防ぐため、処理済みconcept2Idを追跡
+                const processedConcept2Ids = new Set();
+                // ローカルに既存のconcept2Idを事前に収集
+                state.ergoRecords.forEach(local => {
+                    if (local.concept2Id) processedConcept2Ids.add(local.concept2Id);
+                });
+
                 allRecords.forEach(r => {
-                    // rawDataからconcept2Idを復元
-                    if (r.rawData?.concept2Id && !r.concept2Id) {
-                        r.concept2Id = r.rawData.concept2Id;
-                    }
                     // 3段階の重複チェック: concept2Id → rawId → id
                     let existing = -1;
                     if (r.concept2Id) {
+                        // 既に処理済みのconcept2Idはスキップ（Supabase側の重複対策）
+                        if (processedConcept2Ids.has(r.concept2Id)) {
+                            existing = state.ergoRecords.findIndex(local => local.concept2Id === r.concept2Id);
+                            if (existing !== -1) {
+                                // 既存レコードを更新
+                                const localId = state.ergoRecords[existing].id;
+                                const localErgoType = state.ergoRecords[existing].ergoType;
+                                state.ergoRecords[existing] = { ...r, id: localId, ergoType: r.ergoType || localErgoType };
+                            }
+                            return; // このレコードの処理を終了
+                        }
                         existing = state.ergoRecords.findIndex(local => local.concept2Id === r.concept2Id);
                     }
                     if (existing === -1 && r.rawId) {
@@ -514,6 +528,7 @@ const DB = {
                         // 新規データ: concept2Idがあればc2_形式IDを復元
                         if (r.concept2Id) {
                             r.id = 'c2_' + r.concept2Id;
+                            processedConcept2Ids.add(r.concept2Id);
                         }
                         state.ergoRecords.push(r);
                     }
@@ -2417,31 +2432,22 @@ async function syncConcept2() {
         state.ergoRecords = existingRecords;
         state.ergoSessions = existingSessions;
 
-        // Supabaseにもエルゴ記録を保存
+        // Supabaseにもエルゴ記録を保存（concept2_idで重複防止）
         if (insertedCount > 0 && DB.useSupabase && window.SupabaseConfig?.isReady()) {
             try {
-                // Supabaseに既に保存されているレコードのconcept2Idリストを取得
-                const supabaseRecords = await window.SupabaseConfig.db.loadErgoRecords(state.currentUser.id);
-                const savedConcept2Ids = new Set();
-                supabaseRecords.forEach(r => {
-                    if (r.rawData?.concept2Id) savedConcept2Ids.add(r.rawData.concept2Id);
-                    // sourceフィールドからも検出（旧形式対応）
-                    if (r.concept2Id) savedConcept2Ids.add(r.concept2Id);
-                });
-
-                // Supabaseにまだ保存されていないConcept2レコードだけ抽出
-                // source は 'concept2' または 'Concept2' の両方を対象
-                const unsavedRecords = existingRecords.filter(r =>
+                // Concept2由来のレコードを全て抽出（saveErgoRecord側でconcept2_idの重複チェックを行うため、
+                // ここではフィルタリングせず全件送信し、DB側のUNIQUE制約で重複を防止）
+                const concept2Records = existingRecords.filter(r =>
                     (r.source === 'concept2' || r.source === 'Concept2') &&
-                    r.concept2Id && !savedConcept2Ids.has(r.concept2Id)
+                    r.concept2Id
                 );
 
                 // sync-indicator抑制+バッチ処理
                 if (window.SupabaseConfig.suppressSyncIndicator) window.SupabaseConfig.suppressSyncIndicator(true);
                 showSyncStatus('syncing');
                 let supabaseSaved = 0;
-                for (let i = 0; i < unsavedRecords.length; i += 5) {
-                    const batch = unsavedRecords.slice(i, i + 5);
+                for (let i = 0; i < concept2Records.length; i += 5) {
+                    const batch = concept2Records.slice(i, i + 5);
                     const results = await Promise.allSettled(batch.map(record =>
                         DB.saveErgoRecord({
                             id: generateId(),
@@ -2456,6 +2462,7 @@ async function syncConcept2() {
                             menuKey: record.menuKey,
                             category: record.category,
                             source: 'Concept2',
+                            concept2Id: record.concept2Id,
                             rawData: { concept2Id: record.concept2Id }
                         })
                     ));

@@ -376,7 +376,8 @@ const SupabaseDB = {
             category: r.category || null,
             source: r.source || '手入力',
             raw_data: r.rawData || null,
-            ergo_type: r.ergoType || null
+            ergo_type: r.ergoType || null,
+            concept2_id: r.concept2Id || (r.rawData?.concept2Id) || null
         };
     },
     _fromErgoRow(r) {
@@ -398,6 +399,7 @@ const SupabaseDB = {
             source: r.source,
             rawData: r.raw_data,
             ergoType: r.ergo_type || null,
+            concept2Id: r.concept2_id || (r.raw_data?.concept2Id) || null,
             createdAt: r.created_at,
             updatedAt: r.updated_at
         };
@@ -428,6 +430,21 @@ const SupabaseDB = {
         if (!isSupabaseReady()) return null;
         const row = this._toErgoRow(record);
         return withSyncIndicator(async () => {
+            // concept2_idがある場合は、まず既存レコードを検索してupsert
+            if (row.concept2_id && row.user_id) {
+                // concept2_id + user_id で既存レコードを検索
+                const { data: existing } = await _supabaseClient
+                    .from('ergo_records')
+                    .select('id')
+                    .eq('concept2_id', row.concept2_id)
+                    .eq('user_id', row.user_id)
+                    .maybeSingle();
+
+                if (existing) {
+                    // 既存レコードがあればそのIDで更新
+                    row.id = existing.id;
+                }
+            }
             const { data, error } = await _supabaseClient
                 .from('ergo_records')
                 .upsert(row, { onConflict: 'id' })
