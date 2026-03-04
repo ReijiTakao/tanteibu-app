@@ -377,7 +377,10 @@ const SupabaseDB = {
             source: r.source || '手入力',
             raw_data: r.rawData || null,
             ergo_type: r.ergoType || null,
-            concept2_id: r.concept2Id || (r.rawData?.concept2Id) || null
+            concept2_id: r.concept2Id || (r.rawData?.concept2Id) || null,
+            watts: r.watts || null,
+            calories: r.calories || null,
+            drag_factor: r.dragFactor || null
         };
     },
     _fromErgoRow(r) {
@@ -400,6 +403,9 @@ const SupabaseDB = {
             rawData: r.raw_data,
             ergoType: r.ergo_type || null,
             concept2Id: r.concept2_id || (r.raw_data?.concept2Id) || null,
+            watts: r.watts || null,
+            calories: r.calories || null,
+            dragFactor: r.drag_factor || null,
             createdAt: r.created_at,
             updatedAt: r.updated_at
         };

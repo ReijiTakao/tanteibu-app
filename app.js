@@ -1778,6 +1778,8 @@ async function fetchConcept2Data() {
             await classifyErgoSessions(true);
             renderErgoRecords();
             updateConcept2UI();
+            // 練習ノートモーダルが開いている場合はエルゴ選択リストを更新
+            refreshPracticeNoteErgoList();
 
             showToast(`${allResults.length}件取得（新規 ${newCount}件）`, 'success');
         } else {
@@ -1838,6 +1840,8 @@ async function fetchConcept2DataViaEdgeFunction(accessToken) {
             DB.save('current_user', state.currentUser);
 
             updateConcept2UI();
+            // 練習ノートモーダルが開いている場合はエルゴ選択リストを更新
+            refreshPracticeNoteErgoList();
             showToast(`${result.results.length}件のデータを同期しました`, 'success');
         } else {
             showToast('新しいデータはありません', 'success');
@@ -7676,6 +7680,9 @@ function openErgoDetail(recordId) {
     }
     renderSplits(record, effectiveRaw);
 
+    // 削除ボタンにrecordIdを設定
+    modal.dataset.recordId = recordId;
+
     modal.classList.remove('hidden');
 }
 
@@ -7757,6 +7764,67 @@ function renderSplits(record, raw) {
 function closeErgoDetailModal() {
     document.getElementById('ergo-detail-modal').classList.add('hidden');
 }
+
+// エルゴレコードを個別削除（ローカル＋Supabase）
+async function deleteErgoRecord() {
+    const modal = document.getElementById('ergo-detail-modal');
+    const recordId = modal.dataset.recordId;
+    if (!recordId) return;
+
+    const record = state.ergoRecords.find(r => r.id === recordId);
+    if (!record) return;
+
+    const label = `${record.menuKey || record.distance + 'm'} (${record.date || '日付不明'})`;
+    if (!confirm(`このエルゴレコードを削除しますか？\n\n${label}\n\n※ Supabaseからも削除されます`)) return;
+
+    // ローカルから削除
+    state.ergoRecords = state.ergoRecords.filter(r => r.id !== recordId);
+    DB.save('ergo_records', state.ergoRecords);
+
+    // ergoRawからも対応するデータを削除（rawIdで紐づけ）
+    if (record.rawId) {
+        state.ergoRaw = (state.ergoRaw || []).filter(r => r.id !== record.rawId);
+        DB.save('ergoRaw', state.ergoRaw);
+    }
+
+    // 紐づいている練習ノートからも参照を削除
+    state.practiceNotes.forEach(note => {
+        if (note.ergoRecordIds && note.ergoRecordIds.includes(recordId)) {
+            note.ergoRecordIds = note.ergoRecordIds.filter(id => id !== recordId);
+            note.updatedAt = new Date().toISOString();
+        }
+    });
+    DB.save('practice_notes', state.practiceNotes);
+
+    // Supabaseから削除
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        try {
+            await window.SupabaseConfig.db.deleteErgoRecord(recordId);
+        } catch (e) {
+            console.warn('Supabase ergo record delete failed:', e);
+        }
+    }
+
+    closeErgoDetailModal();
+    renderErgoRecords();
+    showToast('エルゴレコードを削除しました', 'success');
+}
+
+// 練習ノートモーダルが開いている場合にエルゴ選択リストを再描画
+function refreshPracticeNoteErgoList() {
+    const noteModal = document.getElementById('practice-note-modal');
+    if (noteModal && !noteModal.classList.contains('hidden')) {
+        const noteId = noteModal.dataset.noteId;
+        if (noteId) {
+            const note = state.practiceNotes.find(n => n.id === noteId);
+            if (note) {
+                renderLinkedErgoRecords(note);
+                showErgoSelectList(noteId);
+            }
+        }
+    }
+}
+
 
 // ランキングメニューのカテゴリマップ（グローバル）
 let _rankingMenuCategories = {}; // menuKey -> { category, intervalSubtype }
