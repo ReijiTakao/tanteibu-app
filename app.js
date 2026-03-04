@@ -1158,6 +1158,7 @@ function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
     const target = document.getElementById(screenId);
     if (target) {
+        target.style.display = ''; // style.display='none'で初期非表示にした画面を正しく表示
         target.classList.remove('hidden');
     }
     // 安定性のため: メイン画面表示時は必ずログイン画面を隠す
@@ -2007,7 +2008,10 @@ function classifyErgoSessions(reclassify = false) {
                     // レストタイムを取得
                     const restTime = firstInterval.rest_time ? Math.round(firstInterval.rest_time / 10) : 0;
                     const restStr = restTime > 0 ? (restTime >= 60 ? `r${Math.floor(restTime / 60)}min${restTime % 60 > 0 ? (restTime % 60 + 's') : ''}` : `r${restTime}s`) : '';
-                    if (intMenuKey) {
+                    // 特殊メニュー: 4min×レスト10s → ステアーズクライミング
+                    if (intMenuKey === '4min' && restTime === 10) {
+                        menuKey = `ステアーズクライミング×${raw.intervals.length}`;
+                    } else if (intMenuKey) {
                         menuKey = `${intMenuKey}×${raw.intervals.length}${restStr ? ' ' + restStr : ''}`;
                     } else {
                         // フォールバック: workoutTypeに合わせた表示
@@ -2220,7 +2224,10 @@ function classifyConcept2Result(result) {
             // レストタイム
             const restTime = first.rest_time ? Math.round(first.rest_time / 10) : 0;
             const restStr = restTime > 0 ? (restTime >= 60 ? `r${Math.floor(restTime / 60)}min${restTime % 60 > 0 ? (restTime % 60 + 's') : ''}` : `r${restTime}s`) : '';
-            if (intMenuKey) {
+            // 特殊メニュー: 4min×レスト10s → ステアーズクライミング
+            if (intMenuKey === '4min' && restTime === 10) {
+                intervalDisplay = `ステアーズクライミング×${intervals.length}`;
+            } else if (intMenuKey) {
                 intervalDisplay = `${intMenuKey}×${intervals.length}${restStr ? ' ' + restStr : ''}`;
             } else {
                 // フォールバック: workoutTypeに合わせた表示
