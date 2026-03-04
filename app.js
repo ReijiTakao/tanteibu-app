@@ -6320,6 +6320,12 @@ function switchPracticeNoteToEdit() {
     document.getElementById('practice-note-reflection').value = note.reflection || '';
     renderLinkedErgoRecords(note);
 
+    // Concept2連携済みの場合のみ同期ボタンを表示
+    const syncErgoBtn = document.getElementById('sync-ergo-in-note-btn');
+    if (syncErgoBtn) {
+        syncErgoBtn.style.display = state.currentUser?.concept2Connected ? '' : 'none';
+    }
+
     const crewLinkGroup = document.getElementById('crew-note-link-group');
     if (note.crewNoteId || (schedule && schedule.scheduleType === SCHEDULE_TYPES.BOAT)) {
         crewLinkGroup.classList.remove('hidden');

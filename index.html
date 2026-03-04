@@ -1311,7 +1311,11 @@
                     <div id="linked-ergo-records" class="linked-ergo-records">
                         <!-- 紐づけ済みエルゴ表示 -->
                     </div>
-                    <button type="button" id="link-ergo-btn" class="secondary-btn small-btn">＋ エルゴデータを紐づけ</button>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button type="button" id="link-ergo-btn" class="secondary-btn small-btn">＋ エルゴデータを紐づけ</button>
+                        <button type="button" id="sync-ergo-in-note-btn" class="secondary-btn small-btn"
+                            style="display:none;" onclick="fetchConcept2Data()">🔄 最新データ取得</button>
+                    </div>
                     <div id="ergo-select-list" class="ergo-select-list hidden">
                         <!-- 同日のConcept2データ一覧 -->
                     </div>
