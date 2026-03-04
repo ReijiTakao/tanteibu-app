@@ -2098,6 +2098,14 @@ function classifyErgoSessions(reclassify = false) {
             // 当日の体重を自動付与
             const dayWeight = getWeightForDate(state.currentUser.id, raw.date);
             const newRecordId = generateId();
+            // Stairs Climbing: セット数と最終ワットを抽出
+            let intervalCount = null;
+            let lastWatts = null;
+            if (menuKey === 'Stairs Climbing' && raw.intervals && raw.intervals.length > 0) {
+                intervalCount = raw.intervals.length;
+                const lastInterval = raw.intervals[raw.intervals.length - 1];
+                lastWatts = lastInterval.watts || lastInterval.avg_watts || null;
+            }
             state.ergoRecords.push({
                 id: newRecordId,
                 rawId: raw.id, // rawDataへの参照を保持
@@ -2118,6 +2126,9 @@ function classifyErgoSessions(reclassify = false) {
                 calories: raw.calories || null,
                 watts: raw.avgWatts || null,
                 dragFactor: raw.dragFactor || null,
+                // Stairs Climbing用
+                intervalCount: intervalCount,
+                lastWatts: lastWatts,
                 // rawDataに詳細を含める（詳細画面用）
                 rawData: {
                     concept2Id: String(raw.concept2Id || ''),
@@ -7481,6 +7492,28 @@ function renderRecordCard(r, clickable = false) {
 
     const ergoTypeBadge = renderErgoTypeBadge(r, r.userId);
 
+    // Stairs Climbing: セット数と最終ワットを表示
+    const isStairs = r.menuKey === 'Stairs Climbing';
+    let statsHtml;
+    if (isStairs) {
+        const sets = r.intervalCount || '?';
+        const lastW = r.lastWatts ? `${r.lastWatts}W` : '-';
+        statsHtml = `<div class="stats">
+            <div class="stat"><span class="stat-label">Sets</span><span class="stat-value">${sets}</span></div>
+            <div class="stat"><span class="stat-label">Last W</span><span class="stat-value">${lastW}</span></div>
+            ${r.strokeRate ? `<div class="stat"><span class="stat-label">Rate</span><span class="stat-value">${r.strokeRate}</span></div>` : ''}
+            ${r.weight ? `<div class="stat"><span class="stat-label">Weight</span><span class="stat-value">${r.weight}kg</span></div>` : ''}
+        </div>`;
+    } else {
+        statsHtml = `<div class="stats">
+            ${r.distance ? `<div class="stat"><span class="stat-label">距離</span><span class="stat-value">${r.distance}m</span></div>` : ''}
+            ${r.timeDisplay ? `<div class="stat"><span class="stat-label">時間</span><span class="stat-value">${r.timeDisplay}</span></div>` : ''}
+            <div class="stat"><span class="stat-label">Split</span><span class="stat-value">${getSplit(r)}</span></div>
+            ${r.strokeRate ? `<div class="stat"><span class="stat-label">Rate</span><span class="stat-value">${r.strokeRate}</span></div>` : ''}
+            ${r.weight ? `<div class="stat"><span class="stat-label">Weight</span><span class="stat-value">${r.weight}kg</span></div>` : ''}
+        </div>`;
+    }
+
     return `<div class="ergo-record-item ${categoryClass} ${clickableClass}" ${onclick}>
         <div class="header">
             <div class="menu-info">
@@ -7494,13 +7527,7 @@ function renderRecordCard(r, clickable = false) {
                 <span class="date-weekday">（${display.weekday}）</span>
             </div>
         </div>
-        <div class="stats">
-            ${r.distance ? `<div class="stat"><span class="stat-label">距離</span><span class="stat-value">${r.distance}m</span></div>` : ''}
-            ${r.timeDisplay ? `<div class="stat"><span class="stat-label">時間</span><span class="stat-value">${r.timeDisplay}</span></div>` : ''}
-            <div class="stat"><span class="stat-label">Split</span><span class="stat-value">${getSplit(r)}</span></div>
-            ${r.strokeRate ? `<div class="stat"><span class="stat-label">Rate</span><span class="stat-value">${r.strokeRate}</span></div>` : ''}
-            ${r.weight ? `<div class="stat"><span class="stat-label">Weight</span><span class="stat-value">${r.weight}kg</span></div>` : ''}
-        </div>
+        ${statsHtml}
         <div class="source">${r.source || ''}</div>
     </div>`;
 }
@@ -7557,8 +7584,8 @@ function openErgoDetail(recordId) {
 
     // 基本情報を設定
     document.getElementById('ergo-detail-title').textContent = record.menuKey || '記録詳細';
-    document.getElementById('ergo-detail-date').textContent = `${display.year}/${display.month}/${display.day}`;
-    document.getElementById('ergo-detail-distance').textContent = record.distance ? `${record.distance}m` : '-';
+    document.getElementById('ergo-detail-date').textContent = `${display.year} /${display.month}/${display.day} `;
+    document.getElementById('ergo-detail-distance').textContent = record.distance ? `${record.distance} m` : '-';
     document.getElementById('ergo-detail-time').textContent = record.timeDisplay || '-';
     document.getElementById('ergo-detail-split').textContent = record.split || '-';
     document.getElementById('ergo-detail-rate').textContent = record.strokeRate || '-';
@@ -7611,11 +7638,11 @@ function openErgoDetail(recordId) {
                 else if (idtValue >= 95) idtClass = 'idt-mid';
 
                 idtDiv.innerHTML = `
-                    <div class="idt-detail-label">⚖️ IDT（体重 ${weight}kg）</div>
-                    <div style="display:flex;align-items:baseline;gap:12px;">
-                        <span class="idt-detail-value ${idtClass}">${idtValue.toFixed(1)}</span>
-                    </div>
-                `;
+        < div class="idt-detail-label" >⚖️ IDT（体重 ${weight} kg）</div >
+            <div style="display:flex;align-items:baseline;gap:12px;">
+                <span class="idt-detail-value ${idtClass}">${idtValue.toFixed(1)}</span>
+            </div>
+    `;
                 idtDiv.classList.remove('hidden');
             } else {
                 idtDiv.innerHTML = '';
@@ -7650,25 +7677,25 @@ function renderSplits(record, raw) {
 
     // テーブルヘッダー生成
     const renderHeader = () => `
-        <div class="c2-table-row header">
+        < div class="c2-table-row header" >
             <span class="c2-col">時間</span>
             <span class="c2-col">距離</span>
             <span class="c2-col">ペース</span>
             <span class="c2-col">ワット</span>
             <span class="c2-col">Cal</span>
             <span class="c2-col">SR</span>
-        </div>`;
+        </div > `;
 
     // 行生成
     const renderRow = (time, dist, pace, watts, cal, sr, className = '') => `
-        <div class="c2-table-row ${className}">
+        < div class="c2-table-row ${className}" >
             <span class="c2-col">${formatTime(time)}</span>
             <span class="c2-col">${dist}m</span>
             <span class="c2-col">${formatTime(pace)}</span>
             <span class="c2-col">${watts || '-'}</span>
             <span class="c2-col">${cal || '-'}</span>
             <span class="c2-col">${sr}</span>
-        </div>`;
+        </div > `;
 
     let html = '<div class="c2-table">' + renderHeader();
 
@@ -7880,7 +7907,7 @@ function renderWeeklyRanking() {
 
     // UIのトグル状態を初期化時に合わせる
     if (!genderBtn && state.currentUser) {
-        const btn = document.querySelector(`#weekly-ranking-section .gender-btn[data-gender="${selectedGender}"]`);
+        const btn = document.querySelector(`#weekly - ranking - section.gender - btn[data - gender="${selectedGender}"]`);
         if (btn) {
             document.querySelectorAll('#weekly-ranking-section .gender-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
@@ -7985,39 +8012,39 @@ function renderWeeklyRanking() {
             const display = formatDisplayDate(myBest.date);
             const idtHtml = is2000m ? renderIDTBadge(myBest.weight, selectedGender, myBest.time, myBest.id, myBest.userId) : '';
             const ergoTypeBadge = renderErgoTypeBadge(myBest, myBest.userId);
-            html += `<div class="my-best-section">
-    <div class="ranking-item my-best">
-        <div class="rank">YOU</div>
-        <div class="user-info">
-            <div class="name">今週の自己ベスト</div>
-            <div class="date">${display.month}/${display.day}</div>
+            html += `< div class="my-best-section" >
+        <div class="ranking-item my-best">
+            <div class="rank">YOU</div>
+            <div class="user-info">
+                <div class="name">今週の自己ベスト</div>
+                <div class="date">${display.month}/${display.day}</div>
+            </div>
+            <div>
+                <div class="time">${isTimeMenu ? ((myBest.distance || 0) + 'm') : formatTime(myBest.time)}</div>
+                <div class="split">Split ${getSplit(myBest)}</div>
+                ${idtHtml} ${ergoTypeBadge}
+            </div>
         </div>
-        <div>
-            <div class="time">${isTimeMenu ? ((myBest.distance || 0) + 'm') : formatTime(myBest.time)}</div>
-            <div class="split">Split ${getSplit(myBest)}</div>
-            ${idtHtml} ${ergoTypeBadge}
-        </div>
-    </div>
-            </div>`;
+            </div > `;
         } else {
-            html += `<div class="my-best-section">
-    <div class="ranking-item my-best empty">
-        <div class="rank">YOU</div>
-        <div class="user-info"><div class="name">今週の記録なし</div></div>
-    </div>
-            </div>`;
+            html += `< div class="my-best-section" >
+        <div class="ranking-item my-best empty">
+            <div class="rank">YOU</div>
+            <div class="user-info"><div class="name">今週の記録なし</div></div>
+        </div>
+            </div > `;
         }
     }
 
     html += weeklyBests.slice(0, 20).map((record, idx) => {
         const user = state.users.find(u => u.id === record.userId);
         const display = formatDisplayDate(record.date);
-        const rankSymbol = idx < 3 ? rankMedals[idx] : `${idx + 1}`;
+        const rankSymbol = idx < 3 ? rankMedals[idx] : `${idx + 1} `;
         const isMe = user && user.id === state.currentUser?.id;
         const idtHtml = is2000m ? renderIDTBadge(record.weight, selectedGender, record.time, record.id, record.userId) : '';
         const ergoTypeBadge = renderErgoTypeBadge(record, record.userId);
 
-        return `<div class="ranking-item ${isMe ? 'highlight' : ''}">
+        return `< div class="ranking-item ${isMe ? 'highlight' : ''}" >
             <div class="rank">${rankSymbol}</div>
             <div class="user-info">
                 <div class="name">${user?.name || '不明'}</div>
@@ -8028,7 +8055,7 @@ function renderWeeklyRanking() {
                 <div class="split">Split ${getSplit(record)}</div>
                 ${idtHtml} ${ergoTypeBadge}
             </div>
-        </div>`;
+        </div > `;
     }).join('');
 
     container.innerHTML = html;
@@ -8056,13 +8083,13 @@ function _getIDTPercent(record, user) {
 // ソートトグルHTML
 function _renderSortToggle(rankingType) {
     const mode = rankingType === 'weekly' ? weeklyRankingSortMode : allTimeRankingSortMode;
-    return `<div style="display:flex;align-items:center;margin-bottom:8px;">
+    return `< div style = "display:flex;align-items:center;margin-bottom:8px;" >
         <span style="font-size:12px;color:#888;">並び替え:</span>
         <div class="sort-toggle">
             <button class="sort-toggle-btn ${mode === 'time' ? 'active' : ''}" onclick="set${rankingType === 'weekly' ? 'Weekly' : 'AllTime'}RankingSort('time')">⏱ タイム順</button>
             <button class="sort-toggle-btn ${mode === 'idt' ? 'active' : ''}" onclick="set${rankingType === 'weekly' ? 'Weekly' : 'AllTime'}RankingSort('idt')">📊 IDT順</button>
         </div>
-    </div>`;
+    </div > `;
 }
 
 function setWeeklyRankingSort(mode) {
@@ -8103,7 +8130,7 @@ function renderTeamRecords() {
         const display = formatDisplayDate(record.date);
         const initials = user?.name?.slice(0, 2) || '??';
 
-        return `<div class="team-record-item">
+        return `< div class="team-record-item" >
             <div class="avatar">${initials}</div>
             <div class="user-info">
                 <div class="name">${user?.name || '不明'}</div>
@@ -8114,7 +8141,7 @@ function renderTeamRecords() {
                 <div class="split-display">Split ${getSplit(record)}</div>
                 <div class="date-display">${display.month}/${display.day}</div>
             </div>
-        </div>`;
+        </div > `;
     }).join('');
 }
 
@@ -8415,7 +8442,9 @@ function renderTrendsChart() {
     ctx.fillStyle = '#aaa';
     ctx.font = '10px sans-serif';
     ctx.textAlign = 'left';
-    const fmtDate = (d) => { const dt = new Date(d); return `${dt.getMonth() + 1}/${dt.getDate()}`; };
+    const fmtDate = (d) => {
+        const dt = new Date(d); return `${dt.getMonth() + 1}/${dt.getDate()}`;
+    };
     ctx.fillText(fmtDate(dataPoints[0].date), padding.left, canvas.height - 5);
     ctx.textAlign = 'right';
     ctx.fillText(fmtDate(dataPoints[dataPoints.length - 1].date), canvas.width - padding.right, canvas.height - 5);
