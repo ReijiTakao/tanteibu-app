@@ -1667,6 +1667,17 @@ async function fetchConcept2Data() {
 
     showToast('データを同期中...', 'success');
 
+    // ergoRawデータフォーマットのバージョン管理
+    // バージョンが古い場合はergoRawをクリアして全件再取得
+    const ERGO_RAW_VERSION = 2; // v2: カロリー・ワット・ドラッグファクタ追加
+    const savedRawVersion = parseInt(localStorage.getItem('ergo_raw_v') || '0');
+    if (savedRawVersion < ERGO_RAW_VERSION) {
+        console.log(`🔄 ergoRawフォーマット更新 (v${savedRawVersion}→v${ERGO_RAW_VERSION}): 全データ再取得`);
+        state.ergoRaw = [];
+        DB.save('ergoRaw', state.ergoRaw);
+        localStorage.setItem('ergo_raw_v', String(ERGO_RAW_VERSION));
+    }
+
     try {
         // 直接Concept2 APIを呼び出す（全ページ取得）
 
