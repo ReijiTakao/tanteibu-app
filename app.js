@@ -1710,7 +1710,7 @@ async function fetchConcept2Data() {
 
     // ergoRawデータフォーマットのバージョン管理
     // バージョンが古い場合はergoRawをクリアして全件再取得
-    const ERGO_RAW_VERSION = 2; // v2: カロリー・ワット・ドラッグファクタ追加
+    const ERGO_RAW_VERSION = 3; // v3: watts/calories/dragFactor補完再取得
     const savedRawVersion = parseInt(localStorage.getItem('ergo_raw_v') || '0');
     if (savedRawVersion < ERGO_RAW_VERSION) {
         console.log(`🔄 ergoRawフォーマット更新 (v${savedRawVersion}→v${ERGO_RAW_VERSION}): 全データ再取得`);
