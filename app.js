@@ -1582,7 +1582,7 @@ async function processConceptData(results) {
     DB.save('ergoRaw', state.ergoRaw);
 
     // 分類ロジックのバージョン管理：ロジック変更時にバージョンを上げると既存データを自動再分類
-    const CLASSIFY_VERSION = 4; // v4: Stairs Climbing用 intervalCount/lastWatts追加
+    const CLASSIFY_VERSION = 5; // v5: watts/calories/dragFactor追加
     const savedVersion = parseInt(localStorage.getItem('ergo_classify_v') || '0');
     const needReclassify = savedVersion < CLASSIFY_VERSION;
     if (needReclassify) {
