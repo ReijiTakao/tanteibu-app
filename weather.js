@@ -1,22 +1,16 @@
 // ==========================================
-// 天気情報モジュール (Open-Meteo + Windy埋込み)
+// 天気情報モジュール (Open-Meteo JMAモデル)
 // 戸田公園固定 / APIキー不要
 // ==========================================
 
 const Weather = (function () {
     'use strict';
 
-    // 戸田公園の座標
     var LAT = 35.8156;
     var LON = 139.6731;
-
-    // キャッシュキー・有効期間(30分)
-    var CACHE_KEY = 'weather_cache';
+    var CACHE_KEY = 'weather_cache_v2';
     var CACHE_TTL = 30 * 60 * 1000;
-
-    // 折りたたみ状態キー
     var CK_COMBINED = 'wc_combined';
-    var CK_WINDY = 'wc_windy';
     var CK_WEEKLY = 'wc_weekly';
 
     // WMO Weather Code → 天気情報
@@ -35,6 +29,21 @@ const Weather = (function () {
         return { icon: '🌤️', label: '晴れ' };
     }
 
+    // 風向き → 方角
+    function dir(deg) {
+        if (deg == null) return '';
+        var d = ['北', '北北東', '北東', '東北東', '東', '東南東', '南東', '南南東',
+            '南', '南南西', '南西', '西南西', '西', '西北西', '北西', '北北西'];
+        return d[Math.round(deg / 22.5) % 16];
+    }
+
+    // 風向き → 矢印
+    function arrow(deg) {
+        if (deg == null) return '';
+        var a = ['↓', '↙', '←', '↖', '↑', '↗', '→', '↘'];
+        return a[Math.round(deg / 45) % 8];
+    }
+
     // 折りたたみ（デフォルト閉じ）
     function isClosed(key) { return localStorage.getItem(key) !== '0'; }
     function toggle(key, bodyId, iconId) {
@@ -46,7 +55,7 @@ const Weather = (function () {
         if (i) i.textContent = closed ? '▼' : '▲';
     }
 
-    // --- API取得 ---
+    // --- API取得 (JMAモデル) ---
     async function fetchData() {
         try {
             var c = localStorage.getItem(CACHE_KEY);
@@ -58,34 +67,38 @@ const Weather = (function () {
 
         var params = new URLSearchParams({
             latitude: LAT, longitude: LON,
-            hourly: 'temperature_2m,weathercode',
-            daily: 'weathercode,temperature_2m_max,temperature_2m_min',
+            hourly: 'temperature_2m,weathercode,windspeed_10m,winddirection_10m',
+            daily: 'weathercode,temperature_2m_max,temperature_2m_min,windspeed_10m_max,winddirection_10m_dominant',
             timezone: 'Asia/Tokyo', forecast_days: '7'
         });
-        var res = await fetch('https://api.open-meteo.com/v1/forecast?' + params);
+        // JMAモデル（気象庁MSM/GSM）を使用
+        var res = await fetch('https://api.open-meteo.com/v1/jma?' + params);
         if (!res.ok) throw new Error('Weather API ' + res.status);
         var data = await res.json();
         try { localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: data })); } catch (e) { /* ignore */ }
         return data;
     }
 
-    // hourlyからデータ抽出
-    function hourly(d, dateStr, h) {
+    function hourlyAt(d, dateStr, h) {
         if (!d || !d.hourly || !d.hourly.time) return null;
         var t = dateStr + 'T' + String(h).padStart(2, '0') + ':00';
         var i = d.hourly.time.indexOf(t);
         if (i === -1) return null;
-        return { temp: d.hourly.temperature_2m[i], code: d.hourly.weathercode[i] };
+        return {
+            temp: d.hourly.temperature_2m[i],
+            code: d.hourly.weathercode[i],
+            wind: d.hourly.windspeed_10m[i],
+            windDir: d.hourly.winddirection_10m[i]
+        };
     }
 
-    // 今日の日付文字列
     function todayStr() {
         var t = new Date();
         return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
     }
 
     // ==========================================
-    // 全体タブ: 天気+Windy 統合カード
+    // 全体タブ: 天気+風 統合カード
     // ==========================================
     function renderCombined(data) {
         var el = document.getElementById('weather-combined-widget');
@@ -93,10 +106,9 @@ const Weather = (function () {
 
         var today = new Date();
         var ds = todayStr();
-        var am = hourly(data, ds, 6);
-        var pm = hourly(data, ds, 15);
+        var am = hourlyAt(data, ds, 6);
+        var pm = hourlyAt(data, ds, 15);
 
-        // ヘッダーサマリー（常時表示）
         var summaryParts = [];
         if (am) { var w = wmo(am.code); summaryParts.push(w.icon + Math.round(am.temp) + '°'); }
         if (pm) { var w2 = wmo(pm.code); summaryParts.push(w2.icon + Math.round(pm.temp) + '°'); }
@@ -104,26 +116,18 @@ const Weather = (function () {
 
         var closed = isClosed(CK_COMBINED);
 
-        // 天気スロット
         function slot(label, time, d) {
             if (!d) return '<div class="wc-slot"><span class="wc-slot-label">' + label + '</span><span class="wc-slot-na">—</span></div>';
             var w = wmo(d.code);
+            var windStr = d.wind != null ? (arrow(d.windDir) + ' ' + dir(d.windDir) + ' ' + d.wind.toFixed(1) + 'm/s') : '';
             return '<div class="wc-slot">' +
                 '<div class="wc-slot-label">' + label + ' <small>' + time + '</small></div>' +
                 '<div class="wc-slot-icon">' + w.icon + '</div>' +
                 '<div class="wc-slot-temp">' + Math.round(d.temp) + '°</div>' +
                 '<div class="wc-slot-desc">' + w.label + '</div>' +
+                (windStr ? '<div class="wc-slot-wind">' + windStr + '</div>' : '') +
                 '</div>';
         }
-
-        // Windy iframe
-        var windyClosed = isClosed(CK_WINDY);
-        var windySrc = 'https://embed.windy.com/embed2.html' +
-            '?lat=' + LAT + '&lon=' + LON +
-            '&detailLat=' + LAT + '&detailLon=' + LON +
-            '&zoom=11&level=surface&overlay=wind&product=ecmwf' +
-            '&marker=true&calendar=now&type=map&location=coordinates' +
-            '&metricWind=m%2Fs&metricTemp=%C2%B0C';
 
         el.innerHTML =
             '<div class="wc-header" onclick="Weather.toggleCombined()">' +
@@ -137,15 +141,7 @@ const Weather = (function () {
             slot('朝練', '6:00', am) +
             slot('午後練', '15:00', pm) +
             '</div>' +
-            '<div class="wc-windy-section">' +
-            '<div class="wc-windy-toggle" onclick="event.stopPropagation();Weather.toggleWindy()">' +
-            '<span class="wc-windy-label">💨 風マップ (Windy)</span>' +
-            '<span class="wc-windy-arrow" id="wc-windy-arrow">' + (windyClosed ? '▼' : '▲') + '</span>' +
-            '</div>' +
-            '<div class="wc-windy-body' + (windyClosed ? ' hidden' : '') + '" id="wc-windy-body">' +
-            '<iframe class="wc-windy-iframe" src="' + windySrc + '" frameborder="0" loading="lazy"></iframe>' +
-            '</div>' +
-            '</div>' +
+            '<div class="wc-source">※ 気象庁 JMAモデル</div>' +
             '</div>';
     }
 
@@ -161,7 +157,6 @@ const Weather = (function () {
         var dn = ['日', '月', '火', '水', '木', '金', '土'];
         var ts = todayStr();
 
-        // ヘッダーサマリー
         var si = daily.time.indexOf(ts);
         var hSum = '';
         if (si !== -1) {
@@ -173,12 +168,18 @@ const Weather = (function () {
         var days = '';
 
         for (var i = 0; i < daily.time.length; i++) {
-            var ds = daily.time[i];
-            var dt = new Date(ds + 'T00:00:00+09:00');
+            var dateStr = daily.time[i];
+            var dt = new Date(dateStr + 'T00:00:00+09:00');
             var dw = dt.getDay();
             var w = wmo(daily.weathercode[i]);
-            var isT = ds === ts;
+            var isT = dateStr === ts;
             var cls = (dw === 0 ? ' wfw-sun' : dw === 6 ? ' wfw-sat' : '') + (isT ? ' wfw-today' : '');
+            var windMax = daily.windspeed_10m_max ? daily.windspeed_10m_max[i] : null;
+            var windDom = daily.winddirection_10m_dominant ? daily.winddirection_10m_dominant[i] : null;
+            var windLine = '';
+            if (windMax != null) {
+                windLine = '<div class="wfw-day-wind">' + arrow(windDom) + windMax.toFixed(0) + '<small>m/s</small></div>';
+            }
 
             days +=
                 '<div class="wfw-day' + cls + '">' +
@@ -189,6 +190,7 @@ const Weather = (function () {
                 '<span class="wfw-temp-max">' + Math.round(daily.temperature_2m_max[i]) + '°</span>' +
                 '<span class="wfw-temp-min">' + Math.round(daily.temperature_2m_min[i]) + '°</span>' +
                 '</div>' +
+                windLine +
                 '</div>';
         }
 
@@ -201,12 +203,9 @@ const Weather = (function () {
             '<div class="wfw-scroll' + (closed ? ' hidden' : '') + '" id="wfw-scroll-body">' + days + '</div>';
     }
 
-    // --- 公開トグル ---
     function toggleCombined() { toggle(CK_COMBINED, 'wc-body', 'wc-arrow'); }
-    function toggleWindy() { toggle(CK_WINDY, 'wc-windy-body', 'wc-windy-arrow'); }
     function toggleWeekly() { toggle(CK_WEEKLY, 'wfw-scroll-body', 'wfw-expand-icon'); }
 
-    // --- 初期化 ---
     async function init() {
         try {
             var data = await fetchData();
@@ -224,7 +223,6 @@ const Weather = (function () {
     return {
         init: init,
         toggleCombined: toggleCombined,
-        toggleWindy: toggleWindy,
         toggleWeekly: toggleWeekly
     };
 })();

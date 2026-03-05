@@ -7182,44 +7182,32 @@ textarea {
 }
 
 /* Windyセクション（カード内ネスト） */
-.wc-windy-section {
-    border-top: 1px solid rgba(125, 211, 252, 0.1);
-}
-
-.wc-windy-toggle {
-    display: flex;
-    align-items: center;
-    padding: 8px 14px;
-    cursor: pointer;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-    background: rgba(0, 0, 0, 0.15);
-}
-
-.wc-windy-toggle:active {
-    background: rgba(0, 0, 0, 0.25);
-}
-
-.wc-windy-label {
-    font-size: 12px;
-    font-weight: 600;
+/* 風速数値 */
+.wc-slot-wind {
+    font-size: 11px;
     color: #94a3b8;
-    flex: 1;
+    margin-top: 4px;
+    font-weight: 600;
 }
 
-.wc-windy-arrow {
-    font-size: 10px;
+/* ソース表記 */
+.wc-source {
+    font-size: 9px;
+    color: #475569;
+    text-align: right;
+    padding: 4px 12px 6px;
+}
+
+/* 週間: 風速 */
+.wfw-day-wind {
+    font-size: 9px;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+.wfw-day-wind small {
+    font-size: 8px;
     color: #64748b;
-}
-
-.wc-windy-body {
-    background: #0a0f1a;
-}
-
-.wc-windy-iframe {
-    width: 100%;
-    height: 260px;
-    display: block;
 }
 
 /* =========================================
