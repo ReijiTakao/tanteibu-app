@@ -1,5 +1,5 @@
 // ==========================================
-// 天気情報モジュール (Open-Meteo API + Windy埋込み)
+// 天気情報モジュール (Open-Meteo + Windy埋込み)
 // 戸田公園固定 / APIキー不要
 // ==========================================
 
@@ -7,293 +7,224 @@ const Weather = (function () {
     'use strict';
 
     // 戸田公園の座標
-    const LAT = 35.8156;
-    const LON = 139.6731;
+    var LAT = 35.8156;
+    var LON = 139.6731;
 
     // キャッシュキー・有効期間(30分)
-    const CACHE_KEY = 'weather_cache';
-    const CACHE_TTL = 30 * 60 * 1000;
+    var CACHE_KEY = 'weather_cache';
+    var CACHE_TTL = 30 * 60 * 1000;
 
     // 折りたたみ状態キー
-    const COLLAPSE_KEY_TODAY = 'weather_today_collapsed';
-    const COLLAPSE_KEY_WEEKLY = 'weather_weekly_collapsed';
-    const COLLAPSE_KEY_WINDY = 'weather_windy_collapsed';
+    var CK_COMBINED = 'wc_combined';
+    var CK_WINDY = 'wc_windy';
+    var CK_WEEKLY = 'wc_weekly';
 
-    // WMO Weather Code → 天気情報マッピング
-    function interpretWeatherCode(code) {
+    // WMO Weather Code → 天気情報
+    function wmo(code) {
         if (code === 0) return { icon: '☀️', label: '快晴' };
         if (code === 1) return { icon: '🌤️', label: '晴れ' };
-        if (code === 2) return { icon: '⛅', label: '曇り時々晴れ' };
-        if (code === 3) return { icon: '☁️', label: '曇り' };
+        if (code === 2) return { icon: '⛅', label: 'くもり時々晴れ' };
+        if (code === 3) return { icon: '☁️', label: 'くもり' };
         if (code === 45 || code === 48) return { icon: '🌫️', label: '霧' };
-        if (code >= 51 && code <= 55) return { icon: '🌦️', label: '霧雨' };
-        if (code >= 56 && code <= 57) return { icon: '🌧️', label: '着氷性霧雨' };
-        if (code >= 61 && code <= 65) return { icon: '🌧️', label: '雨' };
-        if (code >= 66 && code <= 67) return { icon: '🌧️', label: '着氷性の雨' };
-        if (code >= 71 && code <= 75) return { icon: '❄️', label: '雪' };
-        if (code === 77) return { icon: '❄️', label: '霧雪' };
+        if (code >= 51 && code <= 57) return { icon: '🌦️', label: '霧雨' };
+        if (code >= 61 && code <= 67) return { icon: '🌧️', label: '雨' };
+        if (code >= 71 && code <= 77) return { icon: '❄️', label: '雪' };
         if (code >= 80 && code <= 82) return { icon: '🌧️', label: 'にわか雨' };
         if (code >= 85 && code <= 86) return { icon: '❄️', label: 'にわか雪' };
-        if (code >= 95 && code <= 99) return { icon: '⛈️', label: '雷雨' };
+        if (code >= 95) return { icon: '⛈️', label: '雷雨' };
         return { icon: '🌤️', label: '晴れ' };
     }
 
-    // 折りたたみ状態の取得（デフォルトは閉じた状態）
-    function isCollapsed(key) {
-        return localStorage.getItem(key) !== '0';
+    // 折りたたみ（デフォルト閉じ）
+    function isClosed(key) { return localStorage.getItem(key) !== '0'; }
+    function toggle(key, bodyId, iconId) {
+        var b = document.getElementById(bodyId);
+        var i = document.getElementById(iconId);
+        if (!b) return;
+        var closed = b.classList.toggle('hidden');
+        localStorage.setItem(key, closed ? '1' : '0');
+        if (i) i.textContent = closed ? '▼' : '▲';
     }
 
-    // 折りたたみトグル
-    function toggleCollapse(key, bodyId, iconId) {
-        var body = document.getElementById(bodyId);
-        var icon = document.getElementById(iconId);
-        if (!body) return;
-        var collapsed = body.classList.toggle('hidden');
-        localStorage.setItem(key, collapsed ? '1' : '0');
-        if (icon) icon.textContent = collapsed ? '▼' : '▲';
-    }
-
-    // Open-Meteo APIからデータ取得
-    async function fetchWeatherData() {
+    // --- API取得 ---
+    async function fetchData() {
         try {
-            var cached = localStorage.getItem(CACHE_KEY);
-            if (cached) {
-                var parsed = JSON.parse(cached);
-                if (parsed.timestamp && Date.now() - parsed.timestamp < CACHE_TTL) {
-                    return parsed.data;
-                }
+            var c = localStorage.getItem(CACHE_KEY);
+            if (c) {
+                var p = JSON.parse(c);
+                if (p.timestamp && Date.now() - p.timestamp < CACHE_TTL) return p.data;
             }
-        } catch (e) {
-            // キャッシュ破損は無視
-        }
+        } catch (e) { /* ignore */ }
 
         var params = new URLSearchParams({
-            latitude: LAT,
-            longitude: LON,
+            latitude: LAT, longitude: LON,
             hourly: 'temperature_2m,weathercode',
             daily: 'weathercode,temperature_2m_max,temperature_2m_min',
-            timezone: 'Asia/Tokyo',
-            forecast_days: '7'
+            timezone: 'Asia/Tokyo', forecast_days: '7'
         });
-
-        var url = 'https://api.open-meteo.com/v1/forecast?' + params.toString();
-        var response = await fetch(url);
-        if (!response.ok) {
-            throw new Error('Weather API error: ' + response.status);
-        }
-
-        var data = await response.json();
-
-        try {
-            localStorage.setItem(CACHE_KEY, JSON.stringify({
-                timestamp: Date.now(),
-                data: data
-            }));
-        } catch (e) {
-            // localStorage容量超過は無視
-        }
-
+        var res = await fetch('https://api.open-meteo.com/v1/forecast?' + params);
+        if (!res.ok) throw new Error('Weather API ' + res.status);
+        var data = await res.json();
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: data })); } catch (e) { /* ignore */ }
         return data;
     }
 
-    // hourlyデータから特定時刻のデータを抽出
-    function getHourlyData(weatherData, dateStr, hour) {
-        if (!weatherData || !weatherData.hourly || !weatherData.hourly.time) return null;
-
-        var targetTime = dateStr + 'T' + String(hour).padStart(2, '0') + ':00';
-        var idx = weatherData.hourly.time.indexOf(targetTime);
-        if (idx === -1) return null;
-
-        return {
-            temp: weatherData.hourly.temperature_2m[idx],
-            weatherCode: weatherData.hourly.weathercode[idx]
-        };
+    // hourlyからデータ抽出
+    function hourly(d, dateStr, h) {
+        if (!d || !d.hourly || !d.hourly.time) return null;
+        var t = dateStr + 'T' + String(h).padStart(2, '0') + ':00';
+        var i = d.hourly.time.indexOf(t);
+        if (i === -1) return null;
+        return { temp: d.hourly.temperature_2m[i], code: d.hourly.weathercode[i] };
     }
 
-    // ===== 全体タブ: 今日の天気ウィジェット =====
-    function renderTodayWeather(weatherData) {
-        var container = document.getElementById('today-weather-widget');
-        if (!container) return;
+    // 今日の日付文字列
+    function todayStr() {
+        var t = new Date();
+        return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+    }
+
+    // ==========================================
+    // 全体タブ: 天気+Windy 統合カード
+    // ==========================================
+    function renderCombined(data) {
+        var el = document.getElementById('weather-combined-widget');
+        if (!el) return;
 
         var today = new Date();
-        var dateStr = today.getFullYear() + '-' +
-            String(today.getMonth() + 1).padStart(2, '0') + '-' +
-            String(today.getDate()).padStart(2, '0');
+        var ds = todayStr();
+        var am = hourly(data, ds, 6);
+        var pm = hourly(data, ds, 15);
 
-        var morningData = getHourlyData(weatherData, dateStr, 6);
-        var afternoonData = getHourlyData(weatherData, dateStr, 15);
+        // ヘッダーサマリー（常時表示）
+        var summaryParts = [];
+        if (am) { var w = wmo(am.code); summaryParts.push(w.icon + Math.round(am.temp) + '°'); }
+        if (pm) { var w2 = wmo(pm.code); summaryParts.push(w2.icon + Math.round(pm.temp) + '°'); }
+        var summary = summaryParts.join(' / ');
 
-        if (!morningData && !afternoonData) {
-            container.innerHTML = '';
-            return;
+        var closed = isClosed(CK_COMBINED);
+
+        // 天気スロット
+        function slot(label, time, d) {
+            if (!d) return '<div class="wc-slot"><span class="wc-slot-label">' + label + '</span><span class="wc-slot-na">—</span></div>';
+            var w = wmo(d.code);
+            return '<div class="wc-slot">' +
+                '<div class="wc-slot-label">' + label + ' <small>' + time + '</small></div>' +
+                '<div class="wc-slot-icon">' + w.icon + '</div>' +
+                '<div class="wc-slot-temp">' + Math.round(d.temp) + '°</div>' +
+                '<div class="wc-slot-desc">' + w.label + '</div>' +
+                '</div>';
         }
 
-        // ヘッダー用サマリー
-        var mIcon = morningData ? interpretWeatherCode(morningData.weatherCode).icon : '';
-        var aIcon = afternoonData ? interpretWeatherCode(afternoonData.weatherCode).icon : '';
-        var mTemp = morningData ? Math.round(morningData.temp) + '°' : '';
-        var aTemp = afternoonData ? Math.round(afternoonData.temp) + '°' : '';
-        var summary = mIcon + mTemp + ' / ' + aIcon + aTemp;
+        // Windy iframe
+        var windyClosed = isClosed(CK_WINDY);
+        var windySrc = 'https://embed.windy.com/embed2.html' +
+            '?lat=' + LAT + '&lon=' + LON +
+            '&detailLat=' + LAT + '&detailLon=' + LON +
+            '&zoom=11&level=surface&overlay=wind&product=ecmwf' +
+            '&marker=true&calendar=now&type=map&location=coordinates' +
+            '&metricWind=m%2Fs&metricTemp=%C2%B0C';
 
-        var collapsed = isCollapsed(COLLAPSE_KEY_TODAY);
-
-        var renderSlot = function (label, time, data) {
-            if (!data) return '<div class="wtw-slot wtw-slot-empty"><span class="wtw-slot-label">' + label + '</span><span class="wtw-slot-na">データなし</span></div>';
-
-            var weather = interpretWeatherCode(data.weatherCode);
-
-            return '<div class="wtw-slot">' +
-                '<div class="wtw-slot-label">' + label + ' <span class="wtw-slot-time">' + time + '</span></div>' +
-                '<div class="wtw-slot-main">' +
-                '<span class="wtw-icon">' + weather.icon + '</span>' +
-                '<span class="wtw-temp">' + Math.round(data.temp) + '<small>°C</small></span>' +
-                '</div>' +
-                '<div class="wtw-slot-sub">' + weather.label + '</div>' +
-                '</div>';
-        };
-
-        container.innerHTML =
-            '<div class="wtw-header" onclick="Weather.toggleToday()">' +
-            '<span class="wtw-title">🌤️ 戸田の天気</span>' +
-            '<span class="wtw-header-summary">' + summary + '</span>' +
-            '<span class="wtw-expand" id="wtw-expand-icon">' + (collapsed ? '▼' : '▲') + '</span>' +
+        el.innerHTML =
+            '<div class="wc-header" onclick="Weather.toggleCombined()">' +
+            '<span class="wc-title">🌤️ 戸田の天気</span>' +
+            '<span class="wc-summary">' + summary + '</span>' +
+            '<span class="wc-date">' + (today.getMonth() + 1) + '/' + today.getDate() + '</span>' +
+            '<span class="wc-arrow" id="wc-arrow">' + (closed ? '▼' : '▲') + '</span>' +
             '</div>' +
-            '<div class="wtw-body' + (collapsed ? ' hidden' : '') + '" id="wtw-body">' +
-            renderSlot('朝練', '6:00', morningData) +
-            '<div class="wtw-divider"></div>' +
-            renderSlot('午後練', '15:00', afternoonData) +
+            '<div class="wc-body' + (closed ? ' hidden' : '') + '" id="wc-body">' +
+            '<div class="wc-slots">' +
+            slot('朝練', '6:00', am) +
+            slot('午後練', '15:00', pm) +
+            '</div>' +
+            '<div class="wc-windy-section">' +
+            '<div class="wc-windy-toggle" onclick="event.stopPropagation();Weather.toggleWindy()">' +
+            '<span class="wc-windy-label">💨 風マップ (Windy)</span>' +
+            '<span class="wc-windy-arrow" id="wc-windy-arrow">' + (windyClosed ? '▼' : '▲') + '</span>' +
+            '</div>' +
+            '<div class="wc-windy-body' + (windyClosed ? ' hidden' : '') + '" id="wc-windy-body">' +
+            '<iframe class="wc-windy-iframe" src="' + windySrc + '" frameborder="0" loading="lazy"></iframe>' +
+            '</div>' +
+            '</div>' +
             '</div>';
     }
 
-    // ===== 練習登録タブ: 週間天気予報 =====
-    function renderWeeklyWeather(weatherData) {
-        var container = document.getElementById('weekly-weather-widget');
-        if (!container) return;
+    // ==========================================
+    // 練習登録タブ: コンパクト週間天気
+    // ==========================================
+    function renderWeekly(data) {
+        var el = document.getElementById('weekly-weather-widget');
+        if (!el) return;
+        if (!data || !data.daily || !data.daily.time) { el.innerHTML = ''; return; }
 
-        if (!weatherData || !weatherData.daily || !weatherData.daily.time) {
-            container.innerHTML = '';
-            return;
-        }
-
-        var daily = weatherData.daily;
-        var dayNames = ['日', '月', '火', '水', '木', '金', '土'];
-        var today = new Date();
-        var todayStr = today.getFullYear() + '-' +
-            String(today.getMonth() + 1).padStart(2, '0') + '-' +
-            String(today.getDate()).padStart(2, '0');
+        var daily = data.daily;
+        var dn = ['日', '月', '火', '水', '木', '金', '土'];
+        var ts = todayStr();
 
         // ヘッダーサマリー
-        var todaySummary = '';
-        var todayIdx = daily.time.indexOf(todayStr);
-        if (todayIdx !== -1) {
-            var tw = interpretWeatherCode(daily.weathercode[todayIdx]);
-            todaySummary = tw.icon + ' ' + Math.round(daily.temperature_2m_max[todayIdx]) + '°/' + Math.round(daily.temperature_2m_min[todayIdx]) + '°';
+        var si = daily.time.indexOf(ts);
+        var hSum = '';
+        if (si !== -1) {
+            var tw = wmo(daily.weathercode[si]);
+            hSum = tw.icon + ' ' + Math.round(daily.temperature_2m_max[si]) + '°/' + Math.round(daily.temperature_2m_min[si]) + '°';
         }
 
-        var collapsed = isCollapsed(COLLAPSE_KEY_WEEKLY);
+        var closed = isClosed(CK_WEEKLY);
+        var days = '';
 
-        var daysHtml = '';
         for (var i = 0; i < daily.time.length; i++) {
-            var dateStr = daily.time[i];
-            var d = new Date(dateStr + 'T00:00:00+09:00');
-            var dayName = dayNames[d.getDay()];
-            var month = d.getMonth() + 1;
-            var date = d.getDate();
-            var weather = interpretWeatherCode(daily.weathercode[i]);
-            var tMax = Math.round(daily.temperature_2m_max[i]);
-            var tMin = Math.round(daily.temperature_2m_min[i]);
-            var isTodayFlag = dateStr === todayStr;
-            var dayClass = d.getDay() === 0 ? ' wfw-sun' : d.getDay() === 6 ? ' wfw-sat' : '';
-            var todayClass = isTodayFlag ? ' wfw-today' : '';
+            var ds = daily.time[i];
+            var dt = new Date(ds + 'T00:00:00+09:00');
+            var dw = dt.getDay();
+            var w = wmo(daily.weathercode[i]);
+            var isT = ds === ts;
+            var cls = (dw === 0 ? ' wfw-sun' : dw === 6 ? ' wfw-sat' : '') + (isT ? ' wfw-today' : '');
 
-            daysHtml +=
-                '<div class="wfw-day' + dayClass + todayClass + '">' +
-                '<div class="wfw-day-name">' + (isTodayFlag ? '今日' : dayName) + '</div>' +
-                '<div class="wfw-day-date">' + month + '/' + date + '</div>' +
-                '<div class="wfw-day-icon">' + weather.icon + '</div>' +
+            days +=
+                '<div class="wfw-day' + cls + '">' +
+                '<div class="wfw-day-name">' + (isT ? '今日' : dn[dw]) + '</div>' +
+                '<div class="wfw-day-date">' + (dt.getMonth() + 1) + '/' + dt.getDate() + '</div>' +
+                '<div class="wfw-day-icon">' + w.icon + '</div>' +
                 '<div class="wfw-day-temps">' +
-                '<span class="wfw-temp-max">' + tMax + '°</span>' +
-                '<span class="wfw-temp-min">' + tMin + '°</span>' +
+                '<span class="wfw-temp-max">' + Math.round(daily.temperature_2m_max[i]) + '°</span>' +
+                '<span class="wfw-temp-min">' + Math.round(daily.temperature_2m_min[i]) + '°</span>' +
                 '</div>' +
                 '</div>';
         }
 
-        container.innerHTML =
+        el.innerHTML =
             '<div class="wfw-header" onclick="Weather.toggleWeekly()">' +
-            '<span class="wfw-title">🌤️ 戸田 週間天気</span>' +
-            '<span class="wfw-header-summary">' + todaySummary + '</span>' +
-            '<span class="wfw-expand" id="wfw-expand-icon">' + (collapsed ? '▼' : '▲') + '</span>' +
+            '<span class="wfw-title">🌤️ 週間天気</span>' +
+            '<span class="wfw-header-summary">' + hSum + '</span>' +
+            '<span class="wfw-expand" id="wfw-expand-icon">' + (closed ? '▼' : '▲') + '</span>' +
             '</div>' +
-            '<div class="wfw-scroll' + (collapsed ? ' hidden' : '') + '" id="wfw-scroll-body">' + daysHtml + '</div>';
+            '<div class="wfw-scroll' + (closed ? ' hidden' : '') + '" id="wfw-scroll-body">' + days + '</div>';
     }
 
-    // ===== Windy風マップウィジェット =====
-    function renderWindyWidget() {
-        var container = document.getElementById('windy-weather-widget');
-        if (!container) return;
+    // --- 公開トグル ---
+    function toggleCombined() { toggle(CK_COMBINED, 'wc-body', 'wc-arrow'); }
+    function toggleWindy() { toggle(CK_WINDY, 'wc-windy-body', 'wc-windy-arrow'); }
+    function toggleWeekly() { toggle(CK_WEEKLY, 'wfw-scroll-body', 'wfw-expand-icon'); }
 
-        var collapsed = isCollapsed(COLLAPSE_KEY_WINDY);
-
-        var windySrc = 'https://embed.windy.com/embed2.html' +
-            '?lat=' + LAT +
-            '&lon=' + LON +
-            '&detailLat=' + LAT +
-            '&detailLon=' + LON +
-            '&zoom=11' +
-            '&level=surface' +
-            '&overlay=wind' +
-            '&product=ecmwf' +
-            '&marker=true' +
-            '&calendar=now' +
-            '&type=map' +
-            '&location=coordinates' +
-            '&metricWind=m%2Fs' +
-            '&metricTemp=%C2%B0C';
-
-        container.innerHTML =
-            '<div class="windy-header" onclick="Weather.toggleWindy()">' +
-            '<span class="windy-title">💨 戸田の風 (Windy)</span>' +
-            '<span class="windy-expand" id="windy-expand-icon">' + (collapsed ? '▼' : '▲') + '</span>' +
-            '</div>' +
-            '<div class="windy-body' + (collapsed ? ' hidden' : '') + '" id="windy-body">' +
-            '<iframe class="windy-iframe" src="' + windySrc + '" frameborder="0" loading="lazy"></iframe>' +
-            '</div>';
-    }
-
-    // 折りたたみ公開関数
-    function toggleToday() {
-        toggleCollapse(COLLAPSE_KEY_TODAY, 'wtw-body', 'wtw-expand-icon');
-    }
-
-    function toggleWeekly() {
-        toggleCollapse(COLLAPSE_KEY_WEEKLY, 'wfw-scroll-body', 'wfw-expand-icon');
-    }
-
-    function toggleWindy() {
-        toggleCollapse(COLLAPSE_KEY_WINDY, 'windy-body', 'windy-expand-icon');
-    }
-
-    // ===== 初期化 =====
+    // --- 初期化 ---
     async function init() {
         try {
-            var data = await fetchWeatherData();
-            renderTodayWeather(data);
-            renderWeeklyWeather(data);
+            var data = await fetchData();
+            renderCombined(data);
+            renderWeekly(data);
         } catch (e) {
             console.warn('天気情報の取得に失敗:', e);
-            var todayEl = document.getElementById('today-weather-widget');
-            var weeklyEl = document.getElementById('weekly-weather-widget');
-            if (todayEl) todayEl.innerHTML = '';
-            if (weeklyEl) weeklyEl.innerHTML = '';
+            var c = document.getElementById('weather-combined-widget');
+            var w = document.getElementById('weekly-weather-widget');
+            if (c) c.innerHTML = '';
+            if (w) w.innerHTML = '';
         }
-        // Windy埋込みは常に表示（API不要）
-        renderWindyWidget();
     }
 
     return {
         init: init,
-        toggleToday: toggleToday,
-        toggleWeekly: toggleWeekly,
-        toggleWindy: toggleWindy
+        toggleCombined: toggleCombined,
+        toggleWindy: toggleWindy,
+        toggleWeekly: toggleWeekly
     };
 })();
