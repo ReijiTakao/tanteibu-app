@@ -553,7 +553,6 @@ const DB = {
                 }
 
                 // ローカルにあるがSupabaseにない自分のレコードを自動アップロード
-                const currentUserId = state.currentUser?.id;
                 if (currentUserId && window.SupabaseConfig?.db) {
                     const unsyncedRecords = state.ergoRecords.filter(local => {
                         if (local.userId !== currentUserId) return false;
