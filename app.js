@@ -1694,6 +1694,15 @@ function toggleConcept2() {
     }
 }
 
+// 距離(m)と時間(秒)からワットを計算（Concept2エルゴ公式: P = 2.80 / pace^3）
+function calcWattsFromPace(distance, timeSec) {
+    if (!distance || !timeSec || distance <= 0 || timeSec <= 0) return null;
+    const pacePerM = timeSec / distance; // 秒/m
+    const pace500 = pacePerM * 500; // 500mあたりの秒数
+    if (pace500 <= 0) return null;
+    return Math.round(2.80 / Math.pow(pace500 / 500, 3));
+}
+
 // Concept2からデータを取得（全ページ対応）
 async function fetchConcept2Data() {
     if (!state.currentUser?.concept2Connected) {
@@ -1795,9 +1804,9 @@ async function fetchConcept2Data() {
                         restTime: result.rest_time || 0,
                         restDistance: result.rest_distance || 0,
                         // カロリー・ワット・ドラッグファクタ
-                        calories: result.calories_total || result.calories || workout.calories_total || null,
-                        avgWatts: workout.avg_watts || result.avg_watts || null,
-                        dragFactor: result.drag_factor || workout.drag_factor || null,
+                        calories: result.calories_total || result.calories || null,
+                        avgWatts: calcWattsFromPace(result.distance, result.time / 10),
+                        dragFactor: result.drag_factor || null,
                         source: result.source,
                         verified: result.verified,
                         userId: state.currentUser.id,
@@ -1805,15 +1814,14 @@ async function fetchConcept2Data() {
                     });
                 } else {
                     // 既存レコードにcalories/avgWatts/dragFactorが欠けている場合は補完
-                    const workout = result.workout || {};
-                    if (!existing.calories && (result.calories_total || result.calories || workout.calories_total)) {
-                        existing.calories = result.calories_total || result.calories || workout.calories_total;
+                    if (!existing.calories && result.calories_total) {
+                        existing.calories = result.calories_total;
                     }
-                    if (!existing.avgWatts && (workout.avg_watts || result.avg_watts)) {
-                        existing.avgWatts = workout.avg_watts || result.avg_watts;
+                    if (!existing.avgWatts) {
+                        existing.avgWatts = calcWattsFromPace(result.distance, result.time / 10);
                     }
-                    if (!existing.dragFactor && (result.drag_factor || workout.drag_factor)) {
-                        existing.dragFactor = result.drag_factor || workout.drag_factor;
+                    if (!existing.dragFactor && result.drag_factor) {
+                        existing.dragFactor = result.drag_factor;
                     }
                 }
             });
@@ -2189,9 +2197,9 @@ async function classifyErgoSessions(reclassify = false) {
                 menuKey: menuKey,
                 category: category,
                 source: 'Concept2',
-                // カロリー・ワット・ドラッグファクタ（フォールバック付き）
-                calories: raw.calories || (raw.intervals && raw.intervals.reduce((sum, i) => sum + (i.calories || 0), 0)) || null,
-                watts: raw.avgWatts || (raw.intervals && raw.intervals.length > 0 ? Math.round(raw.intervals.reduce((sum, i) => sum + (i.avg_watts || i.watts || 0), 0) / raw.intervals.length) : null) || null,
+                // カロリー・ワット・ドラッグファクタ
+                calories: raw.calories || null,
+                watts: raw.avgWatts || calcWattsFromPace(raw.distance, raw.time) || null,
                 dragFactor: raw.dragFactor || null,
                 // Stairs Climbing用
                 intervalCount: intervalCount,
@@ -7681,9 +7689,9 @@ function openErgoDetail(recordId) {
     // ワット / カロリー / ドラッグファクタ表示
     const rawData = record.rawData || raw || {};
     const workout = rawData.workout || rawData;
-    const avgWatts = record.watts || workout.avg_watts || workout.watts || null;
-    const calories = record.calories || workout.calories || workout.cal_hr || null;
-    const dragFactor = record.dragFactor || workout.drag_factor || workout.dragFactor || null;
+    const avgWatts = record.watts || rawData.avg_watts || calcWattsFromPace(record.distance, record.timeSeconds || record.time) || null;
+    const calories = record.calories || rawData.calories || rawData.calories_total || null;
+    const dragFactor = record.dragFactor || rawData.drag_factor || null;
 
     const wattsRow = document.getElementById('ergo-detail-watts-row');
     const calRow = document.getElementById('ergo-detail-cal-row');
