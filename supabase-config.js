@@ -414,22 +414,40 @@ const SupabaseDB = {
     async loadErgoRecords(userId) {
         if (!isSupabaseReady()) return [];
 
-        let query = _supabaseClient
-            .from('ergo_records')
-            .select('*')
-            .order('date', { ascending: false });
+        const PAGE_SIZE = 1000;
+        let allData = [];
+        let offset = 0;
+        let hasMore = true;
 
-        if (userId) {
-            query = query.eq('user_id', userId);
+        while (hasMore) {
+            let query = _supabaseClient
+                .from('ergo_records')
+                .select('*')
+                .order('date', { ascending: false })
+                .range(offset, offset + PAGE_SIZE - 1);
+
+            if (userId) {
+                query = query.eq('user_id', userId);
+            }
+
+            const { data, error } = await query;
+
+            if (error) {
+                console.error('Load ergo records error:', error);
+                break;
+            }
+
+            if (data && data.length > 0) {
+                allData = allData.concat(data);
+                offset += data.length;
+                hasMore = data.length === PAGE_SIZE;
+            } else {
+                hasMore = false;
+            }
         }
 
-        const { data, error } = await query;
-
-        if (error) {
-            console.error('Load ergo records error:', error);
-            return [];
-        }
-        return (data || []).map(r => SupabaseDB._fromErgoRow(r));
+        console.log(`📊 Supabaseからエルゴレコード ${allData.length}件取得`);
+        return allData.map(r => SupabaseDB._fromErgoRow(r));
     },
 
     async saveErgoRecord(record) {

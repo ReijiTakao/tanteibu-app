@@ -2171,6 +2171,27 @@ async function classifyErgoSessions(reclassify = false) {
         });
 
         DB.save('ergoSessions', state.ergoSessions);
+
+        // concept2Idベースの重複排除（同一concept2Idのレコードは最新のみ保持）
+        const seenConcept2Ids = new Set();
+        const seenIds = new Set();
+        const deduped = [];
+        // 逆順で走査して最後の（最新の）レコードを優先
+        for (let i = state.ergoRecords.length - 1; i >= 0; i--) {
+            const r = state.ergoRecords[i];
+            const c2id = r.concept2Id;
+            if (c2id && c2id !== '') {
+                if (seenConcept2Ids.has(c2id)) continue;
+                seenConcept2Ids.add(c2id);
+            } else {
+                // concept2Idがない場合はIDで重複チェック
+                if (seenIds.has(r.id)) continue;
+                seenIds.add(r.id);
+            }
+            deduped.push(r);
+        }
+        state.ergoRecords = deduped.reverse();
+
         DB.save('ergo_records', state.ergoRecords);
 
         // Supabaseにもergo_recordsを同期（バックグラウンド・新規追加分のみ）
