@@ -7326,3 +7326,27 @@ textarea {
     color: #7dd3fc;
     margin-right: 2px;
 }
+
+/* 天気ウィジェット: 折りたたみヘッダー */
+.wtw-header,
+.wfw-header {
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.wtw-header-summary,
+.wfw-header-summary {
+    margin-left: auto;
+    font-size: 12px;
+    color: #7dd3fc;
+    font-weight: 600;
+}
+
+.wtw-expand,
+.wfw-expand {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-left: 8px;
+    transition: transform 0.2s ease;
+}

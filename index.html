@@ -161,6 +161,10 @@
         <main class="main-content">
             <!-- 1. 入力（自分）タブ -->
             <div id="tab-input" class="tab-content active">
+                <!-- 週間天気予報ウィジェット -->
+                <div id="weekly-weather-widget" class="weather-weekly-widget">
+                    <!-- 天気JS動的生成: 7日間 -->
+                </div>
                 <!-- 練習登録タブ用 週間メニュー -->
                 <div class="wm-widget" id="wm-widget-input">
                     <div class="wm-widget-header" onclick="toggleWeeklyMenuExpandInput()">
@@ -469,10 +473,6 @@
 
                 <!-- サブタブ: 練習記録 -->
                 <div id="subtab-practice" class="note-subtab-content">
-                    <!-- 週間天気予報ウィジェット -->
-                    <div id="weekly-weather-widget" class="weather-weekly-widget">
-                        <!-- 天気JS動的生成: 7日間 -->
-                    </div>
                     <!-- Mile Makes Champion ウィジェット -->
                     <div class="mileage-widget" id="mileage-widget">
                         <div class="mileage-widget-header" onclick="toggleMileageExpand()">

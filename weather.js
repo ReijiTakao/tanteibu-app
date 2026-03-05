@@ -14,8 +14,11 @@ const Weather = (function () {
     const CACHE_KEY = 'weather_cache';
     const CACHE_TTL = 30 * 60 * 1000;
 
+    // 折りたたみ状態キー
+    const COLLAPSE_KEY_TODAY = 'weather_today_collapsed';
+    const COLLAPSE_KEY_WEEKLY = 'weather_weekly_collapsed';
+
     // WMO Weather Code → 天気情報マッピング
-    // https://open-meteo.com/en/docs → WMO Weather interpretation codes
     function interpretWeatherCode(code) {
         if (code === 0) return { icon: '☀️', label: '快晴' };
         if (code === 1) return { icon: '🌤️', label: '晴れ' };
@@ -43,7 +46,7 @@ const Weather = (function () {
         return dirs[idx];
     }
 
-    // 風向き → 矢印アイコン (風の来る方向を示す)
+    // 風向き → 矢印アイコン
     function degreeToArrow(deg) {
         if (deg == null) return '';
         const arrows = ['↓', '↙', '←', '↖', '↑', '↗', '→', '↘'];
@@ -51,9 +54,23 @@ const Weather = (function () {
         return arrows[idx];
     }
 
+    // 折りたたみ状態の取得
+    function isCollapsed(key) {
+        return localStorage.getItem(key) === '1';
+    }
+
+    // 折りたたみトグル
+    function toggleCollapse(key, bodyId, iconId) {
+        const body = document.getElementById(bodyId);
+        const icon = document.getElementById(iconId);
+        if (!body) return;
+        const collapsed = body.classList.toggle('hidden');
+        localStorage.setItem(key, collapsed ? '1' : '0');
+        if (icon) icon.textContent = collapsed ? '▼' : '▲';
+    }
+
     // Open-Meteo APIからデータ取得
     async function fetchWeatherData() {
-        // キャッシュ確認
         try {
             const cached = localStorage.getItem(CACHE_KEY);
             if (cached) {
@@ -76,7 +93,6 @@ const Weather = (function () {
         });
 
         const url = 'https://api.open-meteo.com/v1/forecast?' + params.toString();
-
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error('Weather API error: ' + response.status);
@@ -84,7 +100,6 @@ const Weather = (function () {
 
         const data = await response.json();
 
-        // キャッシュ保存
         try {
             localStorage.setItem(CACHE_KEY, JSON.stringify({
                 timestamp: Date.now(),
@@ -98,7 +113,6 @@ const Weather = (function () {
     }
 
     // hourlyデータから特定時刻のデータを抽出
-    // dateStr: 'YYYY-MM-DD', hour: 0-23
     function getHourlyData(weatherData, dateStr, hour) {
         if (!weatherData || !weatherData.hourly || !weatherData.hourly.time) return null;
 
@@ -114,7 +128,7 @@ const Weather = (function () {
         };
     }
 
-    // ===== 全体タブ: 今日の天気ウィジェット描画 =====
+    // ===== 全体タブ: 今日の天気ウィジェット（折りたたみ対応） =====
     function renderTodayWeather(weatherData) {
         const container = document.getElementById('today-weather-widget');
         if (!container) return;
@@ -124,7 +138,6 @@ const Weather = (function () {
             String(today.getMonth() + 1).padStart(2, '0') + '-' +
             String(today.getDate()).padStart(2, '0');
 
-        // 5:40 → 6:00のデータ, 15:10 → 15:00のデータ
         const morningData = getHourlyData(weatherData, dateStr, 6);
         const afternoonData = getHourlyData(weatherData, dateStr, 15);
 
@@ -132,6 +145,15 @@ const Weather = (function () {
             container.innerHTML = '';
             return;
         }
+
+        // ヘッダー用のサマリー（折りたたみ時に表示）
+        const mIcon = morningData ? interpretWeatherCode(morningData.weatherCode).icon : '';
+        const aIcon = afternoonData ? interpretWeatherCode(afternoonData.weatherCode).icon : '';
+        const mTemp = morningData ? Math.round(morningData.temp) + '°' : '';
+        const aTemp = afternoonData ? Math.round(afternoonData.temp) + '°' : '';
+        const summary = mIcon + mTemp + ' / ' + aIcon + aTemp;
+
+        const collapsed = isCollapsed(COLLAPSE_KEY_TODAY);
 
         const renderSlot = (label, time, data) => {
             if (!data) return '<div class="wtw-slot wtw-slot-empty"><span class="wtw-slot-label">' + label + '</span><span class="wtw-slot-na">データなし</span></div>';
@@ -155,18 +177,19 @@ const Weather = (function () {
         };
 
         container.innerHTML =
-            '<div class="wtw-header">' +
+            '<div class="wtw-header" onclick="Weather.toggleToday()">' +
             '<span class="wtw-title">🌤️ 戸田の天気</span>' +
-            '<span class="wtw-date">' + (today.getMonth() + 1) + '/' + today.getDate() + '</span>' +
+            '<span class="wtw-header-summary">' + summary + '</span>' +
+            '<span class="wtw-expand" id="wtw-expand-icon">' + (collapsed ? '▼' : '▲') + '</span>' +
             '</div>' +
-            '<div class="wtw-body">' +
+            '<div class="wtw-body' + (collapsed ? ' hidden' : '') + '" id="wtw-body">' +
             renderSlot('朝練', '6:00', morningData) +
             '<div class="wtw-divider"></div>' +
             renderSlot('午後練', '15:00', afternoonData) +
             '</div>';
     }
 
-    // ===== 練習記録タブ: 週間天気予報描画 =====
+    // ===== 練習登録タブ: 週間天気予報（折りたたみ対応） =====
     function renderWeeklyWeather(weatherData) {
         const container = document.getElementById('weekly-weather-widget');
         if (!container) return;
@@ -183,6 +206,16 @@ const Weather = (function () {
             String(today.getMonth() + 1).padStart(2, '0') + '-' +
             String(today.getDate()).padStart(2, '0');
 
+        // ヘッダーサマリー：今日のアイコン＋気温
+        let todaySummary = '';
+        const todayIdx = daily.time.indexOf(todayStr);
+        if (todayIdx !== -1) {
+            const tw = interpretWeatherCode(daily.weathercode[todayIdx]);
+            todaySummary = tw.icon + ' ' + Math.round(daily.temperature_2m_max[todayIdx]) + '°/' + Math.round(daily.temperature_2m_min[todayIdx]) + '°';
+        }
+
+        const collapsed = isCollapsed(COLLAPSE_KEY_WEEKLY);
+
         let daysHtml = '';
         for (let i = 0; i < daily.time.length; i++) {
             const dateStr = daily.time[i];
@@ -194,15 +227,13 @@ const Weather = (function () {
             const tMax = Math.round(daily.temperature_2m_max[i]);
             const tMin = Math.round(daily.temperature_2m_min[i]);
             const wind = daily.windspeed_10m_max[i];
-            const isToday = dateStr === todayStr;
+            const isTodayFlag = dateStr === todayStr;
             const dayClass = d.getDay() === 0 ? ' wfw-sun' : d.getDay() === 6 ? ' wfw-sat' : '';
-            const todayClass = isToday ? ' wfw-today' : '';
+            const todayClass = isTodayFlag ? ' wfw-today' : '';
 
-            // 朝練(6時)のhourlyデータ
             const morningH = getHourlyData(weatherData, dateStr, 6);
             const afternoonH = getHourlyData(weatherData, dateStr, 15);
 
-            // 朝練・午後練の各風速情報
             let windDetail = '';
             if (morningH) {
                 windDetail += '<div class="wfw-wind-row"><span class="wfw-wind-label">朝</span>' +
@@ -218,7 +249,7 @@ const Weather = (function () {
 
             daysHtml +=
                 '<div class="wfw-day' + dayClass + todayClass + '">' +
-                '<div class="wfw-day-name">' + (isToday ? '今日' : dayName) + '</div>' +
+                '<div class="wfw-day-name">' + (isTodayFlag ? '今日' : dayName) + '</div>' +
                 '<div class="wfw-day-date">' + month + '/' + date + '</div>' +
                 '<div class="wfw-day-icon">' + weather.icon + '</div>' +
                 '<div class="wfw-day-temps">' +
@@ -230,10 +261,21 @@ const Weather = (function () {
         }
 
         container.innerHTML =
-            '<div class="wfw-header">' +
+            '<div class="wfw-header" onclick="Weather.toggleWeekly()">' +
             '<span class="wfw-title">🌤️ 戸田 週間天気</span>' +
+            '<span class="wfw-header-summary">' + todaySummary + '</span>' +
+            '<span class="wfw-expand" id="wfw-expand-icon">' + (collapsed ? '▼' : '▲') + '</span>' +
             '</div>' +
-            '<div class="wfw-scroll">' + daysHtml + '</div>';
+            '<div class="wfw-scroll' + (collapsed ? ' hidden' : '') + '" id="wfw-scroll-body">' + daysHtml + '</div>';
+    }
+
+    // 折りたたみトグル公開関数
+    function toggleToday() {
+        toggleCollapse(COLLAPSE_KEY_TODAY, 'wtw-body', 'wtw-expand-icon');
+    }
+
+    function toggleWeekly() {
+        toggleCollapse(COLLAPSE_KEY_WEEKLY, 'wfw-scroll-body', 'wfw-expand-icon');
     }
 
     // ===== 初期化 =====
@@ -244,7 +286,6 @@ const Weather = (function () {
             renderWeeklyWeather(data);
         } catch (e) {
             console.warn('天気情報の取得に失敗:', e);
-            // エラー時はウィジェットを非表示にする（アプリは正常動作を継続）
             const todayEl = document.getElementById('today-weather-widget');
             const weeklyEl = document.getElementById('weekly-weather-widget');
             if (todayEl) todayEl.innerHTML = '';
@@ -252,5 +293,9 @@ const Weather = (function () {
         }
     }
 
-    return { init: init };
+    return {
+        init: init,
+        toggleToday: toggleToday,
+        toggleWeekly: toggleWeekly
+    };
 })();
