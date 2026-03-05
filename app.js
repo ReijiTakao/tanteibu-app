@@ -533,6 +533,20 @@ const DB = {
                         state.ergoRecords.push(r);
                     }
                 });
+
+                // Supabaseに存在しない他ユーザーのレコードをローカルから除去
+                const supabaseIds = new Set(allRecords.map(r => r.id));
+                const supabaseConcept2Ids = new Set(allRecords.filter(r => r.concept2Id).map(r => r.concept2Id));
+                const currentUserId = state.currentUser?.id;
+                state.ergoRecords = state.ergoRecords.filter(local => {
+                    // 自分のレコードは常に保持（まだ同期されていない可能性あり）
+                    if (local.userId === currentUserId) return true;
+                    // 他ユーザーのレコード：Supabaseに存在するもののみ保持
+                    if (supabaseIds.has(local.id)) return true;
+                    if (local.concept2Id && supabaseConcept2Ids.has(local.concept2Id)) return true;
+                    return false;
+                });
+
                 this.saveLocal('ergo_records', state.ergoRecords);
                 if (state.ergoSessions?.length) {
                     this.saveLocal('ergo_sessions', state.ergoSessions);
