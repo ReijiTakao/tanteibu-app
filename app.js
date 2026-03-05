@@ -551,6 +551,34 @@ const DB = {
                 if (state.ergoSessions?.length) {
                     this.saveLocal('ergo_sessions', state.ergoSessions);
                 }
+
+                // ローカルにあるがSupabaseにない自分のレコードを自動アップロード
+                const currentUserId = state.currentUser?.id;
+                if (currentUserId && window.SupabaseConfig?.db) {
+                    const unsyncedRecords = state.ergoRecords.filter(local => {
+                        if (local.userId !== currentUserId) return false;
+                        // Supabaseに存在しないレコード
+                        if (supabaseIds.has(local.id)) return false;
+                        if (local.concept2Id && supabaseConcept2Ids.has(local.concept2Id)) return false;
+                        return true;
+                    });
+                    if (unsyncedRecords.length > 0) {
+                        console.log(`📤 未同期エルゴレコード ${unsyncedRecords.length}件をSupabaseにアップロード中...`);
+                        // バックグラウンドで順次アップロード（UIをブロックしない）
+                        (async () => {
+                            let uploadCount = 0;
+                            for (const record of unsyncedRecords) {
+                                try {
+                                    await window.SupabaseConfig.db.saveErgoRecord(record);
+                                    uploadCount++;
+                                } catch (e) {
+                                    console.warn('エルゴレコード同期失敗:', record.id, e);
+                                }
+                            }
+                            console.log(`✅ エルゴレコード ${uploadCount}/${unsyncedRecords.length}件のアップロード完了`);
+                        })();
+                    }
+                }
             }
 
             // クルーノート
@@ -1596,7 +1624,7 @@ async function processConceptData(results) {
     DB.save('ergoRaw', state.ergoRaw);
 
     // 分類ロジックのバージョン管理：ロジック変更時にバージョンを上げると既存データを自動再分類
-    const CLASSIFY_VERSION = 5; // v5: watts/calories/dragFactor追加
+    const CLASSIFY_VERSION = 6; // v6: watts/caloriesフォールバック強化 + ergoRaw補完
     const savedVersion = parseInt(localStorage.getItem('ergo_classify_v') || '0');
     const needReclassify = savedVersion < CLASSIFY_VERSION;
     if (needReclassify) {
@@ -1776,6 +1804,18 @@ async function fetchConcept2Data() {
                         userId: state.currentUser.id,
                         createdAt: new Date().toISOString()
                     });
+                } else {
+                    // 既存レコードにcalories/avgWatts/dragFactorが欠けている場合は補完
+                    const workout = result.workout || {};
+                    if (!existing.calories && (result.calories_total || result.calories || workout.calories_total)) {
+                        existing.calories = result.calories_total || result.calories || workout.calories_total;
+                    }
+                    if (!existing.avgWatts && (workout.avg_watts || result.avg_watts)) {
+                        existing.avgWatts = workout.avg_watts || result.avg_watts;
+                    }
+                    if (!existing.dragFactor && (result.drag_factor || workout.drag_factor)) {
+                        existing.dragFactor = result.drag_factor || workout.drag_factor;
+                    }
                 }
             });
 
@@ -2150,9 +2190,9 @@ async function classifyErgoSessions(reclassify = false) {
                 menuKey: menuKey,
                 category: category,
                 source: 'Concept2',
-                // カロリー・ワット・ドラッグファクタ
-                calories: raw.calories || null,
-                watts: raw.avgWatts || null,
+                // カロリー・ワット・ドラッグファクタ（フォールバック付き）
+                calories: raw.calories || (raw.intervals && raw.intervals.reduce((sum, i) => sum + (i.calories || 0), 0)) || null,
+                watts: raw.avgWatts || (raw.intervals && raw.intervals.length > 0 ? Math.round(raw.intervals.reduce((sum, i) => sum + (i.avg_watts || i.watts || 0), 0) / raw.intervals.length) : null) || null,
                 dragFactor: raw.dragFactor || null,
                 // Stairs Climbing用
                 intervalCount: intervalCount,
