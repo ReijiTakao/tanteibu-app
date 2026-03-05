@@ -218,6 +218,9 @@
                         <div class="wm-notes" id="wm-notes-display"></div>
                     </div>
                 </div>
+                <div id="today-weather-widget" class="weather-today-widget">
+                    <!-- 天気JS動的生成: 今日の午前/午後 -->
+                </div>
                 <div id="schedule-timeline" class="schedule-timeline">
                     <!-- JSで動的生成 -->
                 </div>
@@ -466,6 +469,10 @@
 
                 <!-- サブタブ: 練習記録 -->
                 <div id="subtab-practice" class="note-subtab-content">
+                    <!-- 週間天気予報ウィジェット -->
+                    <div id="weekly-weather-widget" class="weather-weekly-widget">
+                        <!-- 天気JS動的生成: 7日間 -->
+                    </div>
                     <!-- Mile Makes Champion ウィジェット -->
                     <div class="mileage-widget" id="mileage-widget">
                         <div class="mileage-widget-header" onclick="toggleMileageExpand()">
@@ -1534,6 +1541,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=4"></script>
+    <script src="weather.js?v=1"></script>
     <script src="app.js?v=8"></script>
 
     <!-- PWA 更新通知バナー -->

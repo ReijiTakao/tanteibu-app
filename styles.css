@@ -7076,3 +7076,253 @@ textarea {
 .pn-rv-crew-link:active {
     background: rgba(59, 130, 246, 0.1);
 }
+
+/* =========================================
+   天気ウィジェット: 今日の天気（全体タブ）
+   ========================================= */
+.weather-today-widget {
+    margin-bottom: 12px;
+}
+
+.wtw-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, #0c4a6e, #164e63);
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+}
+
+.wtw-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #e0f2fe;
+}
+
+.wtw-date {
+    font-size: 12px;
+    color: #7dd3fc;
+    font-weight: 600;
+}
+
+.wtw-body {
+    display: flex;
+    gap: 0;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #164e63 100%);
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    border: 1px solid rgba(125, 211, 252, 0.15);
+    border-top: none;
+    overflow: hidden;
+}
+
+.wtw-slot {
+    flex: 1;
+    padding: 14px 12px;
+    text-align: center;
+}
+
+.wtw-slot-empty {
+    flex: 1;
+    padding: 14px 12px;
+    text-align: center;
+}
+
+.wtw-slot-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #94a3b8;
+    margin-bottom: 6px;
+}
+
+.wtw-slot-time {
+    font-weight: 400;
+    color: #64748b;
+    font-size: 11px;
+}
+
+.wtw-slot-na {
+    font-size: 11px;
+    color: #475569;
+    display: block;
+    margin-top: 10px;
+}
+
+.wtw-slot-main {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 6px 0 4px;
+}
+
+.wtw-icon {
+    font-size: 28px;
+    line-height: 1;
+}
+
+.wtw-temp {
+    font-size: 24px;
+    font-weight: 800;
+    color: #f1f5f9;
+    line-height: 1;
+}
+
+.wtw-temp small {
+    font-size: 14px;
+    font-weight: 500;
+    color: #94a3b8;
+}
+
+.wtw-slot-sub {
+    font-size: 11px;
+    color: #7dd3fc;
+    margin-bottom: 4px;
+}
+
+.wtw-slot-wind {
+    font-size: 12px;
+    color: #cbd5e1;
+    font-weight: 600;
+}
+
+.wtw-slot-wind small {
+    font-size: 10px;
+    font-weight: 400;
+    color: #94a3b8;
+}
+
+.wtw-wind-arrow {
+    color: #38bdf8;
+}
+
+.wtw-divider {
+    width: 1px;
+    background: rgba(125, 211, 252, 0.15);
+    margin: 10px 0;
+}
+
+/* =========================================
+   天気ウィジェット: 週間天気（練習記録タブ）
+   ========================================= */
+.weather-weekly-widget {
+    margin-bottom: 16px;
+}
+
+.wfw-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, #0c4a6e, #164e63);
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+}
+
+.wfw-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #e0f2fe;
+}
+
+.wfw-scroll {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #164e63 100%);
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    border: 1px solid rgba(125, 211, 252, 0.15);
+    border-top: none;
+    gap: 0;
+}
+
+.wfw-scroll::-webkit-scrollbar {
+    height: 4px;
+}
+
+.wfw-scroll::-webkit-scrollbar-thumb {
+    background: rgba(125, 211, 252, 0.2);
+    border-radius: 4px;
+}
+
+.wfw-day {
+    flex: 0 0 calc(100% / 5);
+    min-width: 70px;
+    padding: 10px 4px 12px;
+    text-align: center;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background 0.15s;
+}
+
+.wfw-day:last-child {
+    border-right: none;
+}
+
+.wfw-today {
+    background: rgba(56, 189, 248, 0.12) !important;
+    border-left: 2px solid #38bdf8;
+}
+
+.wfw-sat .wfw-day-name {
+    color: #60a5fa !important;
+}
+
+.wfw-sun .wfw-day-name {
+    color: #f87171 !important;
+}
+
+.wfw-day-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: #94a3b8;
+    margin-bottom: 2px;
+}
+
+.wfw-day-date {
+    font-size: 10px;
+    color: #64748b;
+    margin-bottom: 6px;
+}
+
+.wfw-day-icon {
+    font-size: 24px;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.wfw-day-temps {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.wfw-temp-max {
+    font-size: 13px;
+    font-weight: 800;
+    color: #f87171;
+}
+
+.wfw-temp-min {
+    font-size: 13px;
+    font-weight: 600;
+    color: #60a5fa;
+}
+
+.wfw-day-wind {
+    font-size: 10px;
+    color: #94a3b8;
+    line-height: 1.4;
+}
+
+.wfw-day-wind small {
+    font-size: 9px;
+    color: #64748b;
+}
+
+.wfw-wind-row {
+    white-space: nowrap;
+}
+
+.wfw-wind-label {
+    font-weight: 600;
+    color: #7dd3fc;
+    margin-right: 2px;
+}

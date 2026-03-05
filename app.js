@@ -9983,6 +9983,11 @@ const initializeApp = async () => {
         });
 
         console.log('✅ All event listeners registered successfully');
+
+        // 天気情報を非同期で取得（アプリ初期化をブロックしない）
+        if (typeof Weather !== 'undefined') {
+            Weather.init().catch(e => console.warn('Weather init failed:', e));
+        }
     } catch (listenerErr) {
         console.error('Event listener registration error:', listenerErr);
     }
