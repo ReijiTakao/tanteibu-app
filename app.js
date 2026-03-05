@@ -7809,8 +7809,8 @@ function renderSplits(record, raw) {
             const time = interval.time ? interval.time / 10 : 0;
             const dist = interval.distance || 0;
             const sr = interval.stroke_rate || interval.spm || '-';
-            const watts = interval.watts || interval.avg_watts || '-';
-            const cal = interval.cal_hr || interval.calories || '-';
+            const watts = calcWattsFromPace(dist, time) || '-';
+            const cal = interval.calories_total || interval.calories || '-';
             // ペース計算 (time / (dist/500))
             let pace = 0;
             if (dist > 0) pace = time / (dist / 500);
@@ -7824,10 +7824,10 @@ function renderSplits(record, raw) {
 
         html += raw.splits.map((split, idx) => {
             const time = (split.time || split.split || 0) / 10;
-            const dist = split.distance || 500; // 通常スプリット記録は500m区切りだが、最後は端数かも
+            const dist = split.distance || 500;
             const sr = split.stroke_rate || split.spm || '-';
-            const watts = split.watts || split.avg_watts || '-';
-            const cal = split.cal_hr || split.calories || '-';
+            const watts = calcWattsFromPace(dist, time) || '-';
+            const cal = split.calories_total || split.calories || '-';
             // ペースはその区間のタイムそのもの(500mなら)
             let pace = time / (dist / 500);
             if (dist === 0) pace = 0;
