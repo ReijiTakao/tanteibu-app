@@ -6107,6 +6107,43 @@ function renderAvailableBoats(dateStr, container) {
 }
 
 // =========================================
+// 風速自動取得 (Open-Meteo JMAモデル / 戸田公園)
+// =========================================
+const _windCache = { data: null, ts: 0 };
+async function fetchWindSpeedForNote(dateStr, timeSlot) {
+    try {
+        const TTL = 30 * 60 * 1000;
+        if (_windCache.data && Date.now() - _windCache.ts < TTL) {
+            return _extractWind(_windCache.data, dateStr, timeSlot);
+        }
+        const params = new URLSearchParams({
+            latitude: 35.8156, longitude: 139.6731,
+            hourly: 'windspeed_10m',
+            timezone: 'Asia/Tokyo', forecast_days: '7',
+            past_days: '7'
+        });
+        const res = await fetch('https://api.open-meteo.com/v1/jma?' + params);
+        if (!res.ok) return null;
+        const data = await res.json();
+        _windCache.data = data;
+        _windCache.ts = Date.now();
+        return _extractWind(data, dateStr, timeSlot);
+    } catch (e) {
+        console.warn('風速取得失敗:', e);
+        return null;
+    }
+}
+function _extractWind(data, dateStr, timeSlot) {
+    if (!data?.hourly?.time) return null;
+    const hour = timeSlot === '午前' ? 6 : 15;
+    const target = dateStr + 'T' + String(hour).padStart(2, '0') + ':00';
+    const idx = data.hourly.time.indexOf(target);
+    if (idx === -1) return null;
+    const ws = data.hourly.windspeed_10m[idx];
+    return ws != null ? parseFloat(ws.toFixed(1)) : null;
+}
+
+// =========================================
 // 練習ノート機能
 // =========================================
 
@@ -6468,11 +6505,22 @@ function switchPracticeNoteToEdit() {
         document.getElementById('practice-note-distance').value = '';
     }
 
-    // 風速入力（乗艇時のみ表示）
+    // 風速入力（乗艇時のみ表示） + Open-Meteo APIで自動取得
     const windSpeedGroup = document.getElementById('wind-speed-group');
     if (schedule && schedule.scheduleType === SCHEDULE_TYPES.BOAT) {
         windSpeedGroup.classList.remove('hidden');
-        document.getElementById('practice-note-wind-speed').value = note.windSpeed || '';
+        const wsInput = document.getElementById('practice-note-wind-speed');
+        if (note.windSpeed) {
+            wsInput.value = note.windSpeed;
+        } else {
+            wsInput.value = '';
+            // APIから自動取得
+            fetchWindSpeedForNote(note.date, note.timeSlot || schedule?.timeSlot || '').then(ws => {
+                if (ws != null && !wsInput.value) {
+                    wsInput.value = ws;
+                }
+            });
+        }
     } else {
         windSpeedGroup.classList.add('hidden');
         document.getElementById('practice-note-wind-speed').value = '';
