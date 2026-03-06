@@ -6257,11 +6257,13 @@ function renderPracticeNotesList() {
                         cardBodyHtml += `<span class="pn-menu-chip pn-menu-chip-${intensityClass}"><span class="pn-menu-chip-label">${label}</span>${detail ? `<span class="pn-menu-chip-detail">${detail}</span>` : ''}</span>`;
                     });
                     cardBodyHtml += `</div>`;
-                    // 風情報
+                    // 風情報（メニューごとの風向き）
                     const winds = [...new Set(note.rowingMenus.map(m => m.wind).filter(Boolean))];
                     if (winds.length > 0) {
                         const windEmoji = { '順風': '↗️', '逆風': '↙️', '横風': '↔️', '無風': '🔵', '順逆両方': '⇅' };
-                        cardBodyHtml += `<div class="pn-card-wind">${winds.map(w => (windEmoji[w] || '') + w).join(' / ')}</div>`;
+                        cardBodyHtml += `<div class="pn-card-wind">${winds.map(w => (windEmoji[w] || '') + w).join(' / ')}${note.windSpeed ? ' ' + note.windSpeed + 'm/s' : ''}</div>`;
+                    } else if (note.windSpeed) {
+                        cardBodyHtml += `<div class="pn-card-wind">🌬️ ${note.windSpeed}m/s</div>`;
                     }
                 }
             } else if (typeLabel === SCHEDULE_TYPES.ERGO) {
@@ -6466,6 +6468,16 @@ function switchPracticeNoteToEdit() {
         document.getElementById('practice-note-distance').value = '';
     }
 
+    // 風速入力（乗艇時のみ表示）
+    const windSpeedGroup = document.getElementById('wind-speed-group');
+    if (schedule && schedule.scheduleType === SCHEDULE_TYPES.BOAT) {
+        windSpeedGroup.classList.remove('hidden');
+        document.getElementById('practice-note-wind-speed').value = note.windSpeed || '';
+    } else {
+        windSpeedGroup.classList.add('hidden');
+        document.getElementById('practice-note-wind-speed').value = '';
+    }
+
     // 乗艇メニュー（乗艇時のみ表示）
     const rowingMenuGroup = document.getElementById('rowing-menu-group');
     if (schedule && schedule.scheduleType === SCHEDULE_TYPES.BOAT) {
@@ -6542,6 +6554,16 @@ function renderPracticeNoteReadView(note, schedule) {
             <div class="pn-rv-section">
                 <div class="pn-rv-label">🏅 漕いだ距離</div>
                 <div class="pn-rv-value">${(note.rowingDistance / 1000).toFixed(1)} km <span class="pn-rv-sub">(${note.rowingDistance.toLocaleString()}m)</span></div>
+            </div>
+        `;
+    }
+
+    // 風速（乗艇）
+    if (schedType === SCHEDULE_TYPES.BOAT && note.windSpeed) {
+        html += `
+            <div class="pn-rv-section">
+                <div class="pn-rv-label">🌬️ 風速</div>
+                <div class="pn-rv-value">${note.windSpeed} <span class="pn-rv-sub">m/s</span></div>
             </div>
         `;
     }
@@ -6812,6 +6834,14 @@ function savePracticeNote() {
         note.rowingDistance = parseInt(distanceInput.value);
     } else {
         note.rowingDistance = null;
+    }
+
+    // 風速を保存
+    const windSpeedInput = document.getElementById('practice-note-wind-speed');
+    if (windSpeedInput && windSpeedInput.value) {
+        note.windSpeed = parseFloat(windSpeedInput.value);
+    } else {
+        note.windSpeed = null;
     }
 
     // ラン距離を保存
@@ -9984,10 +10014,7 @@ const initializeApp = async () => {
 
         console.log('✅ All event listeners registered successfully');
 
-        // 天気情報を非同期で取得（アプリ初期化をブロックしない）
-        if (typeof Weather !== 'undefined') {
-            Weather.init().catch(e => console.warn('Weather init failed:', e));
-        }
+
     } catch (listenerErr) {
         console.error('Event listener registration error:', listenerErr);
     }

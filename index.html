@@ -161,10 +161,7 @@
         <main class="main-content">
             <!-- 1. 入力（自分）タブ -->
             <div id="tab-input" class="tab-content active">
-                <!-- 週間天気予報ウィジェット -->
-                <div id="weekly-weather-widget" class="weather-weekly-widget">
-                    <!-- 天気JS動的生成: 7日間 -->
-                </div>
+
                 <!-- 練習登録タブ用 週間メニュー -->
                 <div class="wm-widget" id="wm-widget-input">
                     <div class="wm-widget-header" onclick="toggleWeeklyMenuExpandInput()">
@@ -202,10 +199,7 @@
                         <button id="overview-today-btn" class="nav-btn-sm today-btn">今日</button>
                     </div>
                 </div>
-                <!-- 天気・風 統合ウィジェット -->
-                <div id="weather-combined-widget" class="weather-combined-widget">
-                    <!-- weather.js で動的生成 -->
-                </div>
+
                 <div id="schedule-timeline" class="schedule-timeline">
                     <!-- JSで動的生成 -->
                 </div>
@@ -1321,6 +1315,12 @@
                     <p class="help-text">Mile makes champion — 漕いだ距離がマイレージランキングに反映されます</p>
                 </div>
 
+                <!-- 風速入力（乗艇時のみ表示） -->
+                <div class="form-group hidden" id="wind-speed-group">
+                    <label>🌬️ 風速 (m/s)</label>
+                    <input type="number" id="practice-note-wind-speed" placeholder="例: 3.5" min="0" max="50" step="0.1">
+                </div>
+
                 <!-- 乗艇メニュー詳細（乗艇時のみ表示） -->
                 <div class="form-group hidden" id="rowing-menu-group">
                     <label>🚣 練習メニュー（任意）</label>
@@ -1522,7 +1522,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=4"></script>
-    <script src="weather.js?v=1"></script>
+
     <script src="app.js?v=8"></script>
 
     <!-- PWA 更新通知バナー -->
