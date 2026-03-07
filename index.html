@@ -147,6 +147,11 @@
     <div id="main-screen" class="screen hidden">
         <!-- ヘッダー -->
         <header class="main-header">
+            <button id="hamburger-btn" class="hamburger-btn" onclick="toggleDrawer()" aria-label="メニュー">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+            </button>
             <h1>端艇部 総合管理</h1>
             <div class="header-right">
                 <span id="sync-status-indicator" class="sync-indicator hidden" title="Supabase同期ステータス"></span>
@@ -156,6 +161,79 @@
                 </div>
             </div>
         </header>
+
+        <!-- サイドドロワーメニュー -->
+        <div id="drawer-overlay" class="drawer-overlay" onclick="toggleDrawer()"></div>
+        <nav id="side-drawer" class="side-drawer">
+            <div class="drawer-header">
+                <div class="drawer-user-info">
+                    <div class="drawer-user-avatar">🚣</div>
+                    <div>
+                        <div class="drawer-user-name" id="drawer-user-name"></div>
+                        <div class="drawer-user-role" id="drawer-user-role"></div>
+                    </div>
+                </div>
+                <button class="drawer-close-btn" onclick="toggleDrawer()">✕</button>
+            </div>
+            <div class="drawer-menu">
+                <div class="drawer-menu-section-label">メイン</div>
+                <button class="drawer-menu-item" onclick="switchTabFromDrawer('input')">
+                    <span class="drawer-menu-icon">📝</span>
+                    <span>練習登録</span>
+                </button>
+                <button class="drawer-menu-item" onclick="switchTabFromDrawer('rigging')">
+                    <span class="drawer-menu-icon">⛵</span>
+                    <span>配艇ボード</span>
+                </button>
+                <button class="drawer-menu-item" onclick="switchTabFromDrawer('overview')">
+                    <span class="drawer-menu-icon">📅</span>
+                    <span>全体スケジュール</span>
+                </button>
+                <button class="drawer-menu-item" onclick="switchTabFromDrawer('ergo-data')">
+                    <span class="drawer-menu-icon">📊</span>
+                    <span>エルゴデータ</span>
+                </button>
+                <button class="drawer-menu-item" onclick="switchTabFromDrawer('crew-note')">
+                    <span class="drawer-menu-icon">📖</span>
+                    <span>練習ノート</span>
+                </button>
+                <div class="drawer-divider"></div>
+                <div class="drawer-menu-section-label">その他</div>
+                <button class="drawer-menu-item" onclick="switchTabFromDrawer('weekly-ranking')">
+                    <span class="drawer-menu-icon">🏆</span>
+                    <span>週間ランキング</span>
+                </button>
+                <button class="drawer-menu-item" onclick="switchTabFromDrawer('annual-schedule')">
+                    <span class="drawer-menu-icon">🗓️</span>
+                    <span>年間スケジュール</span>
+                </button>
+                <button class="drawer-menu-item" onclick="switchTabFromDrawer('rigging-note')">
+                    <span class="drawer-menu-icon">🔧</span>
+                    <span>リギングノート</span>
+                </button>
+                <button class="drawer-menu-item" onclick="switchTabFromDrawer('members')">
+                    <span class="drawer-menu-icon">👥</span>
+                    <span>メンバー</span>
+                </button>
+                <button class="drawer-menu-item" onclick="switchTabFromDrawer('weight-management')">
+                    <span class="drawer-menu-icon">⚖️</span>
+                    <span>体重管理</span>
+                </button>
+                <button class="drawer-menu-item" onclick="switchTabFromDrawer('master-management')">
+                    <span class="drawer-menu-icon">📋</span>
+                    <span>マスタ管理</span>
+                </button>
+                <button class="drawer-menu-item" onclick="switchTabFromDrawer('data-export')">
+                    <span class="drawer-menu-icon">📥</span>
+                    <span>データエクスポート</span>
+                </button>
+                <div class="drawer-divider"></div>
+                <button class="drawer-menu-item" onclick="switchTabFromDrawer('settings')">
+                    <span class="drawer-menu-icon">⚙️</span>
+                    <span>設定</span>
+                </button>
+            </div>
+        </nav>
 
         <!-- メインコンテンツ -->
         <main class="main-content">
@@ -191,6 +269,8 @@
 
             <!-- 2. 全体（閲覧・調整）タブ -->
             <div id="tab-overview" class="tab-content hidden">
+
+                <!-- 選択日の詳細 -->
                 <div class="overview-header">
                     <div class="date-selector">
                         <button id="overview-prev-day" class="nav-btn-sm">←</button>
@@ -442,7 +522,6 @@
                     <div class="note-subtabs">
                         <button class="note-subtab-btn active" data-subtab="practice">📝 練習記録</button>
                         <button class="note-subtab-btn" data-subtab="crew">🚣 クルーノート</button>
-                        <button class="note-subtab-btn" data-subtab="rigging">🔧 リギング</button>
                     </div>
                 </div>
 
@@ -776,37 +855,8 @@
                         </div>
                     </div>
 
-                    <!-- 体重管理 -->
-                    <div class="settings-section">
-                        <h3>⚖️ 体重管理</h3>
-                        <div class="weight-input-enhanced">
-                            <div class="weight-display-large">
-                                <span id="current-weight-display-large" class="weight-value-large">--.-</span>
-                                <span class="weight-unit">kg</span>
-                            </div>
-                            <div class="weight-stepper">
-                                <button class="weight-step-btn" id="weight-minus-1" data-step="-1">-1</button>
-                                <button class="weight-step-btn" id="weight-minus-01" data-step="-0.1">-0.1</button>
-                                <input type="number" id="weight-input" placeholder="0.0" step="0.1" min="30" max="150"
-                                    class="weight-input-field">
-                                <button class="weight-step-btn" id="weight-plus-01" data-step="0.1">+0.1</button>
-                                <button class="weight-step-btn" id="weight-plus-1" data-step="1">+1</button>
-                            </div>
-                            <button id="save-weight-btn" class="primary-btn weight-save-btn">体重を記録</button>
-                        </div>
-                        <div id="weight-history-section" style="margin-top: 12px;">
-                            <div
-                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                <span style="font-size: 13px; color: #888;">体重推移（最近30日）</span>
-                            </div>
-                            <canvas id="weight-chart" height="150"
-                                style="width: 100%; border-radius: 8px; background: #1a1a2e;"></canvas>
-                            <div id="weight-history-list" style="margin-top: 8px; max-height: 120px; overflow-y: auto;">
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- Concept2連携 -->
+                    <!-- Concept2連携 --><!-- Concept2連携 -->
                     <div class="settings-section">
                         <h3>Concept2連携</h3>
                         <div class="settings-item">
@@ -838,14 +888,6 @@
                         </div>
                     </div>
 
-                    <!-- マスタ管理（Cox/管理者のみ） -->
-                    <div id="master-settings" class="settings-section hidden">
-                        <h3>マスタ管理</h3>
-                        <button id="manage-boats-btn" class="settings-btn">艇マスタ</button>
-                        <button id="manage-oars-btn" class="settings-btn">オールマスタ</button>
-                        <button id="manage-ergos-btn" class="settings-btn">エルゴマスタ</button>
-                    </div>
-
                     <!-- 管理者パスコード設定（管理者のみ） -->
                     <div id="admin-passcode-settings" class="settings-section hidden">
                         <h3>🔑 管理者パスコード</h3>
@@ -866,13 +908,7 @@
                         </div>
                     </div>
 
-                    <!-- 登録者名簿 -->
-                    <div class="settings-section">
-                        <h3>📋 登録者名簿</h3>
-                        <div id="member-roster" style="margin-top: 8px;">
-                            <p style="color:#888;">読み込み中...</p>
-                        </div>
-                    </div>
+
 
                     <!-- 使い方ガイド -->
                     <div class="settings-section">
@@ -892,37 +928,221 @@
                         全データリセット</button>
                 </div>
             </div>
+
+            <!-- 8. メンバータブ -->
+            <div id="tab-members" class="tab-content hidden">
+                <h2 class="tab-title">👥 メンバー</h2>
+                <div class="member-filter-bar">
+                    <button class="member-filter-btn active" data-filter="all"
+                        onclick="filterMembers('all')">全員</button>
+                    <button class="member-filter-btn" data-filter="4" onclick="filterMembers('4')">4年</button>
+                    <button class="member-filter-btn" data-filter="3" onclick="filterMembers('3')">3年</button>
+                    <button class="member-filter-btn" data-filter="2" onclick="filterMembers('2')">2年</button>
+                    <button class="member-filter-btn" data-filter="1" onclick="filterMembers('1')">1年</button>
+                </div>
+                <div id="members-card-list" class="members-card-list">
+                    <!-- JSで動的生成 -->
+                </div>
+            </div>
+
+            <!-- リギングノートタブ（独立）-->
+            <div id="tab-rigging-note" class="tab-content hidden">
+                <h2 class="tab-title">🔧 リギングノート</h2>
+                <!-- 登録済み艇リスト -->
+                <div id="rigging-note-boat-list" class="rigging-note-boat-list">
+                    <!-- JSで動的生成 -->
+                </div>
+                <!-- 新しい艇を追加ボタン -->
+                <button class="secondary-btn" style="width:100%;margin-top:12px;" onclick="openRiggingNoteBoatPicker()">
+                    ＋ 新しい艇を追加
+                </button>
+                <!-- 艇選択パネル（hidden初期） -->
+                <div id="rigging-note-picker" class="hidden" style="margin-top:12px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <select id="rigging-note-new-boat-select"
+                            style="flex:1;padding:8px;border-radius:8px;border:1px solid #ccc;font-size:13px;">
+                            <option value="">艇を選択してください</option>
+                        </select>
+                        <button class="primary-btn" style="white-space:nowrap;"
+                            onclick="addRiggingNoteBoat()">追加</button>
+                        <button class="secondary-btn" style="white-space:nowrap;"
+                            onclick="closeRiggingNoteBoatPicker()">キャンセル</button>
+                    </div>
+                </div>
+                <!-- 編集フォーム（艇カードタップで展開） -->
+                <div id="rigging-note-form-section" class="hidden" style="margin-top:12px;">
+                    <div class="rigging-note-form-header"
+                        style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                        <h3 id="rigging-note-form-title" style="margin:0;font-size:16px;"></h3>
+                        <button class="close-btn" onclick="closeRiggingNoteForm()">✕</button>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>ピン・トゥ・ヒール (cm)</label>
+                            <input type="number" id="rigging-note-pin-to-heel" step="0.1" placeholder="例: 123.4">
+                        </div>
+                        <div class="form-group">
+                            <label>デプス (cm)</label>
+                            <input type="number" id="rigging-note-depth" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label>スパン (cm)</label>
+                            <input type="number" id="rigging-note-span" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label>足角 (°)</label>
+                            <input type="number" id="rigging-note-pitch" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label>ハイト (cm)</label>
+                            <input type="number" id="rigging-note-height" step="0.1">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>メモ</label>
+                        <textarea id="rigging-note-memo" rows="3" placeholder="最近の感覚..."></textarea>
+                    </div>
+                    <div class="rigging-btn-row">
+                        <button class="primary-btn" onclick="saveRiggingNote()">設定を保存</button>
+                        <button class="secondary-btn" onclick="toggleRiggingNoteHistory()">📋
+                            履歴 <span id="rigging-note-history-count"
+                                class="history-count-badge hidden">0</span></button>
+                    </div>
+                    <div id="rigging-note-history-panel" class="rigging-history-panel hidden">
+                        <div class="rigging-history-header">
+                            <h3>📋 リギング履歴</h3>
+                            <button class="close-btn" onclick="toggleRiggingNoteHistory()">✕</button>
+                        </div>
+                        <div id="rigging-note-history-list" class="rigging-history-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 体重管理タブ（独立） -->
+            <div id="tab-weight-management" class="tab-content hidden">
+                <h2 class="tab-title">⚖️ 体重管理</h2>
+                <div class="weight-input-enhanced">
+                    <div class="weight-display-large">
+                        <span id="weight-display-standalone" class="weight-value-large">--.-</span>
+                        <span class="weight-unit">kg</span>
+                    </div>
+                    <div class="weight-stepper">
+                        <button class="weight-step-btn" data-step="-1" onclick="adjustStandaloneWeight(-1)">-1</button>
+                        <button class="weight-step-btn" data-step="-0.1"
+                            onclick="adjustStandaloneWeight(-0.1)">-0.1</button>
+                        <input type="number" id="weight-input-standalone" placeholder="0.0" step="0.1" min="30"
+                            max="150" class="weight-input-field" oninput="syncStandaloneWeight()">
+                        <button class="weight-step-btn" data-step="0.1"
+                            onclick="adjustStandaloneWeight(0.1)">+0.1</button>
+                        <button class="weight-step-btn" data-step="1" onclick="adjustStandaloneWeight(1)">+1</button>
+                    </div>
+                    <button class="primary-btn weight-save-btn" onclick="saveStandaloneWeight()">体重を記録</button>
+                </div>
+                <div id="weight-history-section-standalone" style="margin-top: 12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <span style="font-size:13px;color:#888;">体重推移（最近30日）</span>
+                    </div>
+                    <canvas id="weight-chart-standalone" height="150"
+                        style="width:100%;border-radius:8px;background:#1a1a2e;"></canvas>
+                    <div id="weight-history-list-standalone" style="margin-top:8px;max-height:200px;overflow-y:auto;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- マスタ管理タブ（独立・編集権限のみ） -->
+            <div id="tab-master-management" class="tab-content hidden">
+                <h2 class="tab-title">📋 マスタ管理</h2>
+                <div class="settings-section">
+                    <button id="manage-boats-btn-standalone" class="settings-btn">🛥 艇マスタ</button>
+                    <button id="manage-oars-btn-standalone" class="settings-btn">🛌 オールマスタ</button>
+                    <button id="manage-ergos-btn-standalone" class="settings-btn">🏋 エルゴマスタ</button>
+                </div>
+            </div>
+
+            <!-- 9. 年間スケジュールタブ -->
+            <div id="tab-annual-schedule" class="tab-content hidden">
+                <h2 class="tab-title">🗓️ 年間スケジュール</h2>
+                <div class="annual-calendar-widget">
+                    <div class="calendar-nav">
+                        <button class="nav-btn-sm" onclick="changeAnnualMonth(-1)">◀</button>
+                        <span class="calendar-month-label" id="annual-month-label"></span>
+                        <button class="nav-btn-sm" onclick="changeAnnualMonth(1)">▶</button>
+                        <button class="nav-btn-sm today-btn" onclick="goAnnualToday()">今月</button>
+                    </div>
+                    <div class="calendar-grid">
+                        <div class="calendar-weekday">日</div>
+                        <div class="calendar-weekday">月</div>
+                        <div class="calendar-weekday">火</div>
+                        <div class="calendar-weekday">水</div>
+                        <div class="calendar-weekday">木</div>
+                        <div class="calendar-weekday">金</div>
+                        <div class="calendar-weekday">土</div>
+                    </div>
+                    <div class="calendar-days" id="annual-days-grid">
+                        <!-- JSで動的生成 -->
+                    </div>
+                </div>
+                <!-- 選択日のイベント -->
+                <div id="annual-selected-date-label" style="font-weight:700;font-size:15px;margin:12px 0 8px;"></div>
+                <div id="annual-events-list">
+                    <!-- JSで動的生成 -->
+                </div>
+                <button class="primary-btn" style="margin-top:12px;width:100%;" onclick="openAnnualEventModal()"
+                    id="add-annual-event-btn">
+                    + イベントを追加
+                </button>
+            </div>
+
+            <!-- 10. 週間ランキングタブ -->
+            <div id="tab-weekly-ranking" class="tab-content hidden">
+                <h2 class="tab-title">🏆 週間ランキング</h2>
+                <div class="ranking-tab-selector">
+                    <button class="ranking-tab-btn active" data-rtype="distance"
+                        onclick="switchRankingType('distance')">📏
+                        距離</button>
+                    <button class="ranking-tab-btn" data-rtype="ergo" onclick="switchRankingType('ergo')">🚣
+                        エルゴ</button>
+                </div>
+                <!-- 距離ランキングセクション -->
+                <div id="ranking-distance-section" class="ranking-section">
+                    <div id="weekly-distance-ranking">
+                        <!-- JSで動的生成 -->
+                    </div>
+                </div>
+                <!-- エルゴランキングセクション -->
+                <div id="ranking-ergo-section" class="ranking-section hidden">
+                    <div class="ranking-ergo-menu-bar" id="ranking-ergo-menu-bar">
+                        <!-- JSで動的生成：3人以上が行ったメニューのボタン -->
+                    </div>
+                    <div id="weekly-ergo-ranking">
+                        <!-- JSで動的生成 -->
+                    </div>
+                </div>
+            </div>
+
         </main>
 
-        <!-- 下タブナビゲーション（6つ） -->
+        <!-- 下タブナビゲーション（5タブ） -->
         <nav id="bottom-nav" class="bottom-nav">
             <button class="nav-item active" data-tab="input" data-roles="rower,cox,admin">
                 <span class="nav-icon">📝</span>
-                <span class="nav-label">練習登録</span>
+                <span class="nav-label">登録</span>
+            </button>
+            <button class="nav-item" data-tab="rigging" data-roles="rower,cox,admin,coach">
+                <span class="nav-icon">⛵</span>
+                <span class="nav-label">配艇</span>
             </button>
             <button class="nav-item" data-tab="overview" id="nav-overview" data-roles="all">
                 <span class="nav-icon">📅</span>
                 <span class="nav-label">全体</span>
             </button>
-            <button class="nav-item" data-tab="rigging" data-roles="rower,cox,admin,coach">
-                <span class="nav-icon">🚣</span>
-                <span class="nav-label">配艇</span>
-            </button>
             <button class="nav-item" data-tab="ergo-data" data-roles="rower,admin,coach">
                 <span class="nav-icon">📊</span>
-                <span class="nav-label">エルゴデータ</span>
+                <span class="nav-label">エルゴ</span>
             </button>
             <button class="nav-item" data-tab="crew-note" data-roles="rower,cox,admin,coach">
                 <span class="nav-icon">📖</span>
                 <span class="nav-label">ノート</span>
-            </button>
-            <button class="nav-item" data-tab="data-export" data-roles="data,admin">
-                <span class="nav-icon">📥</span>
-                <span class="nav-label">データ</span>
-            </button>
-            <button class="nav-item" data-tab="settings" data-roles="all">
-                <span class="nav-icon">⚙️</span>
-                <span class="nav-label">設定</span>
             </button>
         </nav>
     </div>
@@ -1037,7 +1257,6 @@
 
 
 
-                <!-- 乗艇の場合 -->
                 <div class="form-group hidden" id="allocation-select-group">
                     <label>📋 配艇（必須）</label>
                     <select id="input-allocation" onchange="onAllocationSelected(this.value)"
@@ -1045,6 +1264,15 @@
                         <option value="">配艇を選択してください</option>
                     </select>
                     <div id="allocation-preview" style="margin-top:8px;"></div>
+                    <!-- 配艇ボード誘導バナー（乗艇選択時に表示） -->
+                    <div class="allocation-board-banner" onclick="closeInputModal(); switchTab('rigging');"
+                        style="margin-top:8px;display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,#1e3a5f,#2563eb);border-radius:10px;padding:10px 14px;cursor:pointer;">
+                        <span style="font-size:22px;">⛵</span>
+                        <div>
+                            <div style="font-size:13px;font-weight:700;color:#fff;">配艇ボードへ</div>
+                            <div style="font-size:11px;color:rgba(255,255,255,0.8);">配艇が登録されていない場合はこちら →</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 船情報は配艇から自動取得（手動入力は削除済み） -->
@@ -1602,6 +1830,129 @@
             });
         }
     </script>
+
+    <!-- メンバープロフィールモーダル -->
+    <div id="member-profile-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeMemberProfile()"></div>
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h3 id="profile-modal-title">プロフィール</h3>
+                <button class="modal-close" onclick="closeMemberProfile()">×</button>
+            </div>
+            <div class="modal-body" id="profile-modal-body">
+                <!-- JSで動的生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 年間スケジュールイベントモーダル -->
+    <div id="annual-event-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="document.getElementById('annual-event-modal').classList.add('hidden')">
+        </div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🗓️ イベント追加</h3>
+                <button class="modal-close"
+                    onclick="document.getElementById('annual-event-modal').classList.add('hidden')">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="annual-event-edit-id">
+                <div class="form-group">
+                    <label>タイトル</label>
+                    <input type="text" id="annual-event-title" placeholder="例: 全日本大学選手権">
+                </div>
+                <div class="form-group">
+                    <label>日付</label>
+                    <input type="date" id="annual-event-date">
+                </div>
+                <div class="form-group">
+                    <label>終了日（複数日の場合）</label>
+                    <input type="date" id="annual-event-end-date">
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <div class="form-group" style="flex:1;">
+                        <label>開始時間</label>
+                        <input type="time" id="annual-event-start-time">
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label>終了時間</label>
+                        <input type="time" id="annual-event-end-time">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>カテゴリ</label>
+                    <select id="annual-event-category">
+                        <option value="race">🏁 レース・大会</option>
+                        <option value="camp">⛺ 合宿</option>
+                        <option value="event">🎉 行事</option>
+                        <option value="deadline">⚠️ 締切・手続き</option>
+                        <option value="other">📌 その他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>メモ</label>
+                    <textarea id="annual-event-memo" rows="3" placeholder="詳細・注意事項など"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="primary-btn" onclick="saveAnnualEvent()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 大会履歴追加モーダル -->
+    <div id="competition-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="document.getElementById('competition-modal').classList.add('hidden')"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🏆 大会結果を追加</h3>
+                <button class="modal-close"
+                    onclick="document.getElementById('competition-modal').classList.add('hidden')">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="comp-target-user-id">
+                <input type="hidden" id="comp-edit-index" value="-1">
+                <div class="form-group">
+                    <label>大会名</label>
+                    <input type="text" id="comp-name" placeholder="例: 第73回全日本大学選手権">
+                </div>
+                <div class="form-group">
+                    <label>日付</label>
+                    <input type="date" id="comp-date">
+                </div>
+                <div class="form-group">
+                    <label>種目</label>
+                    <select id="comp-event">
+                        <option value="">選択してください</option>
+                        <option value="1x">1x (シングル)</option>
+                        <option value="2x">2x (ダブル)</option>
+                        <option value="2-">2- (ペア)</option>
+                        <option value="4x">4x (クォドルプル)</option>
+                        <option value="4+">4+ (付きフォア)</option>
+                        <option value="4-">4- (フォア)</option>
+                        <option value="8+">8+ (エイト)</option>
+                        <option value="other">その他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>順位</label>
+                    <input type="text" id="comp-place" placeholder="例: 準決勝3位">
+                </div>
+                <div class="form-group">
+                    <label>タイム</label>
+                    <input type="text" id="comp-time" placeholder="例: 6:32.45">
+                </div>
+                <div class="form-group">
+                    <label>メモ</label>
+                    <input type="text" id="comp-memo" placeholder="クルーメンバー等">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="primary-btn" onclick="saveCompetitionResult()">保存</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>

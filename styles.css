@@ -7076,3 +7076,981 @@ textarea {
 .pn-rv-crew-link:active {
     background: rgba(59, 130, 246, 0.1);
 }
+
+/* =========================================
+   ハンバーガーメニューボタン
+   ========================================= */
+.hamburger-btn {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: none;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    z-index: 101;
+    margin-right: 4px;
+    flex-shrink: 0;
+}
+
+.hamburger-line {
+    width: 20px;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+.hamburger-btn.active .hamburger-line:nth-child(1) {
+    transform: rotate(45deg) translate(4px, 4px);
+}
+
+.hamburger-btn.active .hamburger-line:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger-btn.active .hamburger-line:nth-child(3) {
+    transform: rotate(-45deg) translate(4px, -4px);
+}
+
+/* =========================================
+   サイドドロワーメニュー
+   ========================================= */
+.drawer-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.drawer-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.side-drawer {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 280px;
+    height: 100%;
+    height: 100dvh;
+    background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+    z-index: 1000;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+    overflow-y: auto;
+}
+
+.side-drawer.open {
+    transform: translateX(280px);
+}
+
+.drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%);
+}
+
+.drawer-user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.drawer-user-avatar {
+    width: 44px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+}
+
+.drawer-user-name {
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.drawer-user-role {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.drawer-close-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 4px;
+    transition: color 0.2s;
+}
+
+.drawer-close-btn:hover {
+    color: white;
+}
+
+.drawer-menu {
+    padding: 12px 0;
+    flex: 1;
+}
+
+.drawer-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 14px 20px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.drawer-menu-item:hover,
+.drawer-menu-item:active {
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+}
+
+.drawer-menu-icon {
+    font-size: 20px;
+    width: 28px;
+    text-align: center;
+}
+
+.drawer-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 8px 16px;
+}
+
+/* =========================================
+   月間カレンダーウィジェット
+   ========================================= */
+.calendar-widget {
+    background: var(--card-gradient);
+    border-radius: var(--border-radius);
+    padding: 14px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.calendar-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.calendar-month-label {
+    flex: 1;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-bottom: 4px;
+}
+
+.calendar-weekday {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 4px 0;
+}
+
+.calendar-weekday:first-child {
+    color: var(--danger-color);
+}
+
+.calendar-weekday:last-child {
+    color: var(--accent-color);
+}
+
+.calendar-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+    min-height: 36px;
+}
+
+.calendar-day:hover {
+    background: rgba(59, 130, 246, 0.08);
+}
+
+.calendar-day.other-month {
+    color: var(--text-muted);
+    opacity: 0.4;
+}
+
+.calendar-day.today {
+    background: var(--accent-gradient);
+    color: white;
+    font-weight: 700;
+    border-radius: 50%;
+}
+
+.calendar-day.selected {
+    background: rgba(59, 130, 246, 0.15);
+    border: 2px solid var(--accent-color);
+    font-weight: 700;
+}
+
+.calendar-day.today.selected {
+    background: var(--accent-gradient);
+    border: 2px solid #60a5fa;
+}
+
+.calendar-day.has-event::after {
+    content: '';
+    position: absolute;
+    bottom: 3px;
+    width: 5px;
+    height: 5px;
+    background: var(--success-color);
+    border-radius: 50%;
+}
+
+.calendar-day.today.has-event::after {
+    background: white;
+}
+
+.calendar-day.sunday {
+    color: var(--danger-color);
+}
+
+.calendar-day.saturday {
+    color: var(--accent-color);
+}
+
+/* =========================================
+   メンバーカード一覧
+   ========================================= */
+.member-filter-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    flex-shrink: 0;
+}
+
+.member-filter-btn {
+    padding: 6px 14px;
+    background: var(--bg-white);
+    border: 1.5px solid var(--border-color, rgba(0, 0, 0, 0.1));
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.member-filter-btn.active {
+    background: var(--accent-gradient);
+    color: white;
+    border-color: transparent;
+}
+
+.members-card-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    padding-bottom: 20px;
+}
+
+.member-card {
+    background: var(--card-gradient);
+    border-radius: var(--border-radius);
+    padding: 14px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 6px;
+}
+
+.member-card:active {
+    transform: scale(0.97);
+    box-shadow: var(--shadow-md);
+}
+
+.member-card-avatar {
+    width: 48px;
+    height: 48px;
+    background: var(--accent-gradient);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.member-card-avatar.female {
+    background: linear-gradient(135deg, #ec4899, #f472b6);
+}
+
+.member-card-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.member-card-info {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.member-card-side {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--accent-color);
+}
+
+/* =========================================
+   プロフィール詳細モーダル内
+   ========================================= */
+.profile-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: linear-gradient(135deg, #0f172a 0%, #1e40af 100%);
+    border-radius: var(--border-radius);
+    color: white;
+    margin-bottom: 16px;
+}
+
+.profile-avatar-lg {
+    width: 64px;
+    height: 64px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    flex-shrink: 0;
+}
+
+.profile-name-area h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.profile-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.profile-meta-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.profile-section {
+    margin-bottom: 16px;
+}
+
+.profile-section-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ergo-pb-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.ergo-pb-card {
+    background: var(--bg-primary);
+    border-radius: var(--border-radius-sm);
+    padding: 12px;
+    text-align: center;
+}
+
+.ergo-pb-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.ergo-pb-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-feature-settings: "tnum";
+}
+
+.ergo-pb-source {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.ergo-pb-input {
+    width: 100%;
+    text-align: center;
+    padding: 6px;
+    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.1));
+    border-radius: 6px;
+    font-size: 14px;
+    margin-top: 4px;
+    background: var(--bg-white);
+    color: var(--text-primary);
+}
+
+.competition-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.competition-item {
+    background: var(--bg-primary);
+    border-radius: var(--border-radius-sm);
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.competition-info {
+    flex: 1;
+}
+
+.competition-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.competition-detail {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.competition-result {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.competition-place {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent-color);
+}
+
+.competition-time {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.competition-delete-btn {
+    background: none;
+    border: none;
+    color: var(--danger-color);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 2px 6px;
+    margin-left: 8px;
+}
+
+.profile-add-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 10px;
+    background: rgba(59, 130, 246, 0.08);
+    border: 2px dashed rgba(59, 130, 246, 0.3);
+    border-radius: var(--border-radius-sm);
+    color: var(--accent-color);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.profile-add-btn:hover {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: var(--accent-color);
+}
+
+.profile-save-btn {
+    width: 100%;
+    padding: 12px;
+    margin-top: 8px;
+}
+
+/* =========================================
+   配艇ボード誘導バナー
+   ========================================= */
+.rigging-guide-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(6, 182, 212, 0.08));
+    border: 1.5px solid rgba(59, 130, 246, 0.2);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 10px;
+    flex-shrink: 0;
+}
+
+.rigging-guide-banner:active {
+    transform: scale(0.98);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(6, 182, 212, 0.15));
+}
+
+.rigging-guide-icon {
+    font-size: 24px;
+}
+
+.rigging-guide-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.rigging-guide-text strong {
+    font-size: 14px;
+    color: var(--accent-color);
+}
+
+.rigging-guide-text span {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+/* =========================================
+   ドロワーセクションラベル
+   ========================================= */
+.drawer-menu-section-label {
+    padding: 8px 20px 4px;
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.35);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+/* =========================================
+   年間カレンダーウィジェット
+   ========================================= */
+.annual-calendar-widget {
+    background: var(--card-gradient);
+    border-radius: var(--border-radius);
+    padding: 14px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.annual-event-card {
+    background: var(--card-gradient);
+    border-radius: var(--border-radius-sm);
+    padding: 12px;
+    margin-bottom: 8px;
+    box-shadow: var(--shadow-sm);
+    border-left: 4px solid var(--accent-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.annual-event-card.race {
+    border-left-color: #ef4444;
+}
+
+.annual-event-card.camp {
+    border-left-color: #10b981;
+}
+
+.annual-event-card.event {
+    border-left-color: #f59e0b;
+}
+
+.annual-event-card.deadline {
+    border-left-color: #ef4444;
+}
+
+.annual-event-card.other {
+    border-left-color: #6b7280;
+}
+
+.annual-event-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.annual-event-detail {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.annual-event-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--accent-color);
+    white-space: nowrap;
+}
+
+.annual-event-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+
+.annual-event-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 4px;
+}
+
+/* 全体スケジュール内 年間特記事項 */
+.annual-notice-banner {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(239, 68, 68, 0.05));
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-radius: var(--border-radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.annual-notice-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.annual-notice-text {
+    font-size: 13px;
+    color: var(--text-primary);
+    line-height: 1.4;
+}
+
+.annual-notice-text strong {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 2px;
+}
+
+/* =========================================
+   週間ランキングタブ
+   ========================================= */
+.ranking-tab-selector {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+}
+
+.ranking-tab-btn {
+    flex: 1;
+    padding: 10px;
+    background: var(--bg-white);
+    border: 1.5px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--border-radius-sm);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.ranking-tab-btn.active {
+    background: var(--accent-gradient);
+    color: white;
+    border-color: transparent;
+}
+
+.ranking-section {
+    animation: fadeIn 0.2s ease;
+}
+
+.ranking-ergo-menu-bar {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+}
+
+.ranking-ergo-menu-btn {
+    padding: 6px 14px;
+    background: var(--bg-white);
+    border: 1.5px solid rgba(0, 0, 0, 0.1);
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.ranking-ergo-menu-btn.active {
+    background: var(--primary-gradient);
+    color: white;
+    border-color: transparent;
+}
+
+.ranking-card {
+    background: var(--card-gradient);
+    border-radius: var(--border-radius);
+    padding: 10px 14px;
+    margin-bottom: 6px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.15s ease;
+}
+
+.ranking-card.my-rank {
+    border: 1.5px solid rgba(59, 130, 246, 0.3);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(6, 182, 212, 0.03));
+}
+
+.ranking-position {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-muted);
+    width: 32px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.ranking-position.gold {
+    color: #f59e0b;
+}
+
+.ranking-position.silver {
+    color: #94a3b8;
+}
+
+.ranking-position.bronze {
+    color: #cd7f32;
+}
+
+.ranking-user-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.ranking-user-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ranking-user-detail {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.ranking-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-feature-settings: "tnum";
+    flex-shrink: 0;
+}
+
+.ranking-value-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: right;
+}
+
+/* ===== リギングノート カードUI ===== */
+.rigging-note-boat-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.rigging-note-card {
+    background: var(--card-bg, #1e2a3a);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.rigging-note-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+    border-color: rgba(99, 179, 237, 0.4);
+}
+
+.rigging-note-card:active {
+    transform: translateY(0);
+}
+
+.rigging-note-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.rigging-note-card-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary, #e2e8f0);
+}
+
+.rigging-note-card-date {
+    font-size: 11px;
+    color: var(--text-muted, #888);
+}
+
+.rigging-note-card-values {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.rigging-note-card-values span {
+    font-size: 12px;
+    background: rgba(99, 179, 237, 0.12);
+    color: #63b3ed;
+    padding: 3px 8px;
+    border-radius: 6px;
+}
+
+.rigging-note-card-memo {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-muted, #999);
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ===== 体重管理スタンドアロン ===== */
+#tab-weight-management .weight-input-enhanced {
+    background: var(--card-bg, #1e2a3a);
+    border-radius: 16px;
+    padding: 20px;
+    margin-top: 8px;
+}
+
+/* ===== マスタ管理スタンドアロン ===== */
+#tab-master-management .settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    background: var(--card-bg, #1e2a3a);
+    border-radius: 16px;
+    margin-top: 8px;
+}
+
+#tab-master-management .settings-btn {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 10px;
+}

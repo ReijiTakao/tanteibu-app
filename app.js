@@ -691,6 +691,22 @@ const DB = {
                 }
             } catch (e) { console.warn('Team schedules sync failed:', e); }
 
+            // 年間イベント
+            try {
+                const annualEvents = await window.SupabaseConfig.db.loadAnnualEvents();
+                if (annualEvents.length) {
+                    annualEvents.forEach(ae => {
+                        const idx = (state.annualEvents || []).findIndex(local => local.id === ae.id);
+                        if (idx !== -1) state.annualEvents[idx] = ae;
+                        else {
+                            if (!state.annualEvents) state.annualEvents = [];
+                            state.annualEvents.push(ae);
+                        }
+                    });
+                    this.saveLocal('annual_events', state.annualEvents);
+                }
+            } catch (e) { console.warn('Annual events sync failed:', e); }
+
         } catch (e) {
             console.error('syncFromSupabase failed:', e);
             showToast('同期エラー: ' + (e?.message || JSON.stringify(e)), 'error');
@@ -1270,7 +1286,10 @@ function switchTab(tabId) {
 
     // 各タブの初期化（エラーがタブ遷移をブロックしないようtry-catch）
     try {
-        if (tabId === 'overview') { renderOverview(); }
+        if (tabId === 'overview') {
+            renderOverview();
+            renderMonthCalendar();
+        }
         if (tabId === 'ergo-data') {
             initCoachErgoView();
             renderErgoRecords();
@@ -1288,6 +1307,13 @@ function switchTab(tabId) {
         }
         if (tabId === 'settings') renderSettings();
         if (tabId === 'data-export') populateExportMemberSelect();
+        if (tabId === 'members') renderMemberCardList();
+        if (tabId === 'annual-schedule') renderAnnualSchedule();
+        if (tabId === 'weekly-ranking') renderWeeklyRankingTab();
+        if (tabId === 'rigging-note') initRiggingNoteTab();
+        if (tabId === 'weight-management') initWeightManagementTab();
+        if (tabId === 'master-management') initMasterManagementTab();
+
     } catch (error) {
         console.error(`Tab init error (${tabId}):`, error);
     }
@@ -13788,3 +13814,1507 @@ function exportAllMembersErgoCSV() {
     downloadCSV(`全員エルゴ_${formatDate(new Date())}.csv`, headers, rows);
     showToast(`${rows.length}件のエルゴ記録を出力しました（メンバー別ソート）`, 'success');
 }
+
+// =========================================
+// サイドドロワーメニュー
+// =========================================
+function toggleDrawer() {
+    const drawer = document.getElementById('side-drawer');
+    const overlay = document.getElementById('drawer-overlay');
+    const hamburger = document.getElementById('hamburger-btn');
+    if (!drawer) return;
+
+    const isOpen = drawer.classList.contains('open');
+    if (isOpen) {
+        drawer.classList.remove('open');
+        overlay.classList.remove('active');
+        hamburger.classList.remove('active');
+    } else {
+        // ドロワー内ユーザー情報更新
+        const nameEl = document.getElementById('drawer-user-name');
+        const roleEl = document.getElementById('drawer-user-role');
+        if (nameEl) nameEl.textContent = state.currentUser?.name || '';
+        if (roleEl) roleEl.textContent = state.currentUser?.role || '';
+
+        // ロールに応じたメニュー表示制御
+        const role = state.currentUser?.role || '';
+        const roleKey = role === '管理者' ? 'admin' : role === 'コーチ' ? 'coach' : role === 'Cox' ? 'cox' : role === 'データ' ? 'data' : 'rower';
+        document.querySelectorAll('.drawer-menu-item').forEach(item => {
+            // data-export は admin, data のみ
+            const label = item.querySelector('span:last-child')?.textContent || '';
+            if (label === 'データエクスポート') {
+                item.style.display = ['admin', 'data'].includes(roleKey) ? '' : 'none';
+            }
+        });
+
+        drawer.classList.add('open');
+        overlay.classList.add('active');
+        hamburger.classList.add('active');
+    }
+}
+
+function switchTabFromDrawer(tabId) {
+    toggleDrawer();
+    switchTab(tabId);
+}
+
+// =========================================
+// 月間カレンダーウィジェット
+// =========================================
+let calendarState = {
+    year: new Date().getFullYear(),
+    month: new Date().getMonth(), // 0-based
+    selectedDate: null
+};
+
+function renderMonthCalendar() {
+    const grid = document.getElementById('calendar-days-grid');
+    const label = document.getElementById('calendar-month-label');
+    if (!grid || !label) return;
+
+    const { year, month } = calendarState;
+    label.textContent = `${year}年 ${month + 1}月`;
+
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDow = firstDay.getDay(); // 0=日曜
+    const daysInMonth = lastDay.getDate();
+
+    const today = new Date();
+    const todayStr = formatDate(today);
+    const selectedStr = calendarState.selectedDate;
+
+    // teamSchedulesからイベントのある日を取得
+    const eventDates = new Set();
+    (state.teamSchedules || []).forEach(s => {
+        if (s.date) eventDates.add(s.date);
+    });
+    // 練習登録データからもイベント日取得
+    (state.schedules || []).forEach(s => {
+        if (s.date) eventDates.add(s.date);
+    });
+
+    let html = '';
+
+    // 前月の空白セル
+    const prevLastDay = new Date(year, month, 0).getDate();
+    for (let i = startDow - 1; i >= 0; i--) {
+        const d = prevLastDay - i;
+        html += `<div class="calendar-day other-month">${d}</div>`;
+    }
+
+    // 当月
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const dow = new Date(year, month, d).getDay();
+        let classes = 'calendar-day';
+        if (dateStr === todayStr) classes += ' today';
+        if (dateStr === selectedStr) classes += ' selected';
+        if (eventDates.has(dateStr)) classes += ' has-event';
+        if (dow === 0) classes += ' sunday';
+        if (dow === 6) classes += ' saturday';
+
+        html += `<div class="${classes}" onclick="selectCalendarDay('${dateStr}')">${d}</div>`;
+    }
+
+    // 次月の残りセル（6行 × 7列 = 42）
+    const totalCells = startDow + daysInMonth;
+    const remaining = (totalCells % 7 === 0) ? 0 : (7 - totalCells % 7);
+    for (let d = 1; d <= remaining; d++) {
+        html += `<div class="calendar-day other-month">${d}</div>`;
+    }
+
+    grid.innerHTML = html;
+}
+
+function selectCalendarDay(dateStr) {
+    calendarState.selectedDate = dateStr;
+    renderMonthCalendar();
+    // 日付選択を overview の date picker にも反映
+    const datePicker = document.getElementById('overview-date');
+    if (datePicker) {
+        datePicker.value = dateStr;
+        datePicker.dispatchEvent(new Event('change'));
+    }
+    // 年間スケジュールの特記事項も表示
+    renderAnnualNoticesInOverview(dateStr);
+}
+
+function changeCalendarMonth(delta) {
+    calendarState.month += delta;
+    if (calendarState.month < 0) {
+        calendarState.month = 11;
+        calendarState.year--;
+    } else if (calendarState.month > 11) {
+        calendarState.month = 0;
+        calendarState.year++;
+    }
+    renderMonthCalendar();
+}
+
+function goCalendarToday() {
+    const today = new Date();
+    calendarState.year = today.getFullYear();
+    calendarState.month = today.getMonth();
+    calendarState.selectedDate = formatDate(today);
+    renderMonthCalendar();
+    // 日付も連動
+    selectCalendarDay(calendarState.selectedDate);
+}
+
+// =========================================
+// メンバーカード一覧
+// =========================================
+function renderMemberCardList(filterGrade) {
+    const container = document.getElementById('members-card-list');
+    if (!container) return;
+
+    let members = (state.users || []).filter(u => u.approvalStatus === '承認済み' && u.status !== '非在籍');
+
+    if (filterGrade && filterGrade !== 'all') {
+        const gradeNum = parseInt(filterGrade);
+        members = members.filter(m => parseInt(m.grade) === gradeNum);
+    }
+
+    // 学年降順 → 名前順でソート
+    members.sort((a, b) => {
+        const gradeA = parseInt(a.grade) || 0;
+        const gradeB = parseInt(b.grade) || 0;
+        if (gradeB !== gradeA) return gradeB - gradeA;
+        return (a.name || '').localeCompare(b.name || '', 'ja');
+    });
+
+    if (members.length === 0) {
+        container.innerHTML = '<p style="color:#888;font-size:13px;text-align:center;padding:20px;">メンバーがいません</p>';
+        return;
+    }
+
+    const roleEmoji = (role) => {
+        switch (role) {
+            case '管理者': return '👑';
+            case 'コーチ': return '🎓';
+            case 'Cox': return '📣';
+            case '漕手': return '🚣';
+            default: return '👤';
+        }
+    };
+
+    let html = '';
+    members.forEach(m => {
+        const isMe = state.currentUser && m.id === state.currentUser.id;
+        const avatarClass = m.gender === 'woman' ? 'member-card-avatar female' : 'member-card-avatar';
+        const initial = (m.name || '?').charAt(0);
+        const gradeLabel = m.grade ? `${m.grade}年` : '';
+        const sideLabel = m.side || '';
+
+        html += `<div class="member-card" onclick="openMemberProfile('${m.id}')">
+            <div class="${avatarClass}">${initial}</div>
+            <div class="member-card-name">${m.name || '不明'}${isMe ? ' <span style="color:#3b82f6;font-size:10px;">(自分)</span>' : ''}</div>
+            <div class="member-card-info">
+                <span>${roleEmoji(m.role)} ${gradeLabel}</span>
+                ${sideLabel ? `<span class="member-card-side">${sideLabel}</span>` : ''}
+            </div>
+        </div>`;
+    });
+
+    container.innerHTML = html;
+}
+
+function filterMembers(grade) {
+    // フィルターボタンのactive切替
+    document.querySelectorAll('.member-filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === grade);
+    });
+    renderMemberCardList(grade);
+}
+
+// =========================================
+// プロフィール詳細モーダル
+// =========================================
+function openMemberProfile(userId) {
+    const modal = document.getElementById('member-profile-modal');
+    const body = document.getElementById('profile-modal-body');
+    const title = document.getElementById('profile-modal-title');
+    if (!modal || !body) return;
+
+    const user = (state.users || []).find(u => u.id === userId);
+    if (!user) {
+        showToast('ユーザーが見つかりません', 'error');
+        return;
+    }
+
+    const isMe = state.currentUser && userId === state.currentUser.id;
+    const isAdmin = state.currentUser?.role === '管理者';
+    const canEdit = isMe || isAdmin;
+
+    title.textContent = `${user.name || '不明'}のプロフィール`;
+
+    // エルゴPBデータの取得
+    const ergoPB = getErgoPBForUser(userId);
+    // ユーザー保存のPBデータ
+    const savedPB = user.ergoPB || {};
+    // 大会履歴
+    const competitions = user.competitionHistory || [];
+
+    const gradeLabel = user.grade ? `${user.grade}年` : 'コーチ/OB';
+    const genderLabel = user.gender === 'woman' ? '女子' : '男子';
+    const sideLabel = user.side || '-';
+    const roleLabel = user.role || '-';
+    const avatarClass = user.gender === 'woman' ? 'profile-avatar-lg' : 'profile-avatar-lg';
+
+    // エルゴ種目リスト
+    const ergoEvents = [
+        { key: '2000m', label: '2000m' },
+        { key: '60min', label: '60分' },
+        { key: '10000m', label: '10000m' },
+        { key: '3750m', label: '3750m' }
+    ];
+
+    let html = `
+        <div class="profile-header">
+            <div class="${avatarClass}">${(user.name || '?').charAt(0)}</div>
+            <div class="profile-name-area">
+                <h2>${user.name || '不明'}</h2>
+                <div class="profile-meta">
+                    <span class="profile-meta-tag">${roleLabel}</span>
+                    <span class="profile-meta-tag">${gradeLabel}</span>
+                    <span class="profile-meta-tag">${genderLabel}</span>
+                    <span class="profile-meta-tag">サイド: ${sideLabel}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="profile-section">
+            <div class="profile-section-title">🏋️ エルゴ ベストタイム</div>
+            <div class="ergo-pb-grid">`;
+
+    ergoEvents.forEach(ev => {
+        const autoPB = ergoPB[ev.key];
+        const manualPB = savedPB[ev.key];
+        // 早い方を表示（手動入力 or 自動取得）
+        let displayValue = '-';
+        let source = '';
+
+        if (autoPB && manualPB) {
+            // 両方ある場合、タイム文字列を比較（短い方が速い）
+            const autoSeconds = parseTimeToSeconds(autoPB);
+            const manualSeconds = parseTimeToSeconds(manualPB);
+            if (autoSeconds > 0 && manualSeconds > 0) {
+                if (autoSeconds <= manualSeconds) {
+                    displayValue = autoPB;
+                    source = '自動取得';
+                } else {
+                    displayValue = manualPB;
+                    source = '手動入力';
+                }
+            } else {
+                displayValue = autoPB || manualPB;
+                source = autoPB ? '自動取得' : '手動入力';
+            }
+        } else if (autoPB) {
+            displayValue = autoPB;
+            source = '自動取得';
+        } else if (manualPB) {
+            displayValue = manualPB;
+            source = '手動入力';
+        }
+
+        html += `
+            <div class="ergo-pb-card">
+                <div class="ergo-pb-label">${ev.label}</div>
+                <div class="ergo-pb-value">${displayValue}</div>
+                ${source ? `<div class="ergo-pb-source">${source}</div>` : ''}
+                ${canEdit ? `<input class="ergo-pb-input" type="text" id="ergo-pb-${ev.key}" value="${manualPB || ''}" placeholder="m:ss.0" data-key="${ev.key}">` : ''}
+            </div>`;
+    });
+
+    html += `</div>`;
+
+    if (canEdit) {
+        html += `<button class="primary-btn profile-save-btn" onclick="saveErgoPB('${userId}')">エルゴPBを保存</button>`;
+    }
+
+    html += `</div>`;
+
+    // 大会出場履歴
+    html += `
+        <div class="profile-section">
+            <div class="profile-section-title">🏆 大会出場履歴</div>
+            <div class="competition-list">`;
+
+    if (competitions.length === 0) {
+        html += `<p style="color:#888;font-size:13px;">まだ登録がありません</p>`;
+    } else {
+        competitions.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        competitions.forEach((comp, idx) => {
+            html += `
+                <div class="competition-item">
+                    <div class="competition-info">
+                        <div class="competition-name">${comp.name || '-'}</div>
+                        <div class="competition-detail">${comp.date || ''} ・ ${comp.event || ''} ${comp.memo ? `・ ${comp.memo}` : ''}</div>
+                    </div>
+                    <div class="competition-result">
+                        <div class="competition-place">${comp.place || '-'}</div>
+                        ${comp.time ? `<div class="competition-time">${comp.time}</div>` : ''}
+                    </div>
+                    ${canEdit ? `<button class="competition-delete-btn" onclick="deleteCompetitionResult('${userId}', ${idx})">✕</button>` : ''}
+                </div>`;
+        });
+    }
+
+    html += `</div>`;
+
+    if (canEdit) {
+        html += `<button class="profile-add-btn" onclick="openCompetitionModal('${userId}')">+ 大会結果を追加</button>`;
+    }
+
+    html += `</div>`;
+
+    body.innerHTML = html;
+    modal.classList.remove('hidden');
+}
+
+function closeMemberProfile() {
+    const modal = document.getElementById('member-profile-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+// エルゴ記録からユーザーのPBを自動取得
+function getErgoPBForUser(userId) {
+    const pb = {};
+    const records = state.ergoRecords || [];
+    const userRecords = records.filter(r => r.userId === userId);
+
+    const eventKeys = ['2000m', '60min', '10000m', '3750m'];
+
+    eventKeys.forEach(key => {
+        // menuKeyが合致するレコードを検索
+        const matching = userRecords.filter(r => {
+            const mk = (r.menuKey || '').toLowerCase();
+            return mk === key.toLowerCase() || mk.includes(key.replace('m', ''));
+        });
+
+        if (matching.length > 0) {
+            // 最速タイムを特定
+            let bestTime = null;
+            let bestSeconds = Infinity;
+            matching.forEach(r => {
+                const timeStr = r.time || r.formattedTime || '';
+                if (timeStr) {
+                    const seconds = parseTimeToSeconds(timeStr);
+                    if (seconds > 0 && seconds < bestSeconds) {
+                        bestSeconds = seconds;
+                        bestTime = timeStr;
+                    }
+                }
+            });
+            if (bestTime) pb[key] = bestTime;
+        }
+    });
+
+    return pb;
+}
+
+// タイム文字列を秒に変換（例: "6:32.4" → 392.4）
+function parseTimeToSeconds(timeStr) {
+    if (!timeStr || typeof timeStr !== 'string') return 0;
+    // h:mm:ss.d or m:ss.d or ss.d
+    const parts = timeStr.split(':');
+    try {
+        if (parts.length === 3) {
+            return parseFloat(parts[0]) * 3600 + parseFloat(parts[1]) * 60 + parseFloat(parts[2]);
+        } else if (parts.length === 2) {
+            return parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
+        } else {
+            return parseFloat(parts[0]) || 0;
+        }
+    } catch (e) {
+        return 0;
+    }
+}
+
+// エルゴPBの手動保存
+function saveErgoPB(userId) {
+    const user = (state.users || []).find(u => u.id === userId);
+    if (!user) return;
+
+    if (!user.ergoPB) user.ergoPB = {};
+
+    const keys = ['2000m', '60min', '10000m', '3750m'];
+    keys.forEach(key => {
+        const input = document.getElementById(`ergo-pb-${key}`);
+        if (input) {
+            const val = input.value.trim();
+            if (val) {
+                user.ergoPB[key] = val;
+            } else {
+                delete user.ergoPB[key];
+            }
+        }
+    });
+
+    // ローカル保存
+    DB.save('users', state.users);
+
+    // currentUserの場合はcurrent_userも更新
+    if (state.currentUser && userId === state.currentUser.id) {
+        state.currentUser.ergoPB = user.ergoPB;
+        DB.save('current_user', state.currentUser);
+    }
+
+    showToast('エルゴPBを保存しました', 'success');
+    // モーダルを再描画
+    openMemberProfile(userId);
+}
+
+// =========================================
+// 大会履歴
+// =========================================
+function openCompetitionModal(userId, editIndex) {
+    const modal = document.getElementById('competition-modal');
+    if (!modal) return;
+
+    document.getElementById('comp-target-user-id').value = userId;
+    document.getElementById('comp-edit-index').value = editIndex !== undefined ? editIndex : -1;
+
+    if (editIndex !== undefined && editIndex >= 0) {
+        const user = (state.users || []).find(u => u.id === userId);
+        const comp = user?.competitionHistory?.[editIndex];
+        if (comp) {
+            document.getElementById('comp-name').value = comp.name || '';
+            document.getElementById('comp-date').value = comp.date || '';
+            document.getElementById('comp-event').value = comp.event || '';
+            document.getElementById('comp-place').value = comp.place || '';
+            document.getElementById('comp-time').value = comp.time || '';
+            document.getElementById('comp-memo').value = comp.memo || '';
+        }
+    } else {
+        // 新規: フォームクリア
+        document.getElementById('comp-name').value = '';
+        document.getElementById('comp-date').value = '';
+        document.getElementById('comp-event').value = '';
+        document.getElementById('comp-place').value = '';
+        document.getElementById('comp-time').value = '';
+        document.getElementById('comp-memo').value = '';
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function saveCompetitionResult() {
+    const userId = document.getElementById('comp-target-user-id').value;
+    const editIndex = parseInt(document.getElementById('comp-edit-index').value);
+    const user = (state.users || []).find(u => u.id === userId);
+    if (!user) return;
+
+    const result = {
+        name: document.getElementById('comp-name').value.trim(),
+        date: document.getElementById('comp-date').value,
+        event: document.getElementById('comp-event').value,
+        place: document.getElementById('comp-place').value.trim(),
+        time: document.getElementById('comp-time').value.trim(),
+        memo: document.getElementById('comp-memo').value.trim()
+    };
+
+    if (!result.name) {
+        showToast('大会名を入力してください', 'error');
+        return;
+    }
+
+    if (!user.competitionHistory) user.competitionHistory = [];
+
+    if (editIndex >= 0 && editIndex < user.competitionHistory.length) {
+        user.competitionHistory[editIndex] = result;
+    } else {
+        user.competitionHistory.push(result);
+    }
+
+    // ローカル保存
+    DB.save('users', state.users);
+
+    // currentUserの場合はcurrent_userも更新
+    if (state.currentUser && userId === state.currentUser.id) {
+        state.currentUser.competitionHistory = user.competitionHistory;
+        DB.save('current_user', state.currentUser);
+    }
+
+    document.getElementById('competition-modal').classList.add('hidden');
+    showToast('大会結果を保存しました', 'success');
+
+    // プロフィールモーダルを再描画
+    openMemberProfile(userId);
+}
+
+function deleteCompetitionResult(userId, index) {
+    if (!confirm('この大会結果を削除しますか？')) return;
+
+    const user = (state.users || []).find(u => u.id === userId);
+    if (!user || !user.competitionHistory) return;
+
+    user.competitionHistory.splice(index, 1);
+
+    DB.save('users', state.users);
+
+    if (state.currentUser && userId === state.currentUser.id) {
+        state.currentUser.competitionHistory = user.competitionHistory;
+        DB.save('current_user', state.currentUser);
+    }
+
+    showToast('大会結果を削除しました', 'success');
+    openMemberProfile(userId);
+}
+
+// =========================================
+// 年間スケジュール
+// =========================================
+if (!state.annualEvents) {
+    state.annualEvents = DB.load('annual_events') || [];
+}
+
+let annualCalState = {
+    year: new Date().getFullYear(),
+    month: new Date().getMonth(),
+    selectedDate: formatDate(new Date())
+};
+
+function renderAnnualSchedule() {
+    renderAnnualCalendar();
+    renderAnnualEventsList();
+}
+
+function renderAnnualCalendar() {
+    const grid = document.getElementById('annual-days-grid');
+    const label = document.getElementById('annual-month-label');
+    if (!grid || !label) return;
+
+    const { year, month } = annualCalState;
+    label.textContent = `${year}年 ${month + 1}月`;
+
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDow = firstDay.getDay();
+    const daysInMonth = lastDay.getDate();
+
+    const today = new Date();
+    const todayStr = formatDate(today);
+    const selectedStr = annualCalState.selectedDate;
+
+    // イベントのある日を取得
+    const eventDates = new Set();
+    (state.annualEvents || []).forEach(ev => {
+        if (ev.date) {
+            eventDates.add(ev.date);
+            // 複数日イベントの場合、範囲内の全日付を追加
+            if (ev.endDate && ev.endDate > ev.date) {
+                let d = new Date(ev.date);
+                const end = new Date(ev.endDate);
+                while (d <= end) {
+                    eventDates.add(formatDate(d));
+                    d.setDate(d.getDate() + 1);
+                }
+            }
+        }
+    });
+
+    let html = '';
+
+    // 前月の空白セル
+    const prevLastDay = new Date(year, month, 0).getDate();
+    for (let i = startDow - 1; i >= 0; i--) {
+        html += `<div class="calendar-day other-month">${prevLastDay - i}</div>`;
+    }
+
+    // 当月
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const dow = new Date(year, month, d).getDay();
+        let classes = 'calendar-day';
+        if (dateStr === todayStr) classes += ' today';
+        if (dateStr === selectedStr) classes += ' selected';
+        if (eventDates.has(dateStr)) classes += ' has-event';
+        if (dow === 0) classes += ' sunday';
+        if (dow === 6) classes += ' saturday';
+
+        html += `<div class="${classes}" onclick="selectAnnualDay('${dateStr}')">${d}</div>`;
+    }
+
+    const totalCells = startDow + daysInMonth;
+    const remaining = (totalCells % 7 === 0) ? 0 : (7 - totalCells % 7);
+    for (let d = 1; d <= remaining; d++) {
+        html += `<div class="calendar-day other-month">${d}</div>`;
+    }
+
+    grid.innerHTML = html;
+}
+
+function selectAnnualDay(dateStr) {
+    annualCalState.selectedDate = dateStr;
+    renderAnnualCalendar();
+    renderAnnualEventsList();
+}
+
+function changeAnnualMonth(delta) {
+    annualCalState.month += delta;
+    if (annualCalState.month < 0) { annualCalState.month = 11; annualCalState.year--; }
+    else if (annualCalState.month > 11) { annualCalState.month = 0; annualCalState.year++; }
+    renderAnnualCalendar();
+}
+
+function goAnnualToday() {
+    const today = new Date();
+    annualCalState.year = today.getFullYear();
+    annualCalState.month = today.getMonth();
+    annualCalState.selectedDate = formatDate(today);
+    renderAnnualSchedule();
+}
+
+function renderAnnualEventsList() {
+    const container = document.getElementById('annual-events-list');
+    const label = document.getElementById('annual-selected-date-label');
+    if (!container || !label) return;
+
+    const selDate = annualCalState.selectedDate;
+    if (!selDate) {
+        label.textContent = '';
+        container.innerHTML = '';
+        return;
+    }
+
+    const d = new Date(selDate);
+    const dow = ['日', '月', '火', '水', '木', '金', '土'][d.getDay()];
+    label.textContent = `${selDate.replace(/-/g, '/')}（${dow}）のイベント`;
+
+    const events = (state.annualEvents || []).filter(ev => {
+        if (ev.date === selDate) return true;
+        if (ev.endDate && ev.date <= selDate && ev.endDate >= selDate) return true;
+        return false;
+    });
+
+    const isAdmin = state.currentUser?.role === '管理者';
+    const isCoach = state.currentUser?.role === 'コーチ';
+    const canEdit = isAdmin || isCoach;
+
+    const categoryLabels = {
+        race: '🏁 レース',
+        camp: '⛺ 合宿',
+        event: '🎉 行事',
+        deadline: '⚠️ 締切',
+        other: '📌 その他'
+    };
+
+    if (events.length === 0) {
+        container.innerHTML = '<p style="color:#888;font-size:13px;padding:8px 0;">この日のイベントはありません</p>';
+        return;
+    }
+
+    let html = '';
+    events.forEach(ev => {
+        const dateRange = ev.endDate && ev.endDate !== ev.date
+            ? `${ev.date} 〜 ${ev.endDate}`
+            : ev.date;
+        const timeStr = ev.startTime ? (ev.endTime ? `${ev.startTime}〜${ev.endTime}` : `${ev.startTime}〜`) : '';
+        html += `<div class="annual-event-card ${ev.category || 'other'}">
+            <div>
+                <div class="annual-event-title">${ev.title || '-'}</div>
+                <div class="annual-event-detail">${dateRange}${timeStr ? ' ' + timeStr : ''} ・ ${categoryLabels[ev.category] || categoryLabels.other}</div>
+                ${ev.memo ? `<div class="annual-event-detail">${ev.memo}</div>` : ''}
+            </div>
+            <div style="display:flex;align-items:center;gap:4px;">
+                <span class="annual-event-badge">${categoryLabels[ev.category] || '📌'}</span>
+                ${canEdit ? `<div class="annual-event-actions">
+                    <button onclick="editAnnualEvent('${ev.id}')">✏️</button>
+                    <button onclick="deleteAnnualEvent('${ev.id}')">🗑️</button>
+                </div>` : ''}
+            </div>
+        </div>`;
+    });
+
+    container.innerHTML = html;
+}
+
+function openAnnualEventModal(editId) {
+    const modal = document.getElementById('annual-event-modal');
+    if (!modal) return;
+
+    document.getElementById('annual-event-edit-id').value = editId || '';
+
+    if (editId) {
+        const ev = (state.annualEvents || []).find(e => e.id === editId);
+        if (ev) {
+            document.getElementById('annual-event-title').value = ev.title || '';
+            document.getElementById('annual-event-date').value = ev.date || '';
+            document.getElementById('annual-event-end-date').value = ev.endDate || '';
+            document.getElementById('annual-event-start-time').value = ev.startTime || '';
+            document.getElementById('annual-event-end-time').value = ev.endTime || '';
+            document.getElementById('annual-event-category').value = ev.category || 'other';
+            document.getElementById('annual-event-memo').value = ev.memo || '';
+        }
+    } else {
+        document.getElementById('annual-event-title').value = '';
+        document.getElementById('annual-event-date').value = annualCalState.selectedDate || '';
+        document.getElementById('annual-event-end-date').value = '';
+        document.getElementById('annual-event-start-time').value = '';
+        document.getElementById('annual-event-end-time').value = '';
+        document.getElementById('annual-event-category').value = 'race';
+        document.getElementById('annual-event-memo').value = '';
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function editAnnualEvent(id) {
+    openAnnualEventModal(id);
+}
+
+function saveAnnualEvent() {
+    const editId = document.getElementById('annual-event-edit-id').value;
+    const title = document.getElementById('annual-event-title').value.trim();
+    const date = document.getElementById('annual-event-date').value;
+    const endDate = document.getElementById('annual-event-end-date').value;
+    const startTime = document.getElementById('annual-event-start-time').value;
+    const endTime = document.getElementById('annual-event-end-time').value;
+    const category = document.getElementById('annual-event-category').value;
+    const memo = document.getElementById('annual-event-memo').value.trim();
+
+    if (!title) { showToast('タイトルを入力してください', 'error'); return; }
+    if (!date) { showToast('日付を入力してください', 'error'); return; }
+
+    if (!state.annualEvents) state.annualEvents = [];
+
+    if (editId) {
+        const idx = state.annualEvents.findIndex(e => e.id === editId);
+        if (idx >= 0) {
+            state.annualEvents[idx] = { ...state.annualEvents[idx], title, date, endDate, startTime, endTime, category, memo };
+        }
+    } else {
+        state.annualEvents.push({
+            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+            title, date, endDate, startTime, endTime, category, memo,
+            createdBy: state.currentUser?.id || '',
+            createdAt: new Date().toISOString()
+        });
+    }
+
+    DB.save('annual_events', state.annualEvents);
+    // Supabase同期
+    const savedEvent = editId ? state.annualEvents.find(e => e.id === editId) : state.annualEvents[state.annualEvents.length - 1];
+    if (savedEvent) {
+        window.SupabaseConfig?.db?.saveAnnualEvent(savedEvent).catch(e => console.warn('Annual event sync failed:', e));
+    }
+    document.getElementById('annual-event-modal').classList.add('hidden');
+    showToast('イベントを保存しました', 'success');
+    renderAnnualSchedule();
+}
+
+function deleteAnnualEvent(id) {
+    if (!confirm('このイベントを削除しますか？')) return;
+    state.annualEvents = (state.annualEvents || []).filter(e => e.id !== id);
+    DB.save('annual_events', state.annualEvents);
+    window.SupabaseConfig?.db?.deleteAnnualEvent(id).catch(e => console.warn('Annual event delete sync failed:', e));
+    showToast('イベントを削除しました', 'success');
+    renderAnnualSchedule();
+}
+
+// 全体スケジュール(overview)で年間特記事項を表示
+function getAnnualNoticesForDate(dateStr) {
+    return (state.annualEvents || []).filter(ev => {
+        if (ev.date === dateStr) return true;
+        if (ev.endDate && ev.date <= dateStr && ev.endDate >= dateStr) return true;
+        return false;
+    });
+}
+
+function renderAnnualNoticesInOverview(dateStr) {
+    // overviewタブ内のカレンダー下に年間特記事項を表示
+    let container = document.getElementById('annual-notices-overview');
+    if (!container) {
+        // コンテナがなければ動的に作成
+        const calWidget = document.querySelector('#tab-overview .calendar-widget');
+        if (calWidget) {
+            container = document.createElement('div');
+            container.id = 'annual-notices-overview';
+            calWidget.insertAdjacentElement('afterend', container);
+        } else {
+            return;
+        }
+    }
+
+    const notices = getAnnualNoticesForDate(dateStr);
+    if (notices.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const categoryIcons = { race: '🏁', camp: '⛺', event: '🎉', deadline: '⚠️', other: '📌' };
+
+    let html = '';
+    notices.forEach(ev => {
+        const icon = categoryIcons[ev.category] || '📌';
+        html += `<div class="annual-notice-banner">
+            <span class="annual-notice-icon">${icon}</span>
+            <div class="annual-notice-text">
+                <strong>${ev.title}</strong>
+                ${ev.memo ? `<span>${ev.memo}</span>` : ''}
+            </div>
+        </div>`;
+    });
+
+    container.innerHTML = html;
+}
+
+// =========================================
+// 週間ランキングタブ
+// =========================================
+let weeklyRankingTabState = {
+    type: 'distance', // 'distance' or 'ergo'
+    selectedErgoMenu: null
+};
+
+function renderWeeklyRankingTab() {
+    if (weeklyRankingTabState.type === 'distance') {
+        renderWeeklyDistanceRanking();
+    } else {
+        renderWeeklyErgoRankingTab();
+    }
+}
+
+function switchRankingType(type) {
+    weeklyRankingTabState.type = type;
+    document.querySelectorAll('.ranking-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.rtype === type);
+    });
+    document.getElementById('ranking-distance-section').classList.toggle('hidden', type !== 'distance');
+    document.getElementById('ranking-ergo-section').classList.toggle('hidden', type !== 'ergo');
+    renderWeeklyRankingTab();
+}
+
+function getWeekStartDate() {
+    // 火曜日起算
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const tuesdayOffset = (dayOfWeek + 5) % 7;
+    const tuesday = new Date(now);
+    tuesday.setDate(now.getDate() - tuesdayOffset);
+    tuesday.setHours(0, 0, 0, 0);
+    return tuesday;
+}
+
+// --- 距離ランキング ---
+function renderWeeklyDistanceRanking() {
+    const container = document.getElementById('weekly-distance-ranking');
+    if (!container) return;
+
+    const weekStart = getWeekStartDate();
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+
+    // ユーザーごとの週間合計距離を集計
+    const userDistances = {};
+
+    // ergoRecords から集計
+    (state.ergoRecords || []).forEach(r => {
+        const rDate = new Date(r.date);
+        if (rDate < weekStart || rDate >= weekEnd) return;
+        if (!r.userId || !r.distance) return;
+
+        const user = (state.users || []).find(u => u.id === r.userId);
+        if (!user || user.approvalStatus !== '承認済み' || user.status === '非在籍') return;
+
+        if (!userDistances[r.userId]) {
+            userDistances[r.userId] = { userId: r.userId, totalDistance: 0, count: 0 };
+        }
+        userDistances[r.userId].totalDistance += (parseInt(r.distance) || 0);
+        userDistances[r.userId].count++;
+    });
+
+    // ergoSessions からも集計（重複排除は簡易的に）
+    const seenIds = new Set();
+    (state.ergoSessions || []).forEach(s => {
+        const sDate = new Date(s.date);
+        if (sDate < weekStart || sDate >= weekEnd) return;
+        if (!s.userId || !s.distance) return;
+        if (s.rawId && seenIds.has(s.rawId)) return;
+        if (s.rawId) seenIds.add(s.rawId);
+
+        const user = (state.users || []).find(u => u.id === s.userId);
+        if (!user || user.approvalStatus !== '承認済み' || user.status === '非在籍') return;
+
+        if (!userDistances[s.userId]) {
+            userDistances[s.userId] = { userId: s.userId, totalDistance: 0, count: 0 };
+        }
+        userDistances[s.userId].totalDistance += (parseInt(s.distance) || 0);
+        userDistances[s.userId].count++;
+    });
+
+    const ranking = Object.values(userDistances)
+        .filter(d => d.totalDistance > 0)
+        .sort((a, b) => b.totalDistance - a.totalDistance);
+
+    const weekLabel = `${formatDate(weekStart)} 〜`;
+
+    if (ranking.length === 0) {
+        container.innerHTML = `<div class="empty-state"><p>今週（${weekLabel}）のエルゴデータがありません</p></div>`;
+        return;
+    }
+
+    const medals = ['🥇', '🥈', '🥉'];
+    let html = `<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">📅 ${weekLabel}</p>`;
+
+    ranking.forEach((entry, idx) => {
+        const user = (state.users || []).find(u => u.id === entry.userId);
+        const name = user?.name || '不明';
+        const grade = user?.grade ? `${user.grade}年` : '';
+        const isMe = state.currentUser && entry.userId === state.currentUser.id;
+        const posClass = idx === 0 ? 'gold' : idx === 1 ? 'silver' : idx === 2 ? 'bronze' : '';
+        const distKm = (entry.totalDistance / 1000).toFixed(1);
+
+        html += `<div class="ranking-card${isMe ? ' my-rank' : ''}">
+            <div class="ranking-position ${posClass}">${idx < 3 ? medals[idx] : idx + 1}</div>
+            <div class="ranking-user-info">
+                <div class="ranking-user-name">${name}${isMe ? ' 👤' : ''}</div>
+                <div class="ranking-user-detail">${grade} ・ ${entry.count}回</div>
+            </div>
+            <div style="text-align:right;">
+                <div class="ranking-value">${distKm}km</div>
+                <div class="ranking-value-sub">${entry.totalDistance.toLocaleString()}m</div>
+            </div>
+        </div>`;
+    });
+
+    container.innerHTML = html;
+}
+
+// --- エルゴランキング（3人以上が行ったメニュー） ---
+function renderWeeklyErgoRankingTab() {
+    const menuBar = document.getElementById('ranking-ergo-menu-bar');
+    const container = document.getElementById('weekly-ergo-ranking');
+    if (!menuBar || !container) return;
+
+    const weekStart = getWeekStartDate();
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+
+    // 週間のメニュー別・ユーザー別の最良記録を集計
+    const menuUserMap = {}; // menuKey -> { userId -> bestRecord }
+
+    const processRecord = (r) => {
+        const rDate = new Date(r.date);
+        if (rDate < weekStart || rDate >= weekEnd) return;
+        if (!r.userId || !r.menuKey) return;
+
+        const user = (state.users || []).find(u => u.id === r.userId);
+        if (!user || user.approvalStatus !== '承認済み' || user.status === '非在籍') return;
+
+        if (!menuUserMap[r.menuKey]) menuUserMap[r.menuKey] = {};
+        const existing = menuUserMap[r.menuKey][r.userId];
+
+        if (!existing) {
+            menuUserMap[r.menuKey][r.userId] = { ...r };
+        } else {
+            // より良い記録で上書き
+            const isTimeBased = _isTimeBasedMenu ? _isTimeBasedMenu(r.menuKey) : false;
+            if (isTimeBased) {
+                if ((r.distance || 0) > (existing.distance || 0)) {
+                    menuUserMap[r.menuKey][r.userId] = { ...r };
+                }
+            } else {
+                const rTime = r.time || Infinity;
+                const eTime = existing.time || Infinity;
+                if (rTime < eTime) {
+                    menuUserMap[r.menuKey][r.userId] = { ...r };
+                }
+            }
+        }
+    };
+
+    (state.ergoRecords || []).forEach(processRecord);
+    (state.ergoSessions || []).forEach(processRecord);
+
+    // 3人以上が行ったメニューだけ抽出
+    const qualifiedMenus = Object.entries(menuUserMap)
+        .filter(([_, users]) => Object.keys(users).length >= 3)
+        .map(([menuKey, _]) => menuKey)
+        .sort();
+
+    if (qualifiedMenus.length === 0) {
+        menuBar.innerHTML = '';
+        container.innerHTML = '<div class="empty-state"><p>今週3人以上が行ったエルゴメニューがありません</p></div>';
+        return;
+    }
+
+    // メニュー選択バー
+    if (!weeklyRankingTabState.selectedErgoMenu || !qualifiedMenus.includes(weeklyRankingTabState.selectedErgoMenu)) {
+        weeklyRankingTabState.selectedErgoMenu = qualifiedMenus[0];
+    }
+
+    let menuHtml = '';
+    qualifiedMenus.forEach(menu => {
+        const count = Object.keys(menuUserMap[menu]).length;
+        const isActive = menu === weeklyRankingTabState.selectedErgoMenu;
+        menuHtml += `<button class="ranking-ergo-menu-btn${isActive ? ' active' : ''}" onclick="selectErgoRankingMenu('${menu}')">${menu} (${count}人)</button>`;
+    });
+    menuBar.innerHTML = menuHtml;
+
+    // 選択メニューのランキングを描画
+    const selectedMenu = weeklyRankingTabState.selectedErgoMenu;
+    const users = menuUserMap[selectedMenu] || {};
+    const records = Object.values(users);
+
+    const isTimeBased = typeof _isTimeBasedMenu === 'function' ? _isTimeBasedMenu(selectedMenu) : false;
+
+    records.sort((a, b) => {
+        if (isTimeBased) return (b.distance || 0) - (a.distance || 0);
+        return (a.time || Infinity) - (b.time || Infinity);
+    });
+
+    const medals = ['🥇', '🥈', '🥉'];
+    let html = '';
+
+    records.forEach((r, idx) => {
+        const user = (state.users || []).find(u => u.id === r.userId);
+        const name = user?.name || '不明';
+        const grade = user?.grade ? `${user.grade}年` : '';
+        const isMe = state.currentUser && r.userId === state.currentUser.id;
+        const posClass = idx === 0 ? 'gold' : idx === 1 ? 'silver' : idx === 2 ? 'bronze' : '';
+
+        let valueDisplay = '';
+        let subDisplay = '';
+        if (isTimeBased) {
+            valueDisplay = r.distance ? `${(r.distance / 1000).toFixed(1)}km` : '-';
+            subDisplay = r.formattedTime || r.timeDisplay || '';
+        } else {
+            valueDisplay = r.formattedTime || r.timeDisplay || (r.time ? formatSeconds(r.time) : '-');
+            subDisplay = r.distance ? `${r.distance}m` : '';
+        }
+
+        html += `<div class="ranking-card${isMe ? ' my-rank' : ''}">
+            <div class="ranking-position ${posClass}">${idx < 3 ? medals[idx] : idx + 1}</div>
+            <div class="ranking-user-info">
+                <div class="ranking-user-name">${name}${isMe ? ' 👤' : ''}</div>
+                <div class="ranking-user-detail">${grade}</div>
+            </div>
+            <div style="text-align:right;">
+                <div class="ranking-value">${valueDisplay}</div>
+                ${subDisplay ? `<div class="ranking-value-sub">${subDisplay}</div>` : ''}
+            </div>
+        </div>`;
+    });
+
+    container.innerHTML = html;
+}
+
+function selectErgoRankingMenu(menuKey) {
+    weeklyRankingTabState.selectedErgoMenu = menuKey;
+    renderWeeklyErgoRankingTab();
+}
+
+// 秒をフォーマット表示
+function formatSeconds(totalSeconds) {
+    if (!totalSeconds || totalSeconds <= 0) return '-';
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = (totalSeconds % 60).toFixed(1);
+    return `${mins}:${secs.padStart(4, '0')}`;
+}
+
+// =========================================
+// リギングノート独立タブ
+// =========================================
+// ===== リギングノートタブ (カードUI) =====
+let _currentRiggingBoatId = null;
+
+function initRiggingNoteTab() {
+    renderRiggingNoteBoatCards();
+    // 艇追加セレクト更新
+    const boats = DB.load('boats') || [];
+    const sel = document.getElementById('rigging-note-new-boat-select');
+    if (sel) {
+        sel.innerHTML = '<option value="">艇を選択してください</option>' +
+            boats.map(b => `<option value="${b.id || b.name}">${b.name} (${b.type || b.boatType || ''})</option>`).join('');
+    }
+    // フォームを閉じる
+    closeRiggingNoteForm();
+    document.getElementById('rigging-note-picker')?.classList.add('hidden');
+}
+
+function renderRiggingNoteBoatCards() {
+    const container = document.getElementById('rigging-note-boat-list');
+    if (!container) return;
+
+    const riggings = DB.load('rigging_data') || {};
+    const boats = DB.load('boats') || [];
+
+    // 最近入力した順にソート
+    const boatEntries = Object.entries(riggings)
+        .sort((a, b) => {
+            const ta = a[1].savedAt || '';
+            const tb = b[1].savedAt || '';
+            return tb.localeCompare(ta);
+        });
+
+    if (boatEntries.length === 0) {
+        container.innerHTML = '<p style="text-align:center;color:#888;padding:24px;font-size:14px;">まだリギングデータがありません。<br>艇を追加してください。</p>';
+        return;
+    }
+
+    let html = '';
+    boatEntries.forEach(([boatId, data]) => {
+        const boat = boats.find(b => (b.id || b.name) === boatId);
+        const boatName = boat ? `${boat.name} (${boat.type || boat.boatType || ''})` : boatId;
+        const date = data.savedAt ? new Date(data.savedAt).toLocaleDateString('ja-JP') : '未設定';
+
+        html += `<div class="rigging-note-card" onclick="openRiggingNoteForm('${boatId}')">
+            <div class="rigging-note-card-header">
+                <span class="rigging-note-card-name">🔧 ${boatName}</span>
+                <span class="rigging-note-card-date">${date}</span>
+            </div>
+            <div class="rigging-note-card-values">
+                ${data.pinToHeel ? `<span>P2H: ${data.pinToHeel}cm</span>` : ''}
+                ${data.depth ? `<span>D: ${data.depth}cm</span>` : ''}
+                ${data.span ? `<span>S: ${data.span}cm</span>` : ''}
+                ${data.pitch ? `<span>角: ${data.pitch}°</span>` : ''}
+                ${data.height ? `<span>H: ${data.height}cm</span>` : ''}
+                ${!data.pinToHeel && !data.depth && !data.span ? '<span style="color:#aaa;">データなし</span>' : ''}
+            </div>
+            ${data.memo ? `<div class="rigging-note-card-memo">${data.memo}</div>` : ''}
+        </div>`;
+    });
+
+    container.innerHTML = html;
+}
+
+function openRiggingNoteBoatPicker() {
+    document.getElementById('rigging-note-picker')?.classList.remove('hidden');
+}
+function closeRiggingNoteBoatPicker() {
+    document.getElementById('rigging-note-picker')?.classList.add('hidden');
+}
+
+function addRiggingNoteBoat() {
+    const sel = document.getElementById('rigging-note-new-boat-select');
+    if (!sel || !sel.value) { showToast('艇を選択してください', 'error'); return; }
+    const boatId = sel.value;
+    // 既存データがなければ空エントリを作成
+    const riggings = DB.load('rigging_data') || {};
+    if (!riggings[boatId]) {
+        riggings[boatId] = { savedAt: new Date().toISOString(), savedBy: state.currentUser?.name || '' };
+        DB.save('rigging_data', riggings);
+    }
+    closeRiggingNoteBoatPicker();
+    renderRiggingNoteBoatCards();
+    openRiggingNoteForm(boatId);
+}
+
+function openRiggingNoteForm(boatId) {
+    _currentRiggingBoatId = boatId;
+    const boats = DB.load('boats') || [];
+    const boat = boats.find(b => (b.id || b.name) === boatId);
+    const boatName = boat ? `${boat.name} (${boat.type || boat.boatType || ''})` : boatId;
+
+    const titleEl = document.getElementById('rigging-note-form-title');
+    if (titleEl) titleEl.textContent = `🔧 ${boatName}`;
+
+    const riggings = DB.load('rigging_data') || {};
+    const data = riggings[boatId] || {};
+
+    document.getElementById('rigging-note-pin-to-heel').value = data.pinToHeel || '';
+    document.getElementById('rigging-note-depth').value = data.depth || '';
+    document.getElementById('rigging-note-span').value = data.span || '';
+    document.getElementById('rigging-note-pitch').value = data.pitch || '';
+    document.getElementById('rigging-note-height').value = data.height || '';
+    document.getElementById('rigging-note-memo').value = data.memo || '';
+
+    const history = (DB.load('rigging_history') || {})[boatId] || [];
+    const badge = document.getElementById('rigging-note-history-count');
+    if (badge) {
+        badge.textContent = history.length;
+        badge.classList.toggle('hidden', history.length === 0);
+    }
+
+    document.getElementById('rigging-note-form-section')?.classList.remove('hidden');
+    document.getElementById('rigging-note-history-panel')?.classList.add('hidden');
+    document.getElementById('rigging-note-form-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeRiggingNoteForm() {
+    _currentRiggingBoatId = null;
+    document.getElementById('rigging-note-form-section')?.classList.add('hidden');
+    document.getElementById('rigging-note-history-panel')?.classList.add('hidden');
+}
+
+function saveRiggingNote() {
+    if (!_currentRiggingBoatId) { showToast('艇が選択されていません', 'error'); return; }
+    const boatId = _currentRiggingBoatId;
+
+    const data = {
+        pinToHeel: document.getElementById('rigging-note-pin-to-heel').value,
+        depth: document.getElementById('rigging-note-depth').value,
+        span: document.getElementById('rigging-note-span').value,
+        pitch: document.getElementById('rigging-note-pitch').value,
+        height: document.getElementById('rigging-note-height').value,
+        memo: document.getElementById('rigging-note-memo').value,
+        savedAt: new Date().toISOString(),
+        savedBy: state.currentUser?.name || ''
+    };
+
+    const riggings = DB.load('rigging_data') || {};
+    riggings[boatId] = data;
+    DB.save('rigging_data', riggings);
+
+    // Supabase同期 (riggings テーブルへ保存)
+    if (window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.saveRigging({
+            boat_id: boatId,
+            user_id: state.currentUser?.id || null,
+            pin_to_heel: data.pinToHeel ? parseFloat(data.pinToHeel) : null,
+            depth: data.depth ? parseFloat(data.depth) : null,
+            span: data.span ? parseFloat(data.span) : null,
+            pitch: data.pitch ? parseFloat(data.pitch) : null,
+            height: data.height ? parseFloat(data.height) : null,
+            memo: data.memo || ''
+        }).catch(e => console.warn('Rigging sync failed:', e));
+    }
+
+    const allHistory = DB.load('rigging_history') || {};
+    if (!allHistory[boatId]) allHistory[boatId] = [];
+    allHistory[boatId].unshift(data);
+    if (allHistory[boatId].length > 20) allHistory[boatId] = allHistory[boatId].slice(0, 20);
+    DB.save('rigging_history', allHistory);
+
+    // Supabase同期 (rigging_history テーブルへ保存)
+    if (window.SupabaseConfig?.db) {
+        const histEntry = {
+            id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2),
+            boat_id: boatId,
+            user_id: state.currentUser?.id || null,
+            pin_to_heel: data.pinToHeel || '',
+            depth: data.depth || '',
+            span: data.span || '',
+            pitch: data.pitch || '',
+            height: data.height || '',
+            memo: data.memo || '',
+            saved_at: data.savedAt
+        };
+        window.SupabaseConfig.db.saveRiggingHistory(histEntry).catch(e => console.warn('Rigging history sync failed:', e));
+    }
+
+    showToast('リギング設定を保存しました', 'success');
+    renderRiggingNoteBoatCards();
+
+    const badge = document.getElementById('rigging-note-history-count');
+    if (badge) {
+        const hist = allHistory[boatId] || [];
+        badge.textContent = hist.length;
+        badge.classList.toggle('hidden', hist.length === 0);
+    }
+}
+
+function toggleRiggingNoteHistory() {
+    const panel = document.getElementById('rigging-note-history-panel');
+    if (!panel) return;
+    if (panel.classList.contains('hidden')) {
+        panel.classList.remove('hidden');
+        renderRiggingNoteHistory();
+    } else {
+        panel.classList.add('hidden');
+    }
+}
+
+function renderRiggingNoteHistory() {
+    const container = document.getElementById('rigging-note-history-list');
+    if (!container || !_currentRiggingBoatId) return;
+
+    const boatId = _currentRiggingBoatId;
+    const history = (DB.load('rigging_history') || {})[boatId] || [];
+
+    if (history.length === 0) {
+        container.innerHTML = '<p style="color:#888;font-size:13px;padding:8px;">履歴がありません</p>';
+        return;
+    }
+
+    let html = '';
+    history.forEach(h => {
+        const date = h.savedAt ? new Date(h.savedAt).toLocaleDateString('ja-JP') : '-';
+        html += `<div class="rigging-history-item" style="padding:8px 12px;border-bottom:1px solid rgba(0,0,0,0.06);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                <span style="font-size:12px;font-weight:600;">${date}</span>
+                <span style="font-size:11px;color:#888;">${h.savedBy || ''}</span>
+            </div>
+            <div style="font-size:12px;color:#666;display:flex;flex-wrap:wrap;gap:8px;">
+                ${h.pinToHeel ? `<span>P2H: ${h.pinToHeel}cm</span>` : ''}
+                ${h.depth ? `<span>D: ${h.depth}cm</span>` : ''}
+                ${h.span ? `<span>S: ${h.span}cm</span>` : ''}
+                ${h.pitch ? `<span>角: ${h.pitch}°</span>` : ''}
+                ${h.height ? `<span>H: ${h.height}cm</span>` : ''}
+            </div>
+            ${h.memo ? `<div style="font-size:11px;color:#999;margin-top:2px;">${h.memo}</div>` : ''}
+        </div>`;
+    });
+
+    container.innerHTML = html;
+}
+
+// ===== 体重管理独立タブ =====
+function initWeightManagementTab() {
+    // 既存の設定タブの関数を流用（同一localStorage）
+    const today = new Date().toISOString().slice(0, 10);
+    const weights = DB.load('weight_records') || {};
+    const todayWeight = weights[today];
+
+    const displayEl = document.getElementById('weight-display-standalone');
+    const inputEl = document.getElementById('weight-input-standalone');
+    if (displayEl) displayEl.textContent = todayWeight ? todayWeight.toFixed(1) : '--.-';
+    if (inputEl) inputEl.value = todayWeight ? todayWeight : '';
+
+    renderStandaloneWeightHistory();
+    renderStandaloneWeightChart();
+}
+
+function syncStandaloneWeight() {
+    const inputEl = document.getElementById('weight-input-standalone');
+    const displayEl = document.getElementById('weight-display-standalone');
+    if (!inputEl || !displayEl) return;
+    const v = parseFloat(inputEl.value);
+    displayEl.textContent = isNaN(v) ? '--.-' : v.toFixed(1);
+}
+
+function adjustStandaloneWeight(step) {
+    const inputEl = document.getElementById('weight-input-standalone');
+    if (!inputEl) return;
+    let v = parseFloat(inputEl.value) || 0;
+    v = Math.round((v + step) * 10) / 10;
+    if (v < 30) v = 30;
+    if (v > 150) v = 150;
+    inputEl.value = v;
+    syncStandaloneWeight();
+}
+
+function saveStandaloneWeight() {
+    const inputEl = document.getElementById('weight-input-standalone');
+    if (!inputEl) return;
+    const v = parseFloat(inputEl.value);
+    if (isNaN(v) || v < 30 || v > 150) { showToast('正しい体重を入力してください (30-150kg)', 'error'); return; }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const weights = DB.load('weight_records') || {};
+    weights[today] = v;
+    DB.save('weight_records', weights);
+
+    // Supabase同期
+    if (window.SupabaseConfig?.db) {
+        const weightEntry = {
+            id: `${state.currentUser?.id || 'anon'}_${today}`,
+            userId: state.currentUser?.id || null,
+            weight: v,
+            date: today
+        };
+        window.SupabaseConfig.db.saveWeightEntry(weightEntry).catch(e => console.warn('Weight sync failed:', e));
+    }
+
+    const displayEl = document.getElementById('weight-display-standalone');
+    if (displayEl) displayEl.textContent = v.toFixed(1);
+
+    showToast(`体重 ${v.toFixed(1)}kg を記録しました`, 'success');
+    renderStandaloneWeightHistory();
+    renderStandaloneWeightChart();
+}
+
+function renderStandaloneWeightHistory() {
+    const container = document.getElementById('weight-history-list-standalone');
+    if (!container) return;
+    const weights = DB.load('weight_records') || {};
+    const entries = Object.entries(weights).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 30);
+    if (entries.length === 0) {
+        container.innerHTML = '<p style="color:#888;font-size:13px;text-align:center;padding:8px;">まだ体重が記録されていません</p>';
+        return;
+    }
+    container.innerHTML = entries.map(([date, w]) =>
+        `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.05);">
+            <span style="font-size:13px;color:#555;">${date}</span>
+            <span style="font-size:14px;font-weight:600;">${w.toFixed(1)}<span style="font-size:11px;color:#888;">kg</span></span>
+        </div>`
+    ).join('');
+}
+
+function renderStandaloneWeightChart() {
+    const canvas = document.getElementById('weight-chart-standalone');
+    if (!canvas) return;
+    const weights = DB.load('weight_records') || {};
+    const entries = Object.entries(weights).sort((a, b) => a[0].localeCompare(b[0])).slice(-30);
+    if (entries.length < 2) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#888';
+        ctx.font = '13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('データが2件以上になるとグラフが表示されます', canvas.width / 2, canvas.height / 2);
+        return;
+    }
+    const vals = entries.map(([, w]) => w);
+    const min = Math.min(...vals) - 1;
+    const max = Math.max(...vals) + 1;
+    const W = canvas.offsetWidth || 300;
+    const H = 150;
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, W, H);
+
+    const pad = 20;
+    const toX = i => pad + (i / (entries.length - 1)) * (W - pad * 2);
+    const toY = v => H - pad - ((v - min) / (max - min)) * (H - pad * 2);
+
+    ctx.strokeStyle = 'rgba(99,179,237,0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let y = min; y <= max; y += 1) {
+        ctx.moveTo(pad, toY(y));
+        ctx.lineTo(W - pad, toY(y));
+    }
+    ctx.stroke();
+
+    ctx.strokeStyle = '#63b3ed';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    entries.forEach(([, v], i) => {
+        if (i === 0) ctx.moveTo(toX(i), toY(v));
+        else ctx.lineTo(toX(i), toY(v));
+    });
+    ctx.stroke();
+
+    ctx.fillStyle = '#63b3ed';
+    entries.forEach(([, v], i) => {
+        ctx.beginPath();
+        ctx.arc(toX(i), toY(v), 3, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    ctx.fillStyle = '#fff';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'center';
+    if (entries.length > 0) {
+        ctx.fillText(entries[0][0].slice(5), toX(0), H - 4);
+        ctx.fillText(entries[entries.length - 1][0].slice(5), toX(entries.length - 1), H - 4);
+    }
+}
+
+// ===== マスタ管理独立タブ =====
+function initMasterManagementTab() {
+    // スタンドアロンボタンに既存のマスタ管理モーダル呼び出しを連携
+    const boatBtn = document.getElementById('manage-boats-btn-standalone');
+    const oarBtn = document.getElementById('manage-oars-btn-standalone');
+    const ergoBtn = document.getElementById('manage-ergos-btn-standalone');
+
+    if (boatBtn) boatBtn.onclick = () => openMasterModal('boats');
+    if (oarBtn) oarBtn.onclick = () => openMasterModal('oars');
+    if (ergoBtn) ergoBtn.onclick = () => openMasterModal('ergos');
+}
+
+// ===== 練習登録モーダルを閉じる =====
+function closeInputModal() {
+    const modal = document.getElementById('input-modal');
+    if (modal) modal.classList.add('hidden');
+}
+

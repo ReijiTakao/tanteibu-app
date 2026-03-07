@@ -1169,6 +1169,65 @@ const SupabaseDB = {
             if (error) { console.error('Delete team_schedule error:', error); throw error; }
             return true;
         }).catch(() => false);
+    },
+
+    // --- 年間イベント ---
+    async loadAnnualEvents() {
+        if (!isSupabaseReady()) return [];
+        const { data, error } = await _supabaseClient
+            .from('annual_events')
+            .select('*')
+            .order('date', { ascending: true });
+        if (error) { console.error('Load annual_events error:', error); return []; }
+        return (data || []).map(r => ({
+            id: r.id,
+            title: r.title,
+            date: r.date,
+            endDate: r.end_date,
+            startTime: r.start_time,
+            endTime: r.end_time,
+            category: r.category || '',
+            memo: r.memo || '',
+            createdBy: r.created_by,
+            createdAt: r.created_at
+        }));
+    },
+
+    async saveAnnualEvent(event) {
+        if (!isSupabaseReady()) return null;
+        const row = {
+            id: event.id,
+            title: event.title,
+            date: event.date,
+            end_date: event.endDate || null,
+            start_time: event.startTime || null,
+            end_time: event.endTime || null,
+            category: event.category || '',
+            memo: event.memo || '',
+            created_by: event.createdBy || null,
+            updated_at: new Date().toISOString()
+        };
+        return withSyncIndicator(async () => {
+            const { data, error } = await _supabaseClient
+                .from('annual_events')
+                .upsert(row, { onConflict: 'id' })
+                .select()
+                .single();
+            if (error) { console.error('Save annual_event error:', error); throw error; }
+            return data;
+        }).catch(e => { console.error('Supabase op failed:', e); throw e; });
+    },
+
+    async deleteAnnualEvent(id) {
+        if (!isSupabaseReady()) return false;
+        return withSyncIndicator(async () => {
+            const { error } = await _supabaseClient
+                .from('annual_events')
+                .delete()
+                .eq('id', id);
+            if (error) { console.error('Delete annual_event error:', error); throw error; }
+            return true;
+        }).catch(() => false);
     }
 };
 
