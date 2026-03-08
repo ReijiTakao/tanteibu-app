@@ -3195,7 +3195,14 @@ function populateAllocationSelect() {
     }
 
     select.innerHTML = html;
+
+    // 自分の配艇がある場合は自動選択してプレビュー表示
+    if (myAllocs.length > 0) {
+        select.value = myAllocs[0].id;
+        onAllocationSelected(myAllocs[0].id);
+    }
 }
+
 
 function onAllocationSelected(allocId) {
     const preview = document.getElementById('allocation-preview');
