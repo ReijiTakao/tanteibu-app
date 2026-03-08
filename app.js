@@ -10896,10 +10896,12 @@ function renderSettings() {
             document.getElementById('user-role').textContent = newRole;
             // マスタ管理の表示/非表示を更新
             const masterSection = document.getElementById('master-settings');
-            if (canEditMaster(state.currentUser)) {
-                masterSection.classList.remove('hidden');
-            } else {
-                masterSection.classList.add('hidden');
+            if (masterSection) {
+                if (canEditMaster(state.currentUser)) {
+                    masterSection.classList.remove('hidden');
+                } else {
+                    masterSection.classList.add('hidden');
+                }
             }
             // パスコード設定セクションの表示/非表示
             const passcodeSection = document.getElementById('admin-passcode-settings');
@@ -11079,13 +11081,15 @@ function renderSettings() {
 
     // マスタ管理 (管理者/Coxのみ)
     const masterSection = document.getElementById('master-settings');
-    if (canEditMaster(user)) {
-        masterSection.classList.remove('hidden');
-        document.getElementById('manage-boats-btn').onclick = () => openMasterModal('boats');
-        document.getElementById('manage-oars-btn').onclick = () => openMasterModal('oars');
-        document.getElementById('manage-ergos-btn').onclick = () => openMasterModal('ergos');
-    } else {
-        masterSection.classList.add('hidden');
+    if (masterSection) {
+        if (canEditMaster(user)) {
+            masterSection.classList.remove('hidden');
+            document.getElementById('manage-boats-btn').onclick = () => openMasterModal('boats');
+            document.getElementById('manage-oars-btn').onclick = () => openMasterModal('oars');
+            document.getElementById('manage-ergos-btn').onclick = () => openMasterModal('ergos');
+        } else {
+            masterSection.classList.add('hidden');
+        }
     }
 
     // ログアウト
