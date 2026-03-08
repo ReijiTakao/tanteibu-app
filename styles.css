@@ -8054,3 +8054,210 @@ textarea {
     font-weight: 600;
     border-radius: 10px;
 }
+
+/* =========================================
+   備品管理 (艇備品/艇庫備品)
+   ========================================= */
+.eq-filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.eq-filter-select {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color, #333);
+    background: var(--card-bg, #1e1e2e);
+    color: var(--text-primary, #fff);
+    font-size: 13px;
+}
+
+.eq-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.eq-empty {
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--text-muted, #888);
+    font-size: 14px;
+}
+
+.eq-group-header {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary, #aaa);
+    padding: 8px 4px 4px;
+    margin-top: 4px;
+}
+
+.eq-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--card-bg, #1e1e2e);
+    border: 1px solid var(--border-color, #333);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.eq-card:active {
+    transform: scale(0.98);
+}
+
+.eq-card-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.eq-card-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary, #fff);
+}
+
+.eq-card-meta {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 3px;
+}
+
+.eq-card-cat {
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+}
+
+.eq-card-updated {
+    font-size: 11px;
+    color: var(--text-muted, #888);
+}
+
+.eq-card-note {
+    font-size: 12px;
+    color: var(--text-muted, #999);
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.eq-card-status {
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+
+.eq-badge {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.eq-badge.eq-st-ok {
+    background: rgba(46, 204, 113, 0.12);
+    color: #2ecc71;
+}
+
+.eq-badge.eq-st-low {
+    background: rgba(241, 196, 15, 0.15);
+    color: #f1c40f;
+}
+
+.eq-badge.eq-st-none {
+    background: rgba(231, 76, 60, 0.12);
+    color: #e74c3c;
+}
+
+.eq-badge.eq-st-order {
+    background: rgba(52, 152, 219, 0.12);
+    color: #3498db;
+}
+
+/* カード左ボーダーでステータス表示 */
+.eq-card.eq-st-ok {
+    border-left: 3px solid #2ecc71;
+}
+
+.eq-card.eq-st-low {
+    border-left: 3px solid #f1c40f;
+}
+
+.eq-card.eq-st-none {
+    border-left: 3px solid #e74c3c;
+}
+
+.eq-card.eq-st-order {
+    border-left: 3px solid #3498db;
+}
+
+.eq-add-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: 2px dashed var(--border-color, #444);
+    background: transparent;
+    color: var(--text-secondary, #aaa);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.eq-add-btn:active {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: #818cf8;
+    color: #818cf8;
+}
+
+/* 備品モーダルフォーム */
+.eq-form-input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color, #333);
+    background: var(--card-bg, #1e1e2e);
+    color: var(--text-primary, #fff);
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.eq-status-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.eq-status-btn {
+    padding: 8px 6px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border-color, #444);
+    background: transparent;
+    color: var(--text-secondary, #aaa);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.eq-status-btn.active {
+    border-color: #818cf8;
+    background: rgba(99, 102, 241, 0.15);
+    color: #fff;
+}
+
+.eq-status-btn:active {
+    transform: scale(0.95);
+}

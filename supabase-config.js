@@ -1228,6 +1228,77 @@ const SupabaseDB = {
             if (error) { console.error('Delete annual_event error:', error); throw error; }
             return true;
         }).catch(() => false);
+    },
+
+    // --- 備品管理 (艇備品 / 艇庫備品) ---
+    async loadEquipment(table) {
+        if (!isSupabaseReady()) return [];
+        try {
+            const { data, error } = await _supabaseClient
+                .from(table)
+                .select('*')
+                .order('updated_at', { ascending: false });
+            if (error) {
+                if (error.code === '42P01') return []; // テーブル未作成
+                console.error(`Load ${table} error:`, error);
+                return [];
+            }
+            return (data || []).map(r => ({
+                id: r.id,
+                boatId: r.boat_id || undefined,
+                name: r.name,
+                category: r.category || '',
+                quantity: r.quantity ?? 0,
+                status: r.status || '在庫あり',
+                note: r.note || '',
+                updatedAt: r.updated_at,
+                updatedBy: r.updated_by
+            }));
+        } catch (e) {
+            console.warn(`${table} load failed:`, e);
+            return [];
+        }
+    },
+
+    async saveEquipmentItem(table, item) {
+        if (!isSupabaseReady()) return null;
+        const row = {
+            id: item.id,
+            name: item.name,
+            category: item.category || '',
+            quantity: item.quantity ?? 0,
+            status: item.status || '在庫あり',
+            note: item.note || '',
+            updated_at: item.updatedAt || new Date().toISOString(),
+            updated_by: item.updatedBy || null
+        };
+        if (table === 'boat_equipment') {
+            row.boat_id = item.boatId || null;
+        }
+        return withSyncIndicator(async () => {
+            const { data, error } = await _supabaseClient
+                .from(table)
+                .upsert(row, { onConflict: 'id' })
+                .select()
+                .single();
+            if (error) { console.error(`Save ${table} error:`, error); throw error; }
+            return data;
+        }).catch(e => {
+            console.warn(`${table} save to Supabase failed:`, e);
+            return null;
+        });
+    },
+
+    async deleteEquipmentItem(table, id) {
+        if (!isSupabaseReady()) return false;
+        return withSyncIndicator(async () => {
+            const { error } = await _supabaseClient
+                .from(table)
+                .delete()
+                .eq('id', id);
+            if (error) { console.error(`Delete ${table} error:`, error); throw error; }
+            return true;
+        }).catch(() => false);
     }
 };
 

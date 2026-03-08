@@ -707,6 +707,34 @@ const DB = {
                 }
             } catch (e) { console.warn('Annual events sync failed:', e); }
 
+            // 艇備品
+            try {
+                const boatEq = await window.SupabaseConfig.db.loadEquipment('boat_equipment');
+                if (boatEq.length) {
+                    let local = this.loadLocal('boat_equipment') || [];
+                    boatEq.forEach(item => {
+                        const idx = local.findIndex(l => l.id === item.id);
+                        if (idx !== -1) local[idx] = item;
+                        else local.push(item);
+                    });
+                    this.saveLocal('boat_equipment', local);
+                }
+            } catch (e) { console.warn('Boat equipment sync failed:', e); }
+
+            // 艇庫備品
+            try {
+                const bhEq = await window.SupabaseConfig.db.loadEquipment('boathouse_equipment');
+                if (bhEq.length) {
+                    let local = this.loadLocal('boathouse_equipment') || [];
+                    bhEq.forEach(item => {
+                        const idx = local.findIndex(l => l.id === item.id);
+                        if (idx !== -1) local[idx] = item;
+                        else local.push(item);
+                    });
+                    this.saveLocal('boathouse_equipment', local);
+                }
+            } catch (e) { console.warn('Boathouse equipment sync failed:', e); }
+
         } catch (e) {
             console.error('syncFromSupabase failed:', e);
             showToast('同期エラー: ' + (e?.message || JSON.stringify(e)), 'error');
@@ -1313,6 +1341,8 @@ function switchTab(tabId) {
         if (tabId === 'rigging-note') initRiggingNoteTab();
         if (tabId === 'weight-management') initWeightManagementTab();
         if (tabId === 'master-management') initMasterManagementTab();
+        if (tabId === 'boat-equipment') { initBoatEquipmentFilters(); renderEquipmentList('boat'); }
+        if (tabId === 'boathouse-equipment') renderEquipmentList('boathouse');
 
     } catch (error) {
         console.error(`Tab init error (${tabId}):`, error);
@@ -15329,3 +15359,239 @@ function closeInputModal() {
     if (modal) modal.classList.add('hidden');
 }
 
+// =========================================
+// 備品管理 (艇備品 / 艇庫備品)
+// =========================================
+const BOAT_EQ_CATEGORIES = ['リガー部品', 'シート・レール', '舵・フィン', '電装品', '修理用品', 'その他'];
+const BOATHOUSE_EQ_CATEGORIES = ['消耗品', '工具', '清掃用品', '安全装備', 'その他'];
+const EQ_STATUSES = ['在庫あり', '残りわずか', '在庫なし', '注文中'];
+const EQ_STATUS_ICONS = { '在庫あり': '🟢', '残りわずか': '🟡', '在庫なし': '🔴', '注文中': '🔵' };
+const EQ_STATUS_CLASSES = { '在庫あり': 'eq-st-ok', '残りわずか': 'eq-st-low', '在庫なし': 'eq-st-none', '注文中': 'eq-st-order' };
+
+function getEquipmentStorageKey(type) {
+    return type === 'boat' ? 'boat_equipment' : 'boathouse_equipment';
+}
+
+function loadEquipment(type) {
+    return DB.load(getEquipmentStorageKey(type)) || [];
+}
+
+function saveEquipmentData(type, data) {
+    DB.save(getEquipmentStorageKey(type), data);
+}
+
+function renderEquipmentList(type) {
+    const listId = type === 'boat' ? 'boat-eq-list' : 'boathouse-eq-list';
+    const container = document.getElementById(listId);
+    if (!container) return;
+
+    let items = loadEquipment(type);
+
+    // フィルタ
+    if (type === 'boat') {
+        const boatFilter = document.getElementById('boat-eq-boat-filter')?.value;
+        const statusFilter = document.getElementById('boat-eq-status-filter')?.value;
+        if (boatFilter) items = items.filter(i => i.boatId === boatFilter);
+        if (statusFilter) items = items.filter(i => i.status === statusFilter);
+    } else {
+        const catFilter = document.getElementById('boathouse-eq-cat-filter')?.value;
+        const statusFilter = document.getElementById('boathouse-eq-status-filter')?.value;
+        if (catFilter) items = items.filter(i => i.category === catFilter);
+        if (statusFilter) items = items.filter(i => i.status === statusFilter);
+    }
+
+    if (items.length === 0) {
+        container.innerHTML = '<div class="eq-empty">備品が登録されていません</div>';
+        return;
+    }
+
+    // 艇備品はboatId別にグルーピング
+    if (type === 'boat') {
+        const boats = DB.load('boats') || [];
+        const grouped = {};
+        items.forEach(item => {
+            const key = item.boatId || 'unknown';
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(item);
+        });
+
+        let html = '';
+        Object.entries(grouped).forEach(([boatId, eqItems]) => {
+            const boat = boats.find(b => b.id === boatId);
+            const boatName = boat?.name || '不明な艇';
+            html += `<div class="eq-group-header">⛵ ${boatName}</div>`;
+            eqItems.forEach(item => { html += renderEquipmentCard(item, type); });
+        });
+        container.innerHTML = html;
+    } else {
+        container.innerHTML = items.map(item => renderEquipmentCard(item, type)).join('');
+    }
+}
+
+function renderEquipmentCard(item, type) {
+    const icon = EQ_STATUS_ICONS[item.status] || '⚪';
+    const cls = EQ_STATUS_CLASSES[item.status] || '';
+    const qtyText = item.quantity != null ? `（${item.quantity}個）` : '';
+    const catText = item.category ? `<span class="eq-card-cat">${item.category}</span>` : '';
+    const noteText = item.note ? `<div class="eq-card-note">${item.note.replace(/</g, '&lt;')}</div>` : '';
+    const updatedText = item.updatedAt ? `<span class="eq-card-updated">${new Date(item.updatedAt).toLocaleDateString('ja-JP')}</span>` : '';
+
+    return `<div class="eq-card ${cls}" onclick="openEquipmentForm('${type}', '${item.id}')">
+        <div class="eq-card-main">
+            <div class="eq-card-name">${item.name || '名称なし'}${qtyText}</div>
+            <div class="eq-card-meta">${catText}${updatedText}</div>
+            ${noteText}
+        </div>
+        <div class="eq-card-status">
+            <span class="eq-badge ${cls}">${icon} ${item.status || '不明'}</span>
+        </div>
+    </div>`;
+}
+
+function openEquipmentForm(type, editId) {
+    const modal = document.getElementById('equipment-modal');
+    const title = document.getElementById('eq-modal-title');
+    document.getElementById('eq-edit-id').value = editId || '';
+    document.getElementById('eq-edit-type').value = type;
+
+    // 艇セレクト（艇備品のみ表示）
+    const boatGroup = document.getElementById('eq-boat-select-group');
+    if (type === 'boat') {
+        boatGroup.style.display = '';
+        const boats = DB.load('boats') || [];
+        const boatSelect = document.getElementById('eq-boat-select');
+        boatSelect.innerHTML = '<option value="">艇を選択</option>' +
+            boats.map(b => `<option value="${b.id}">${b.name} (${b.type || ''})</option>`).join('');
+    } else {
+        boatGroup.style.display = 'none';
+    }
+
+    // カテゴリセレクト
+    const categories = type === 'boat' ? BOAT_EQ_CATEGORIES : BOATHOUSE_EQ_CATEGORIES;
+    const catSelect = document.getElementById('eq-category');
+    catSelect.innerHTML = '<option value="">未分類</option>' +
+        categories.map(c => `<option value="${c}">${c}</option>`).join('');
+
+    // リセット
+    document.getElementById('eq-name').value = '';
+    document.getElementById('eq-quantity').value = '1';
+    document.getElementById('eq-note').value = '';
+    document.querySelectorAll('.eq-status-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.eq-status-btn[data-status="在庫あり"]')?.classList.add('active');
+    document.getElementById('eq-delete-btn').classList.add('hidden');
+
+    // 編集時は既存データを埋める
+    if (editId) {
+        const items = loadEquipment(type);
+        const item = items.find(i => i.id === editId);
+        if (item) {
+            title.textContent = '備品を編集';
+            document.getElementById('eq-name').value = item.name || '';
+            if (type === 'boat') document.getElementById('eq-boat-select').value = item.boatId || '';
+            catSelect.value = item.category || '';
+            document.getElementById('eq-quantity').value = item.quantity ?? 1;
+            document.getElementById('eq-note').value = item.note || '';
+            document.querySelectorAll('.eq-status-btn').forEach(b => b.classList.remove('active'));
+            const activeBtn = document.querySelector(`.eq-status-btn[data-status="${item.status}"]`);
+            if (activeBtn) activeBtn.classList.add('active');
+            document.getElementById('eq-delete-btn').classList.remove('hidden');
+        }
+    } else {
+        title.textContent = type === 'boat' ? '艇備品を追加' : '艇庫備品を追加';
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function closeEquipmentModal() {
+    document.getElementById('equipment-modal')?.classList.add('hidden');
+}
+window.closeEquipmentModal = closeEquipmentModal;
+
+function selectEqStatus(btn) {
+    document.querySelectorAll('.eq-status-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+window.selectEqStatus = selectEqStatus;
+
+function saveEquipment() {
+    const type = document.getElementById('eq-edit-type').value;
+    const editId = document.getElementById('eq-edit-id').value;
+    const name = document.getElementById('eq-name').value.trim();
+    if (!name) { alert('備品名を入力してください'); return; }
+
+    const status = document.querySelector('.eq-status-btn.active')?.dataset.status || '在庫あり';
+    const quantity = parseInt(document.getElementById('eq-quantity').value) || 0;
+    const category = document.getElementById('eq-category').value;
+    const note = document.getElementById('eq-note').value.trim();
+
+    let items = loadEquipment(type);
+
+    if (editId) {
+        const idx = items.findIndex(i => i.id === editId);
+        if (idx !== -1) {
+            items[idx] = {
+                ...items[idx], name, category, quantity, status, note,
+                updatedAt: new Date().toISOString(), updatedBy: state.currentUser?.id
+            };
+            if (type === 'boat') items[idx].boatId = document.getElementById('eq-boat-select').value;
+        }
+    } else {
+        const newItem = {
+            id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2),
+            name, category, quantity, status, note,
+            updatedAt: new Date().toISOString(),
+            updatedBy: state.currentUser?.id
+        };
+        if (type === 'boat') {
+            newItem.boatId = document.getElementById('eq-boat-select').value;
+            if (!newItem.boatId) { alert('艇を選択してください'); return; }
+        }
+        items.push(newItem);
+    }
+
+    saveEquipmentData(type, items);
+    closeEquipmentModal();
+    renderEquipmentList(type);
+
+    // Supabase同期
+    const savedItem = editId ? items.find(i => i.id === editId) : items[items.length - 1];
+    if (savedItem && window.SupabaseConfig?.db) {
+        const table = type === 'boat' ? 'boat_equipment' : 'boathouse_equipment';
+        window.SupabaseConfig.db.saveEquipmentItem(table, savedItem).catch(e => console.warn('Equipment sync save failed:', e));
+    }
+}
+window.saveEquipment = saveEquipment;
+
+function deleteEquipment() {
+    const type = document.getElementById('eq-edit-type').value;
+    const editId = document.getElementById('eq-edit-id').value;
+    if (!editId) return;
+    if (!confirm('この備品を削除しますか？')) return;
+
+    let items = loadEquipment(type);
+    items = items.filter(i => i.id !== editId);
+    saveEquipmentData(type, items);
+    closeEquipmentModal();
+    renderEquipmentList(type);
+
+    // Supabase同期
+    if (window.SupabaseConfig?.db) {
+        const table = type === 'boat' ? 'boat_equipment' : 'boathouse_equipment';
+        window.SupabaseConfig.db.deleteEquipmentItem(table, editId).catch(e => console.warn('Equipment sync delete failed:', e));
+    }
+}
+window.deleteEquipment = deleteEquipment;
+
+// 艇備品タブの艇フィルタを初期化
+function initBoatEquipmentFilters() {
+    const select = document.getElementById('boat-eq-boat-filter');
+    if (!select) return;
+    const boats = DB.load('boats') || [];
+    select.innerHTML = '<option value="">全ての艇</option>' +
+        boats.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+}
+
+// タブ切替時に一覧をレンダリング
+window.openEquipmentForm = openEquipmentForm;
+window.renderEquipmentList = renderEquipmentList;

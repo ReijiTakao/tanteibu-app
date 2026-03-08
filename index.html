@@ -211,6 +211,14 @@
                     <span class="drawer-menu-icon">🔧</span>
                     <span>リギングノート</span>
                 </button>
+                <button class="drawer-menu-item" onclick="switchTabFromDrawer('boat-equipment')">
+                    <span class="drawer-menu-icon">🛠️</span>
+                    <span>艇備品管理</span>
+                </button>
+                <button class="drawer-menu-item" onclick="switchTabFromDrawer('boathouse-equipment')">
+                    <span class="drawer-menu-icon">🏠</span>
+                    <span>艇庫備品管理</span>
+                </button>
                 <button class="drawer-menu-item" onclick="switchTabFromDrawer('members')">
                     <span class="drawer-menu-icon">👥</span>
                     <span>メンバー</span>
@@ -1014,6 +1022,106 @@
                             <button class="close-btn" onclick="toggleRiggingNoteHistory()">✕</button>
                         </div>
                         <div id="rigging-note-history-list" class="rigging-history-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 艇備品管理タブ -->
+            <div id="tab-boat-equipment" class="tab-content hidden">
+                <h2 class="tab-title">🛠️ 艇備品管理</h2>
+                <div class="eq-filter-bar">
+                    <select id="boat-eq-boat-filter" class="eq-filter-select" onchange="renderEquipmentList('boat')">
+                        <option value="">全ての艇</option>
+                    </select>
+                    <select id="boat-eq-status-filter" class="eq-filter-select" onchange="renderEquipmentList('boat')">
+                        <option value="">全ステータス</option>
+                        <option value="在庫あり">🟢 在庫あり</option>
+                        <option value="残りわずか">🟡 残りわずか</option>
+                        <option value="在庫なし">🔴 在庫なし</option>
+                        <option value="注文中">🔵 注文中</option>
+                    </select>
+                </div>
+                <div id="boat-eq-list" class="eq-list"></div>
+                <button class="eq-add-btn" onclick="openEquipmentForm('boat')">＋ 備品を追加</button>
+            </div>
+
+            <!-- 艇庫備品管理タブ -->
+            <div id="tab-boathouse-equipment" class="tab-content hidden">
+                <h2 class="tab-title">🏠 艇庫備品管理</h2>
+                <div class="eq-filter-bar">
+                    <select id="boathouse-eq-cat-filter" class="eq-filter-select"
+                        onchange="renderEquipmentList('boathouse')">
+                        <option value="">全カテゴリ</option>
+                        <option value="消耗品">消耗品</option>
+                        <option value="工具">工具</option>
+                        <option value="清掃用品">清掃用品</option>
+                        <option value="安全装備">安全装備</option>
+                        <option value="その他">その他</option>
+                    </select>
+                    <select id="boathouse-eq-status-filter" class="eq-filter-select"
+                        onchange="renderEquipmentList('boathouse')">
+                        <option value="">全ステータス</option>
+                        <option value="在庫あり">🟢 在庫あり</option>
+                        <option value="残りわずか">🟡 残りわずか</option>
+                        <option value="在庫なし">🔴 在庫なし</option>
+                        <option value="注文中">🔵 注文中</option>
+                    </select>
+                </div>
+                <div id="boathouse-eq-list" class="eq-list"></div>
+                <button class="eq-add-btn" onclick="openEquipmentForm('boathouse')">＋ 備品を追加</button>
+            </div>
+
+            <!-- 備品追加/編集モーダル -->
+            <div id="equipment-modal" class="modal hidden">
+                <div class="modal-overlay" onclick="closeEquipmentModal()"></div>
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 id="eq-modal-title">備品追加</h3>
+                        <button class="close-btn" onclick="closeEquipmentModal()">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="eq-edit-id">
+                        <input type="hidden" id="eq-edit-type">
+                        <div id="eq-boat-select-group" class="form-group">
+                            <label>艇</label>
+                            <select id="eq-boat-select" class="eq-form-input"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>備品名 <span style="color:#e74c3c;">*</span></label>
+                            <input type="text" id="eq-name" class="eq-form-input" placeholder="例: リガーボルト M6">
+                        </div>
+                        <div class="form-group">
+                            <label>カテゴリ</label>
+                            <select id="eq-category" class="eq-form-input">
+                                <option value="">未分類</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>数量</label>
+                            <input type="number" id="eq-quantity" class="eq-form-input" min="0" value="1"
+                                placeholder="数量">
+                        </div>
+                        <div class="form-group">
+                            <label>ステータス</label>
+                            <div class="eq-status-btns">
+                                <button class="eq-status-btn active" data-status="在庫あり"
+                                    onclick="selectEqStatus(this)">🟢 在庫あり</button>
+                                <button class="eq-status-btn" data-status="残りわずか" onclick="selectEqStatus(this)">🟡
+                                    残りわずか</button>
+                                <button class="eq-status-btn" data-status="在庫なし" onclick="selectEqStatus(this)">🔴
+                                    在庫なし</button>
+                                <button class="eq-status-btn" data-status="注文中" onclick="selectEqStatus(this)">🔵
+                                    注文中</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>メモ</label>
+                            <textarea id="eq-note" class="eq-form-input" rows="2" placeholder="備考（任意）"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="eq-delete-btn" class="danger-btn hidden" onclick="deleteEquipment()">削除</button>
+                        <button class="primary-btn" onclick="saveEquipment()">保存</button>
                     </div>
                 </div>
             </div>
