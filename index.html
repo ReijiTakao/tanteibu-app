@@ -219,6 +219,10 @@
                     <span class="drawer-menu-icon">🏠</span>
                     <span>艇庫備品管理</span>
                 </button>
+                <button class="drawer-menu-item" onclick="switchTabFromDrawer('tt-history')">
+                    <span class="drawer-menu-icon">🏁</span>
+                    <span>TT履歴</span>
+                </button>
                 <button class="drawer-menu-item" onclick="switchTabFromDrawer('members')">
                     <span class="drawer-menu-icon">👥</span>
                     <span>メンバー</span>
@@ -1122,6 +1126,61 @@
                     <div class="modal-footer">
                         <button id="eq-delete-btn" class="danger-btn hidden" onclick="deleteEquipment()">削除</button>
                         <button class="primary-btn" onclick="saveEquipment()">保存</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TT履歴タブ -->
+            <div id="tab-tt-history" class="tab-content hidden">
+                <h2 class="tab-title">🏁 TT履歴</h2>
+                <div id="tt-list" class="tt-list"></div>
+                <button class="eq-add-btn" onclick="openTTForm()">＋ TT記録を追加</button>
+            </div>
+
+            <!-- TT追加/編集モーダル -->
+            <div id="tt-modal" class="modal hidden">
+                <div class="modal-overlay" onclick="closeTTModal()"></div>
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 id="tt-modal-title">TT記録追加</h3>
+                        <button class="close-btn" onclick="closeTTModal()">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="tt-edit-id">
+                        <div class="form-group">
+                            <label>日付 <span style="color:#e74c3c;">*</span></label>
+                            <input type="date" id="tt-date" class="eq-form-input">
+                        </div>
+                        <div class="form-group">
+                            <label>内容 <span style="color:#e74c3c;">*</span></label>
+                            <input type="text" id="tt-title" class="eq-form-input" placeholder="例: 2000m TT / 1000m TT">
+                        </div>
+                        <div class="form-group">
+                            <label>メモ</label>
+                            <textarea id="tt-memo" class="eq-form-input" rows="2" placeholder="備考（任意）"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>参加メンバー</label>
+                            <div id="tt-members-list" class="tt-members-list"></div>
+                            <div class="tt-member-add-row">
+                                <input type="text" id="tt-member-input" class="eq-form-input" placeholder="名前を入力">
+                                <button type="button" class="secondary-btn" onclick="addTTMember()">追加</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>記録ファイル</label>
+                            <div id="tt-files-list" class="tt-files-list"></div>
+                            <label class="tt-file-upload-btn">
+                                📎 ファイルを選択
+                                <input type="file" id="tt-file-input" multiple accept="image/*,.pdf,.csv,.xlsx,.xls"
+                                    style="display:none;" onchange="handleTTFileSelect(event)">
+                            </label>
+                            <p class="tt-file-hint">画像・PDF・CSV・Excel対応（複数選択可）</p>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="tt-delete-btn" class="danger-btn hidden" onclick="deleteTTRecord()">削除</button>
+                        <button class="primary-btn" onclick="saveTTRecord()">保存</button>
                     </div>
                 </div>
             </div>

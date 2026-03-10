@@ -8261,3 +8261,242 @@ textarea {
 .eq-status-btn:active {
     transform: scale(0.95);
 }
+
+/* === TT履歴 === */
+.tt-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0 4px;
+}
+
+.tt-card {
+    background: rgba(30, 32, 48, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.tt-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.tt-card-header:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.tt-card-date {
+    font-size: 0.82rem;
+    color: #818cf8;
+    font-weight: 600;
+    min-width: 90px;
+}
+
+.tt-card-title {
+    flex: 1;
+    font-size: 0.95rem;
+    color: #e0e0e0;
+    margin-left: 12px;
+}
+
+.tt-card-chevron {
+    font-size: 0.8rem;
+    color: #666;
+    transition: transform 0.3s;
+}
+
+.tt-card.open .tt-card-chevron {
+    transform: rotate(180deg);
+}
+
+.tt-card-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+    border-top: 1px solid transparent;
+}
+
+.tt-card.open .tt-card-body {
+    max-height: 800px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tt-card-inner {
+    padding: 14px 16px;
+}
+
+.tt-card-memo {
+    font-size: 0.85rem;
+    color: #aaa;
+    margin-bottom: 10px;
+    white-space: pre-wrap;
+}
+
+.tt-card-members {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.tt-member-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(99, 102, 241, 0.15);
+    color: #a5b4fc;
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 0.78rem;
+}
+
+.tt-member-tag .remove-member {
+    cursor: pointer;
+    font-size: 0.7rem;
+    color: #f87171;
+    margin-left: 2px;
+}
+
+.tt-card-files {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tt-file-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 8px;
+    font-size: 0.82rem;
+    color: #ccc;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.tt-file-item:hover {
+    background: rgba(99, 102, 241, 0.15);
+}
+
+.tt-file-icon {
+    font-size: 1.1rem;
+}
+
+.tt-file-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tt-card-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.tt-edit-btn {
+    background: transparent;
+    border: 1px solid #818cf8;
+    color: #818cf8;
+    border-radius: 6px;
+    padding: 5px 14px;
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+
+.tt-edit-btn:hover {
+    background: rgba(99, 102, 241, 0.15);
+}
+
+.tt-members-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+    min-height: 10px;
+}
+
+.tt-member-add-row {
+    display: flex;
+    gap: 8px;
+}
+
+.tt-member-add-row input {
+    flex: 1;
+}
+
+.tt-member-add-row .secondary-btn {
+    white-space: nowrap;
+    padding: 6px 14px;
+    font-size: 0.82rem;
+    background: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+    border: 1px solid #818cf8;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.tt-files-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.tt-file-upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(99, 102, 241, 0.12);
+    color: #a5b4fc;
+    border: 1px dashed #818cf8;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.tt-file-upload-btn:hover {
+    background: rgba(99, 102, 241, 0.25);
+}
+
+.tt-file-hint {
+    font-size: 0.72rem;
+    color: #666;
+    margin-top: 4px;
+}
+
+.tt-pending-file {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    color: #ccc;
+}
+
+.tt-pending-file .remove-file {
+    cursor: pointer;
+    color: #f87171;
+    font-size: 0.75rem;
+    margin-left: auto;
+}
+
+.tt-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+    font-size: 0.9rem;
+}

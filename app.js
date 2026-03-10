@@ -735,6 +735,20 @@ const DB = {
                 }
             } catch (e) { console.warn('Boathouse equipment sync failed:', e); }
 
+            // TT履歴
+            try {
+                const ttRecords = await window.SupabaseConfig.db.loadTTRecords();
+                if (ttRecords.length) {
+                    let local = this.loadLocal('tt_records') || [];
+                    ttRecords.forEach(item => {
+                        const idx = local.findIndex(l => l.id === item.id);
+                        if (idx !== -1) local[idx] = item;
+                        else local.push(item);
+                    });
+                    this.saveLocal('tt_records', local);
+                }
+            } catch (e) { console.warn('TT records sync failed:', e); }
+
         } catch (e) {
             console.error('syncFromSupabase failed:', e);
             showToast('同期エラー: ' + (e?.message || JSON.stringify(e)), 'error');
@@ -1343,6 +1357,7 @@ function switchTab(tabId) {
         if (tabId === 'master-management') initMasterManagementTab();
         if (tabId === 'boat-equipment') { initBoatEquipmentFilters(); renderEquipmentList('boat'); }
         if (tabId === 'boathouse-equipment') renderEquipmentList('boathouse');
+        if (tabId === 'tt-history') renderTTList();
 
     } catch (error) {
         console.error(`Tab init error (${tabId}):`, error);
@@ -15595,3 +15610,295 @@ function initBoatEquipmentFilters() {
 // タブ切替時に一覧をレンダリング
 window.openEquipmentForm = openEquipmentForm;
 window.renderEquipmentList = renderEquipmentList;
+
+// =============================================
+// TT履歴管理
+// =============================================
+let _ttPendingFiles = []; // モーダルで選択中のファイル
+let _ttExistingFiles = []; // 編集時の既存ファイルURL
+let _ttMembers = []; // モーダルで入力中のメンバー
+
+function loadTTRecords() {
+    return DB.load('tt_records') || [];
+}
+function saveTTRecords(records) {
+    DB.save('tt_records', records);
+}
+
+function renderTTList() {
+    const list = document.getElementById('tt-list');
+    if (!list) return;
+    const records = loadTTRecords().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    if (!records.length) {
+        list.innerHTML = '<div class="tt-empty">🏁 まだTT記録がありません</div>';
+        return;
+    }
+    list.innerHTML = records.map(r => renderTTCard(r)).join('');
+}
+
+function renderTTCard(r) {
+    const d = r.date || '';
+    const dateLabel = d ? new Date(d + 'T00:00:00').toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' }) : '日付不明';
+    const members = (r.members || []).map(m => `<span class="tt-member-tag">👤 ${m}</span>`).join('');
+    const files = (r.files || []).map(f => {
+        const name = f.name || f.url?.split('/').pop() || 'ファイル';
+        const icon = getFileIcon(name);
+        return `<div class="tt-file-item" onclick="openTTFile('${f.url}')"><span class="tt-file-icon">${icon}</span><span class="tt-file-name">${name}</span></div>`;
+    }).join('');
+    const memo = r.memo ? `<div class="tt-card-memo">${escapeHtml(r.memo)}</div>` : '';
+
+    return `<div class="tt-card" id="tt-card-${r.id}">
+        <div class="tt-card-header" onclick="toggleTTCard('${r.id}')">
+            <span class="tt-card-date">${dateLabel}</span>
+            <span class="tt-card-title">${escapeHtml(r.title || '')}</span>
+            <span class="tt-card-chevron">▼</span>
+        </div>
+        <div class="tt-card-body">
+            <div class="tt-card-inner">
+                ${memo}
+                ${members ? `<div class="tt-card-members">${members}</div>` : ''}
+                ${files ? `<div class="tt-card-files">${files}</div>` : ''}
+                <div class="tt-card-actions">
+                    <button class="tt-edit-btn" onclick="openTTForm('${r.id}')">✏️ 編集</button>
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
+function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function getFileIcon(name) {
+    const ext = (name || '').split('.').pop().toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext)) return '🖼️';
+    if (ext === 'pdf') return '📄';
+    if (['csv', 'xlsx', 'xls'].includes(ext)) return '📊';
+    return '📎';
+}
+
+function toggleTTCard(id) {
+    const card = document.getElementById('tt-card-' + id);
+    if (card) card.classList.toggle('open');
+}
+window.toggleTTCard = toggleTTCard;
+
+function openTTFile(url) {
+    if (url) window.open(url, '_blank');
+}
+window.openTTFile = openTTFile;
+
+function openTTForm(editId) {
+    const modal = document.getElementById('tt-modal');
+    if (!modal) return;
+    _ttPendingFiles = [];
+    _ttExistingFiles = [];
+    _ttMembers = [];
+
+    const titleEl = document.getElementById('tt-modal-title');
+    const dateEl = document.getElementById('tt-date');
+    const titleInput = document.getElementById('tt-title');
+    const memoEl = document.getElementById('tt-memo');
+    const editIdEl = document.getElementById('tt-edit-id');
+    const deleteBtn = document.getElementById('tt-delete-btn');
+
+    if (editId) {
+        const records = loadTTRecords();
+        const rec = records.find(r => r.id === editId);
+        if (!rec) return;
+        titleEl.textContent = 'TT記録編集';
+        editIdEl.value = editId;
+        dateEl.value = rec.date || '';
+        titleInput.value = rec.title || '';
+        memoEl.value = rec.memo || '';
+        _ttMembers = [...(rec.members || [])];
+        _ttExistingFiles = [...(rec.files || [])];
+        deleteBtn.classList.remove('hidden');
+    } else {
+        titleEl.textContent = 'TT記録追加';
+        editIdEl.value = '';
+        dateEl.value = new Date().toISOString().split('T')[0];
+        titleInput.value = '';
+        memoEl.value = '';
+        deleteBtn.classList.add('hidden');
+    }
+    renderTTMembersList();
+    renderTTFilesList();
+    modal.classList.remove('hidden');
+}
+window.openTTForm = openTTForm;
+
+function closeTTModal() {
+    const modal = document.getElementById('tt-modal');
+    if (modal) modal.classList.add('hidden');
+    _ttPendingFiles = [];
+}
+window.closeTTModal = closeTTModal;
+
+function renderTTMembersList() {
+    const container = document.getElementById('tt-members-list');
+    if (!container) return;
+    container.innerHTML = _ttMembers.map((m, i) =>
+        `<span class="tt-member-tag">👤 ${escapeHtml(m)} <span class="remove-member" onclick="removeTTMember(${i})">✕</span></span>`
+    ).join('');
+}
+
+function addTTMember() {
+    const input = document.getElementById('tt-member-input');
+    const name = (input?.value || '').trim();
+    if (!name) return;
+    _ttMembers.push(name);
+    input.value = '';
+    renderTTMembersList();
+}
+window.addTTMember = addTTMember;
+
+function removeTTMember(idx) {
+    _ttMembers.splice(idx, 1);
+    renderTTMembersList();
+}
+window.removeTTMember = removeTTMember;
+
+function handleTTFileSelect(event) {
+    const files = event.target.files;
+    if (!files) return;
+    for (const f of files) {
+        _ttPendingFiles.push(f);
+    }
+    event.target.value = '';
+    renderTTFilesList();
+}
+window.handleTTFileSelect = handleTTFileSelect;
+
+function renderTTFilesList() {
+    const container = document.getElementById('tt-files-list');
+    if (!container) return;
+    let html = '';
+    // 既存ファイル
+    _ttExistingFiles.forEach((f, i) => {
+        const icon = getFileIcon(f.name);
+        html += `<div class="tt-pending-file">${icon} ${escapeHtml(f.name || 'ファイル')} <span class="remove-file" onclick="removeTTExistingFile(${i})">✕</span></div>`;
+    });
+    // 新規ファイル
+    _ttPendingFiles.forEach((f, i) => {
+        const icon = getFileIcon(f.name);
+        html += `<div class="tt-pending-file">${icon} ${escapeHtml(f.name)} <span class="remove-file" onclick="removeTTPendingFile(${i})">✕</span></div>`;
+    });
+    container.innerHTML = html;
+}
+
+function removeTTPendingFile(idx) {
+    _ttPendingFiles.splice(idx, 1);
+    renderTTFilesList();
+}
+window.removeTTPendingFile = removeTTPendingFile;
+
+function removeTTExistingFile(idx) {
+    _ttExistingFiles.splice(idx, 1);
+    renderTTFilesList();
+}
+window.removeTTExistingFile = removeTTExistingFile;
+
+async function uploadTTFiles(ttId) {
+    if (!_ttPendingFiles.length) return [];
+    const uploaded = [];
+    for (const file of _ttPendingFiles) {
+        const filePath = `tt-files/${ttId}/${Date.now()}_${file.name}`;
+        try {
+            if (window._supabaseClient || window.supabaseClient) {
+                const client = window._supabaseClient || window.supabaseClient;
+                const { data, error } = await client.storage
+                    .from('tt-files')
+                    .upload(filePath, file, { upsert: true });
+                if (error) {
+                    console.warn('TT file upload error:', error);
+                    // fallback: Base64
+                    const b64 = await fileToBase64(file);
+                    uploaded.push({ name: file.name, url: b64, type: 'base64' });
+                } else {
+                    const { data: urlData } = client.storage
+                        .from('tt-files')
+                        .getPublicUrl(filePath);
+                    uploaded.push({ name: file.name, url: urlData.publicUrl, type: 'storage' });
+                }
+            } else {
+                // Supabase未接続: Base64でローカル保存
+                const b64 = await fileToBase64(file);
+                uploaded.push({ name: file.name, url: b64, type: 'base64' });
+            }
+        } catch (e) {
+            console.warn('File upload failed, using base64:', e);
+            const b64 = await fileToBase64(file);
+            uploaded.push({ name: file.name, url: b64, type: 'base64' });
+        }
+    }
+    return uploaded;
+}
+
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+async function saveTTRecord() {
+    const editId = document.getElementById('tt-edit-id').value;
+    const date = document.getElementById('tt-date').value;
+    const title = document.getElementById('tt-title').value.trim();
+    if (!date || !title) { alert('日付と内容を入力してください'); return; }
+
+    let records = loadTTRecords();
+    const id = editId || (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+
+    // ファイルアップロード
+    const newFiles = await uploadTTFiles(id);
+    const allFiles = [..._ttExistingFiles, ...newFiles];
+
+    const entry = {
+        id, date, title,
+        memo: document.getElementById('tt-memo').value.trim(),
+        members: [..._ttMembers],
+        files: allFiles,
+        updatedAt: new Date().toISOString(),
+        updatedBy: state.currentUser?.id
+    };
+
+    if (editId) {
+        const idx = records.findIndex(r => r.id === editId);
+        if (idx !== -1) records[idx] = { ...records[idx], ...entry };
+    } else {
+        records.push(entry);
+    }
+
+    saveTTRecords(records);
+    closeTTModal();
+    renderTTList();
+
+    // Supabase同期
+    if (window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.saveTTRecord(entry).catch(e => console.warn('TT sync save failed:', e));
+    }
+}
+window.saveTTRecord = saveTTRecord;
+
+function deleteTTRecord() {
+    const editId = document.getElementById('tt-edit-id').value;
+    if (!editId) return;
+    if (!confirm('このTT記録を削除しますか？')) return;
+
+    let records = loadTTRecords();
+    records = records.filter(r => r.id !== editId);
+    saveTTRecords(records);
+    closeTTModal();
+    renderTTList();
+
+    // Supabase同期
+    if (window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.deleteTTRecord(editId).catch(e => console.warn('TT sync delete failed:', e));
+    }
+}
+window.deleteTTRecord = deleteTTRecord;

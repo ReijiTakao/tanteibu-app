@@ -1299,6 +1299,73 @@ const SupabaseDB = {
             if (error) { console.error(`Delete ${table} error:`, error); throw error; }
             return true;
         }).catch(() => false);
+    },
+
+    // --- TT履歴 ---
+    async loadTTRecords() {
+        if (!isSupabaseReady()) return [];
+        try {
+            const { data, error } = await _supabaseClient
+                .from('tt_records')
+                .select('*')
+                .order('date', { ascending: false });
+            if (error) {
+                if (error.code === '42P01') return [];
+                console.error('Load tt_records error:', error);
+                return [];
+            }
+            return (data || []).map(r => ({
+                id: r.id,
+                date: r.date,
+                title: r.title || '',
+                memo: r.memo || '',
+                members: r.members || [],
+                files: r.files || [],
+                updatedAt: r.updated_at,
+                updatedBy: r.updated_by
+            }));
+        } catch (e) {
+            console.warn('TT records load failed:', e);
+            return [];
+        }
+    },
+
+    async saveTTRecord(item) {
+        if (!isSupabaseReady()) return null;
+        const row = {
+            id: item.id,
+            date: item.date,
+            title: item.title || '',
+            memo: item.memo || '',
+            members: item.members || [],
+            files: (item.files || []).filter(f => f.type !== 'base64'), // base64はSupabaseに送らない
+            updated_at: item.updatedAt || new Date().toISOString(),
+            updated_by: item.updatedBy || null
+        };
+        return withSyncIndicator(async () => {
+            const { data, error } = await _supabaseClient
+                .from('tt_records')
+                .upsert(row, { onConflict: 'id' })
+                .select()
+                .single();
+            if (error) { console.error('Save tt_record error:', error); throw error; }
+            return data;
+        }).catch(e => {
+            console.warn('TT record save to Supabase failed:', e);
+            return null;
+        });
+    },
+
+    async deleteTTRecord(id) {
+        if (!isSupabaseReady()) return false;
+        return withSyncIndicator(async () => {
+            const { error } = await _supabaseClient
+                .from('tt_records')
+                .delete()
+                .eq('id', id);
+            if (error) { console.error('Delete tt_record error:', error); throw error; }
+            return true;
+        }).catch(() => false);
     }
 };
 
