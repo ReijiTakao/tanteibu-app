@@ -1034,8 +1034,14 @@
             <div id="tab-boat-equipment" class="tab-content hidden">
                 <h2 class="tab-title">🛠️ 艇備品管理</h2>
                 <div class="eq-filter-bar">
-                    <select id="boat-eq-boat-filter" class="eq-filter-select" onchange="renderEquipmentList('boat')">
-                        <option value="">全ての艇</option>
+                    <select id="boat-eq-cat-filter" class="eq-filter-select" onchange="renderEquipmentList('boat')">
+                        <option value="">全カテゴリ</option>
+                        <option value="リガー部品">リガー部品</option>
+                        <option value="シート・レール">シート・レール</option>
+                        <option value="舵・フィン">舵・フィン</option>
+                        <option value="電装品">電装品</option>
+                        <option value="修理用品">修理用品</option>
+                        <option value="その他">その他</option>
                     </select>
                     <select id="boat-eq-status-filter" class="eq-filter-select" onchange="renderEquipmentList('boat')">
                         <option value="">全ステータス</option>
@@ -1056,11 +1062,21 @@
                     <select id="boathouse-eq-cat-filter" class="eq-filter-select"
                         onchange="renderEquipmentList('boathouse')">
                         <option value="">全カテゴリ</option>
-                        <option value="消耗品">消耗品</option>
-                        <option value="工具">工具</option>
-                        <option value="清掃用品">清掃用品</option>
-                        <option value="安全装備">安全装備</option>
-                        <option value="その他">その他</option>
+                        <option value="外回り">外回り</option>
+                        <option value="シャッター">シャッター</option>
+                        <option value="廊下階段">廊下階段</option>
+                        <option value="エルゴ部屋">エルゴ部屋</option>
+                        <option value="選手部屋">選手部屋</option>
+                        <option value="洗面所">洗面所</option>
+                        <option value="風呂場">風呂場</option>
+                        <option value="厨房">厨房</option>
+                        <option value="ホール">ホール</option>
+                        <option value="大部屋">大部屋</option>
+                        <option value="ベランダ">ベランダ</option>
+                        <option value="女子部屋">女子部屋</option>
+                        <option value="🚽">🚽</option>
+                        <option value="全体掃除用具">全体掃除用具</option>
+                        <option value="全体管理">全体管理</option>
                     </select>
                     <select id="boathouse-eq-status-filter" class="eq-filter-select"
                         onchange="renderEquipmentList('boathouse')">
@@ -1086,10 +1102,7 @@
                     <div class="modal-body">
                         <input type="hidden" id="eq-edit-id">
                         <input type="hidden" id="eq-edit-type">
-                        <div id="eq-boat-select-group" class="form-group">
-                            <label>艇</label>
-                            <select id="eq-boat-select" class="eq-form-input"></select>
-                        </div>
+
                         <div class="form-group">
                             <label>備品名 <span style="color:#e74c3c;">*</span></label>
                             <input type="text" id="eq-name" class="eq-form-input" placeholder="例: リガーボルト M6">

@@ -1355,7 +1355,7 @@ function switchTab(tabId) {
         if (tabId === 'rigging-note') initRiggingNoteTab();
         if (tabId === 'weight-management') initWeightManagementTab();
         if (tabId === 'master-management') initMasterManagementTab();
-        if (tabId === 'boat-equipment') { initBoatEquipmentFilters(); renderEquipmentList('boat'); }
+        if (tabId === 'boat-equipment') { renderEquipmentList('boat'); }
         if (tabId === 'boathouse-equipment') renderEquipmentList('boathouse');
         if (tabId === 'tt-history') renderTTList();
 
@@ -15378,7 +15378,7 @@ function closeInputModal() {
 // 備品管理 (艇備品 / 艇庫備品)
 // =========================================
 const BOAT_EQ_CATEGORIES = ['リガー部品', 'シート・レール', '舵・フィン', '電装品', '修理用品', 'その他'];
-const BOATHOUSE_EQ_CATEGORIES = ['消耗品', '工具', '清掃用品', '安全装備', 'その他'];
+const BOATHOUSE_EQ_CATEGORIES = ['外回り', 'シャッター', '廊下階段', 'エルゴ部屋', '選手部屋', '洗面所', '風呂場', '厨房', 'ホール', '大部屋', 'ベランダ', '女子部屋', '🚽', '全体掃除用具', '全体管理'];
 const EQ_STATUSES = ['在庫あり', '残りわずか', '在庫なし', '注文中'];
 const EQ_STATUS_ICONS = { '在庫あり': '🟢', '残りわずか': '🟡', '在庫なし': '🔴', '注文中': '🔵' };
 const EQ_STATUS_CLASSES = { '在庫あり': 'eq-st-ok', '残りわずか': 'eq-st-low', '在庫なし': 'eq-st-none', '注文中': 'eq-st-order' };
@@ -15404,9 +15404,9 @@ function renderEquipmentList(type) {
 
     // フィルタ
     if (type === 'boat') {
-        const boatFilter = document.getElementById('boat-eq-boat-filter')?.value;
+        const catFilter = document.getElementById('boat-eq-cat-filter')?.value;
         const statusFilter = document.getElementById('boat-eq-status-filter')?.value;
-        if (boatFilter) items = items.filter(i => i.boatId === boatFilter);
+        if (catFilter) items = items.filter(i => i.category === catFilter);
         if (statusFilter) items = items.filter(i => i.status === statusFilter);
     } else {
         const catFilter = document.getElementById('boathouse-eq-cat-filter')?.value;
@@ -15420,27 +15420,7 @@ function renderEquipmentList(type) {
         return;
     }
 
-    // 艇備品はboatId別にグルーピング
-    if (type === 'boat') {
-        const boats = DB.load('boats') || [];
-        const grouped = {};
-        items.forEach(item => {
-            const key = item.boatId || 'unknown';
-            if (!grouped[key]) grouped[key] = [];
-            grouped[key].push(item);
-        });
-
-        let html = '';
-        Object.entries(grouped).forEach(([boatId, eqItems]) => {
-            const boat = boats.find(b => b.id === boatId);
-            const boatName = boat?.name || '不明な艇';
-            html += `<div class="eq-group-header">⛵ ${boatName}</div>`;
-            eqItems.forEach(item => { html += renderEquipmentCard(item, type); });
-        });
-        container.innerHTML = html;
-    } else {
-        container.innerHTML = items.map(item => renderEquipmentCard(item, type)).join('');
-    }
+    container.innerHTML = items.map(item => renderEquipmentCard(item, type)).join('');
 }
 
 function renderEquipmentCard(item, type) {
@@ -15469,18 +15449,6 @@ function openEquipmentForm(type, editId) {
     document.getElementById('eq-edit-id').value = editId || '';
     document.getElementById('eq-edit-type').value = type;
 
-    // 艇セレクト（艇備品のみ表示）
-    const boatGroup = document.getElementById('eq-boat-select-group');
-    if (type === 'boat') {
-        boatGroup.style.display = '';
-        const boats = DB.load('boats') || [];
-        const boatSelect = document.getElementById('eq-boat-select');
-        boatSelect.innerHTML = '<option value="">艇を選択</option>' +
-            boats.map(b => `<option value="${b.id}">${b.name} (${b.type || ''})</option>`).join('');
-    } else {
-        boatGroup.style.display = 'none';
-    }
-
     // カテゴリセレクト
     const categories = type === 'boat' ? BOAT_EQ_CATEGORIES : BOATHOUSE_EQ_CATEGORIES;
     const catSelect = document.getElementById('eq-category');
@@ -15502,7 +15470,6 @@ function openEquipmentForm(type, editId) {
         if (item) {
             title.textContent = '備品を編集';
             document.getElementById('eq-name').value = item.name || '';
-            if (type === 'boat') document.getElementById('eq-boat-select').value = item.boatId || '';
             catSelect.value = item.category || '';
             document.getElementById('eq-quantity').value = item.quantity ?? 1;
             document.getElementById('eq-note').value = item.note || '';
@@ -15549,7 +15516,6 @@ function saveEquipment() {
                 ...items[idx], name, category, quantity, status, note,
                 updatedAt: new Date().toISOString(), updatedBy: state.currentUser?.id
             };
-            if (type === 'boat') items[idx].boatId = document.getElementById('eq-boat-select').value;
         }
     } else {
         const newItem = {
@@ -15558,10 +15524,6 @@ function saveEquipment() {
             updatedAt: new Date().toISOString(),
             updatedBy: state.currentUser?.id
         };
-        if (type === 'boat') {
-            newItem.boatId = document.getElementById('eq-boat-select').value;
-            if (!newItem.boatId) { alert('艇を選択してください'); return; }
-        }
         items.push(newItem);
     }
 
@@ -15598,14 +15560,7 @@ function deleteEquipment() {
 }
 window.deleteEquipment = deleteEquipment;
 
-// 艇備品タブの艇フィルタを初期化
-function initBoatEquipmentFilters() {
-    const select = document.getElementById('boat-eq-boat-filter');
-    if (!select) return;
-    const boats = DB.load('boats') || [];
-    select.innerHTML = '<option value="">全ての艇</option>' +
-        boats.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
-}
+
 
 // タブ切替時に一覧をレンダリング
 window.openEquipmentForm = openEquipmentForm;
