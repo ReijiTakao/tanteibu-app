@@ -2728,27 +2728,31 @@ function initMainScreen() {
 
     document.getElementById('user-name').textContent = user.name;
     document.getElementById('user-role').textContent = user.role;
-    document.getElementById('settings-name').textContent = user.name;
+    const settingsName = document.getElementById('settings-name');
+    if (settingsName) settingsName.textContent = user.name;
 
     // Concept2 UI更新
     updateConcept2UI();
 
     // 権限に応じたタブ表示
     if (!canViewOverview(user)) {
-        document.getElementById('nav-overview').style.display = 'none';
-
+        const navOverview = document.getElementById('nav-overview');
+        if (navOverview) navOverview.style.display = 'none';
     }
 
     // マスタ管理表示
     if (canEditMaster(user)) {
-        document.getElementById('master-settings').classList.remove('hidden');
+        document.getElementById('master-settings')?.classList.remove('hidden');
     }
 
     // Concept2バナー
-    if (!user.concept2Connected) {
-        document.getElementById('concept2-banner').classList.remove('hidden');
-    } else {
-        document.getElementById('concept2-banner').classList.add('hidden');
+    const c2Banner = document.getElementById('concept2-banner');
+    if (c2Banner) {
+        if (!user.concept2Connected) {
+            c2Banner.classList.remove('hidden');
+        } else {
+            c2Banner.classList.add('hidden');
+        }
     }
 
     state.currentWeekStart = getWeekStart(new Date());
@@ -6649,6 +6653,28 @@ function switchPracticeNoteToEdit() {
     } else {
         weightGroup.classList.add('hidden');
     }
+
+    // 体重プリセット（練習ノートから直接入力可能）
+    const pnWeightInput = document.getElementById('pn-weight-input');
+    const pnWeightStatus = document.getElementById('pn-weight-status');
+    if (pnWeightInput) {
+        const noteDate = note.date || new Date().toISOString().slice(0, 10);
+        const todayWeight = getWeightForDate(state.currentUser.id, noteDate);
+        if (todayWeight) {
+            pnWeightInput.value = todayWeight.toFixed(1);
+            if (pnWeightStatus) pnWeightStatus.innerHTML = '<span style="color:#10b981;">✅ 記録済み</span>';
+        } else {
+            pnWeightInput.value = '';
+            // 直近の体重をplaceholderに
+            const history = DB.load('weight_history') || [];
+            const userHistory = history.filter(w => w.userId === state.currentUser.id)
+                .sort((a, b) => b.date.localeCompare(a.date));
+            if (userHistory.length > 0) {
+                pnWeightInput.placeholder = userHistory[0].weight.toFixed(1);
+            }
+            if (pnWeightStatus) pnWeightStatus.innerHTML = '<span style="color:#f59e0b;">⚠ 未記録</span>';
+        }
+    }
 }
 
 // 練習ノート閲覧モードのビューをレンダリング
@@ -6946,6 +6972,17 @@ function unlinkErgoRecord(recordId) {
     renderLinkedErgoRecords(note);
 }
 
+// 練習ノート内の体重ステッパー
+function adjustPnWeight(step) {
+    const input = document.getElementById('pn-weight-input');
+    if (!input) return;
+    let v = parseFloat(input.value) || parseFloat(input.placeholder) || 0;
+    v = Math.round((v + step) * 10) / 10;
+    if (v < 30) v = 30;
+    if (v > 150) v = 150;
+    input.value = v.toFixed(1);
+}
+
 function savePracticeNote() {
     const modal = document.getElementById('practice-note-modal');
     const noteId = modal.dataset.noteId;
@@ -6994,6 +7031,38 @@ function savePracticeNote() {
     const rowingMenuGroup = document.getElementById('rowing-menu-group');
     if (rowingMenuGroup && !rowingMenuGroup.classList.contains('hidden')) {
         note.rowingMenus = getRowingMenuData();
+    }
+
+    // 体重を保存（入力されている場合のみ）
+    const pnWeightInput = document.getElementById('pn-weight-input');
+    if (pnWeightInput && pnWeightInput.value) {
+        const weightVal = parseFloat(pnWeightInput.value);
+        if (!isNaN(weightVal) && weightVal >= 30 && weightVal <= 150) {
+            const weightDate = note.date || new Date().toISOString().slice(0, 10);
+            let allHistory = DB.load('weight_history') || [];
+            const existingIdx = allHistory.findIndex(w => w.userId === state.currentUser.id && w.date === weightDate);
+            if (existingIdx !== -1) {
+                allHistory[existingIdx].weight = weightVal;
+            } else {
+                allHistory.push({
+                    id: generateId(),
+                    userId: state.currentUser.id,
+                    date: weightDate,
+                    weight: weightVal,
+                    createdAt: new Date().toISOString()
+                });
+            }
+            DB.save('weight_history', allHistory);
+            // Supabaseにも保存
+            const entry = existingIdx !== -1 ? allHistory[existingIdx] : allHistory[allHistory.length - 1];
+            if (DB.useSupabase && window.SupabaseConfig?.db) {
+                window.SupabaseConfig.db.saveWeightEntry(entry).catch(e => console.warn('Weight sync failed:', e));
+            }
+            // ユーザーの現在体重も更新
+            state.currentUser.weight = weightVal;
+            DB.save('current_user', state.currentUser);
+            syncProfileToSupabase({ weight: weightVal });
+        }
     }
 
     note.updatedAt = new Date().toISOString();
@@ -9995,6 +10064,8 @@ const initializeApp = async () => {
         console.error('App init error:', e);
         const container = document.getElementById('user-select-list');
         if (container) container.innerHTML = `<div style="color:red">Error: ${e.message}</div>`;
+        // ホワイトアウト防止: エラー時は必ずログイン画面を表示
+        try { showScreen('login-screen'); } catch (_) { /* ignore */ }
     }
 
     // =========================================
@@ -12198,17 +12269,14 @@ function autoCreateCrewNotesFromSchedule(schedule) {
 
     if (existingNote) return; // 既に存在する場合は何もしない
 
-    // 6. 類似クルーの検出（代打対応）
-    // 同じ艇種で、1〜2人だけ違うクルーがあるかチェック
+    // 6. 常に新規クルーノートとして作成（代打自動検出は無効化）
+    // 類似クルーの紐付けはクルーノート画面から手動で行う
     const similarCrew = findSimilarCrew(memberIds, boatType);
-
     if (similarCrew) {
-        // 類似クルーが見つかった場合、代打確認を表示
-        showSubstituteConfirmModal(similarCrew, memberIds, boatType, schedule, hash);
-    } else {
-        // 類似クルーなし → 通常の新規作成
-        createNewCrewNote(hash, memberIds, boatType, schedule);
+        console.log('[CrewNote] 類似クルー検出:', similarCrew.crew.boatType,
+            '差分:', similarCrew.missing.length, '人 → 手動紐付け可能');
     }
+    createNewCrewNote(hash, memberIds, boatType, schedule);
 }
 
 // 類似クルーを検出する（直近30日以内のクルーのみ対象）
@@ -12610,6 +12678,72 @@ function renderCrewList() {
 }
 
 // クルー詳細モーダル
+// クルーメンバー体重推移グラフ描画
+function renderCrewWeightChart(canvas, membersWithData) {
+    const W = canvas.offsetWidth || 300;
+    const H = 120;
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, W, H);
+
+    // 直近30日の範囲
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const startDate = thirtyDaysAgo.toISOString().slice(0, 10);
+    const endDate = now.toISOString().slice(0, 10);
+
+    // 全メンバーのmin/max取得
+    let allWeights = [];
+    membersWithData.forEach(m => {
+        m.userHistory.filter(w => w.date >= startDate).forEach(w => allWeights.push(w.weight));
+    });
+    if (allWeights.length === 0) return;
+
+    const minW = Math.min(...allWeights) - 1;
+    const maxW = Math.max(...allWeights) + 1;
+    const padL = 10, padR = 50, padT = 10, padB = 20;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
+
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+
+    membersWithData.forEach((member, idx) => {
+        const data = member.userHistory.filter(w => w.date >= startDate)
+            .sort((a, b) => a.date.localeCompare(b.date));
+        if (data.length < 2) return;
+
+        const color = colors[idx % colors.length];
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+
+        data.forEach((entry, i) => {
+            const daysDiff = Math.floor((new Date(entry.date) - thirtyDaysAgo) / 86400000);
+            const x = padL + (daysDiff / 30) * plotW;
+            const y = padT + plotH - ((entry.weight - minW) / (maxW - minW)) * plotH;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        // 最新値ラベル
+        const last = data[data.length - 1];
+        const lastX = padL + (Math.floor((new Date(last.date) - thirtyDaysAgo) / 86400000) / 30) * plotW;
+        const lastY = padT + plotH - ((last.weight - minW) / (maxW - minW)) * plotH;
+
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(lastX, lastY, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.font = '10px sans-serif';
+        ctx.fillText(`${member.name.slice(0, 3)} ${last.weight.toFixed(1)}`, lastX + 5, lastY + 3);
+    });
+}
+
 function openCrewDetail(hash) {
     const crew = state.crews.find(c => c.hash === hash);
     if (!crew) return;
@@ -12636,6 +12770,78 @@ function openCrewDetail(hash) {
             ${memberNames.map(n => `<span class="crew-member-chip">${n}</span>`).join('')}
         </div>
     `;
+
+    // ====== クルー体重情報 ======
+    const weightListEl = document.getElementById('crew-weight-list');
+    const avgWeightEl = document.getElementById('crew-avg-weight');
+    const weightChartEl = document.getElementById('crew-weight-chart');
+    const allHistory = DB.load('weight_history') || [];
+
+    if (weightListEl) {
+        let totalWeight = 0;
+        let rowerCount = 0;
+        const memberWeightData = [];
+
+        crew.memberIds.forEach(memberId => {
+            const user = state.users.find(u => u.id === memberId);
+            const name = user ? user.name : '?';
+            const role = user?.role || '漕手';
+            const isCox = role === ROLES.COX;
+
+            // 最新体重を取得
+            const userHistory = allHistory.filter(w => w.userId === memberId)
+                .sort((a, b) => b.date.localeCompare(a.date));
+            const latestWeight = userHistory.length > 0 ? userHistory[0].weight : null;
+            const prevWeight = userHistory.length > 1 ? userHistory[1].weight : null;
+
+            let diffHtml = '';
+            if (latestWeight && prevWeight) {
+                const diff = (latestWeight - prevWeight).toFixed(1);
+                const sign = diff > 0 ? '+' : '';
+                const color = diff > 0 ? '#ef4444' : diff < 0 ? '#10b981' : '#888';
+                diffHtml = `<span style="font-size:11px;color:${color};margin-left:4px;">${sign}${diff}</span>`;
+            }
+
+            // Cox以外で平均計算
+            if (!isCox && latestWeight) {
+                totalWeight += latestWeight;
+                rowerCount++;
+            }
+
+            const coxBadge = isCox ? '<span style="font-size:10px;background:rgba(99,102,241,0.2);color:#818cf8;padding:1px 6px;border-radius:4px;margin-left:4px;">Cox</span>' : '';
+            const weightStr = latestWeight ? `${latestWeight.toFixed(1)}kg${diffHtml}` : '<span style="color:#888;">未記録</span>';
+            const dateStr = userHistory.length > 0 ? userHistory[0].date.slice(5) : '';
+
+            memberWeightData.push({ memberId, name, latestWeight, userHistory, isCox });
+
+            weightListEl.innerHTML = (weightListEl.innerHTML || '') + `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:6px;">
+                    <span style="font-size:13px;">${name}${coxBadge}</span>
+                    <span style="font-size:14px;font-weight:600;">${weightStr} <span style="font-size:10px;color:#888;">${dateStr}</span></span>
+                </div>`;
+        });
+
+        // 平均体重（Cox除外）
+        if (avgWeightEl) {
+            if (rowerCount > 0) {
+                const avg = (totalWeight / rowerCount).toFixed(1);
+                avgWeightEl.innerHTML = `平均 ${avg}kg <span style="font-size:10px;color:#888;">(Cox除外)</span>`;
+            } else {
+                avgWeightEl.textContent = '';
+            }
+        }
+
+        // 体重推移グラフ（直近30日、データがあるメンバーのみ）
+        if (weightChartEl) {
+            const membersWithData = memberWeightData.filter(m => m.userHistory.length >= 2 && !m.isCox);
+            if (membersWithData.length > 0) {
+                weightChartEl.style.display = '';
+                renderCrewWeightChart(weightChartEl, membersWithData);
+            } else {
+                weightChartEl.style.display = 'none';
+            }
+        }
+    }
 
     // 履歴リスト生成
     const notes = state.crewNotes.filter(n => n.crewHash === hash);
