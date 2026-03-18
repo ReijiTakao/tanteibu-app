@@ -6243,6 +6243,30 @@ function autoCreatePracticeNote(schedule) {
         if (crewNote) crewNoteId = crewNote.id;
     }
 
+    // クルー情報スナップショット（配艇表変更後も残るように直接保存）
+    let crewSnapshot = null;
+    if (schedule.scheduleType === SCHEDULE_TYPES.BOAT) {
+        const memberIds = schedule.crewIds || [];
+        const allMemberIds = memberIds.includes(schedule.userId) ? memberIds : [schedule.userId, ...memberIds];
+        const memberNames = allMemberIds.map(id => {
+            const u = state.users.find(u => u.id === id);
+            return u ? u.name : '?';
+        });
+        // 艇名取得
+        let boatName = '';
+        if (schedule.boatId) {
+            const boat = state.boats.find(b => b.id === schedule.boatId);
+            if (boat) boatName = boat.name || '';
+        }
+        crewSnapshot = {
+            memberIds: allMemberIds,
+            memberNames: memberNames,
+            boatType: schedule.boatType || '',
+            boatName: boatName,
+            crewDetailsMap: schedule.crewDetailsMap || {}
+        };
+    }
+
     const note = {
         id: generateId(),
         scheduleId: schedule.id,
@@ -6253,6 +6277,7 @@ function autoCreatePracticeNote(schedule) {
         reflection: '',
         ergoRecordIds: [],
         crewNoteId: crewNoteId,
+        crewSnapshot: crewSnapshot,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
     };
@@ -6353,6 +6378,26 @@ function renderPracticeNotesList() {
 
             if (typeLabel === SCHEDULE_TYPES.BOAT) {
                 // --- 乗艇カード ---
+                // クルーメンバー表示
+                const snap = note.crewSnapshot;
+                let crewNames = [];
+                let crewBoatType = '';
+                if (snap) {
+                    crewNames = (snap.memberNames || []).filter(n => n !== state.currentUser.name);
+                    crewBoatType = snap.boatType || '';
+                } else if (schedule && schedule.crewIds) {
+                    crewNames = schedule.crewIds.filter(id => id !== state.currentUser.id)
+                        .map(id => state.users.find(u => u.id === id)?.name || '?');
+                    crewBoatType = schedule.boatType || '';
+                }
+                if (crewNames.length > 0) {
+                    const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
+                    const btc = boatTypeColors[crewBoatType] || '#6b7280';
+                    cardBodyHtml += `<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:6px;">
+                        <span style="font-size:10px;background:${btc};color:#fff;padding:1px 6px;border-radius:4px;font-weight:600;">${crewBoatType || '?'}</span>
+                        <span style="font-size:11px;color:var(--text-muted);">${crewNames.join(', ')}</span>
+                    </div>`;
+                }
                 // 距離を大きく表示
                 if (note.rowingDistance) {
                     cardBodyHtml += `<div class="pn-card-distance">${(note.rowingDistance / 1000).toFixed(1)}<span class="pn-card-distance-unit">km</span></div>`;
@@ -6682,6 +6727,47 @@ function renderPracticeNoteReadView(note, schedule) {
     const container = document.getElementById('practice-note-read-view');
     let html = '';
     const schedType = schedule?.scheduleType || note.scheduleType || '';
+
+    // クルー情報表示（乗艇時）
+    if (schedType === SCHEDULE_TYPES.BOAT) {
+        const snap = note.crewSnapshot;
+        let memberNames = [];
+        let boatType = '';
+        let boatName = '';
+
+        if (snap) {
+            memberNames = snap.memberNames || [];
+            boatType = snap.boatType || '';
+            boatName = snap.boatName || '';
+        } else if (schedule) {
+            // フォールバック: scheduleから取得
+            const ids = schedule.crewIds || [];
+            const allIds = ids.includes(schedule.userId) ? ids : [schedule.userId, ...ids];
+            memberNames = allIds.map(id => state.users.find(u => u.id === id)?.name || '?');
+            boatType = schedule.boatType || '';
+            if (schedule.boatId) {
+                const boat = state.boats.find(b => b.id === schedule.boatId);
+                boatName = boat?.name || '';
+            }
+        }
+
+        if (memberNames.length > 0) {
+            const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
+            const btColor = boatTypeColors[boatType] || '#6b7280';
+            html += `
+                <div class="pn-rv-section">
+                    <div class="pn-rv-label">🚣 クルー</div>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;">
+                        <span class="crew-boat-badge" style="background:${btColor};font-size:12px;padding:2px 8px;">${boatType || '?'}</span>
+                        ${boatName ? `<span style="font-size:12px;color:var(--text-muted);">${boatName}</span>` : ''}
+                    </div>
+                    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">
+                        ${memberNames.map(n => `<span class="crew-member-chip">${n}</span>`).join('')}
+                    </div>
+                </div>
+            `;
+        }
+    }
 
     // 振り返り
     if (note.reflection && note.reflection.trim()) {
@@ -12556,12 +12642,26 @@ function initCrewNoteFeatures() {
 
             const type = btn.dataset.type;
             const searchSection = document.getElementById('crew-search-section');
-            if (type === 'all') {
-                searchSection.classList.remove('hidden');
-            } else {
+            const crewList = document.getElementById('crew-list');
+            const notesTimeline = document.getElementById('crew-notes-timeline');
+
+            if (type === 'notes') {
+                // ノート一覧ビュー
                 searchSection.classList.add('hidden');
+                if (crewList) crewList.classList.add('hidden');
+                if (notesTimeline) notesTimeline.classList.remove('hidden');
+                renderCrewNotesTimeline();
+            } else {
+                // クルーカードビュー (my / all)
+                if (crewList) crewList.classList.remove('hidden');
+                if (notesTimeline) notesTimeline.classList.add('hidden');
+                if (type === 'all') {
+                    searchSection.classList.remove('hidden');
+                } else {
+                    searchSection.classList.add('hidden');
+                }
+                renderCrewList();
             }
-            renderCrewList();
         });
     });
 
@@ -12592,6 +12692,63 @@ function initCrewNoteFeatures() {
     });
 
     isCrewNoteInitialized = true;
+}
+
+// クルーノート一覧（全ノートを日付新しい順に表示）
+function renderCrewNotesTimeline() {
+    const container = document.getElementById('crew-notes-timeline');
+    if (!container) return;
+
+    // 自分が参加しているクルーのハッシュを取得
+    const myCrewHashes = new Set(
+        (state.crews || []).filter(c => c.memberIds.includes(state.currentUser.id)).map(c => c.hash)
+    );
+
+    // 自分のクルーノートを日付新しい順に取得
+    const myNotes = (state.crewNotes || [])
+        .filter(n => myCrewHashes.has(n.crewHash))
+        .sort((a, b) => b.date.localeCompare(a.date));
+
+    if (myNotes.length === 0) {
+        container.innerHTML = `<div class="empty-state"><p>📝 クルーノートがまだありません</p></div>`;
+        return;
+    }
+
+    const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
+
+    let html = '';
+    let lastMonth = '';
+
+    myNotes.forEach(note => {
+        const d = formatDisplayDate(note.date);
+        const monthKey = `${d.year}-${d.month}`;
+
+        // 月ヘッダー
+        if (monthKey !== lastMonth) {
+            html += `<div style="font-size:13px;font-weight:700;color:var(--text-muted);margin:12px 0 4px;padding:0 4px;">${d.year}年${d.month}月</div>`;
+            lastMonth = monthKey;
+        }
+
+        const crew = state.crews.find(c => c.hash === note.crewHash);
+        const btColor = boatTypeColors[note.boatType || crew?.boatType] || '#6b7280';
+        const boatType = note.boatType || crew?.boatType || '?';
+        const memberNames = (note.memberIds || crew?.memberIds || []).map(id => {
+            const u = state.users.find(u => u.id === id);
+            return u ? u.name : '?';
+        });
+        const preview = note.content ? note.content.substring(0, 60) + (note.content.length > 60 ? '…' : '') : '';
+
+        html += `<div class="crew-card-enhanced" onclick="openCrewNoteEdit('${note.crewHash}', '${note.date}')" style="margin-bottom:6px;">
+            <div class="crew-card-top">
+                <span class="crew-boat-badge" style="background:${btColor};">${boatType}</span>
+                <span class="crew-card-date">${d.month}/${d.day}（${d.weekday}）</span>
+            </div>
+            <div class="crew-card-members">${memberNames.map(n => `<span class="crew-member-chip">${n}</span>`).join('')}</div>
+            ${preview ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${preview}</div>` : ''}
+        </div>`;
+    });
+
+    container.innerHTML = html;
 }
 
 // クルーリスト描画
