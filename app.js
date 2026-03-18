@@ -6699,10 +6699,22 @@ function switchPracticeNoteToEdit() {
         weightGroup.classList.add('hidden');
     }
 
-    // 体重プリセット（練習ノートから直接入力可能）
+    // 体重プリセット（午後の練習ノートのみ表示）
     const pnWeightInput = document.getElementById('pn-weight-input');
     const pnWeightStatus = document.getElementById('pn-weight-status');
-    if (pnWeightInput) {
+    const pnWeightGroup = document.getElementById('pn-weight-group');
+    const noteTimeSlot = note.timeSlot || schedule?.timeSlot || '';
+    const isAfternoon = noteTimeSlot === '午後';
+
+    if (pnWeightGroup) {
+        if (!isAfternoon) {
+            pnWeightGroup.classList.add('hidden');
+        } else {
+            pnWeightGroup.classList.remove('hidden');
+        }
+    }
+
+    if (pnWeightInput && isAfternoon) {
         const noteDate = note.date || new Date().toISOString().slice(0, 10);
         const todayWeight = getWeightForDate(state.currentUser.id, noteDate);
         if (todayWeight) {
@@ -6710,7 +6722,6 @@ function switchPracticeNoteToEdit() {
             if (pnWeightStatus) pnWeightStatus.innerHTML = '<span style="color:#10b981;">✅ 記録済み</span>';
         } else {
             pnWeightInput.value = '';
-            // 直近の体重をplaceholderに
             const history = DB.load('weight_history') || [];
             const userHistory = history.filter(w => w.userId === state.currentUser.id)
                 .sort((a, b) => b.date.localeCompare(a.date));
@@ -12935,9 +12946,11 @@ function openCrewDetail(hash) {
     const allHistory = DB.load('weight_history') || [];
 
     if (weightListEl) {
+        weightListEl.innerHTML = ''; // リストをクリア
         let totalWeight = 0;
         let rowerCount = 0;
         const memberWeightData = [];
+        let listHtml = '';
 
         crew.memberIds.forEach(memberId => {
             const user = state.users.find(u => u.id === memberId);
@@ -12971,12 +12984,14 @@ function openCrewDetail(hash) {
 
             memberWeightData.push({ memberId, name, latestWeight, userHistory, isCox });
 
-            weightListEl.innerHTML = (weightListEl.innerHTML || '') + `
+            listHtml += `
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:6px;">
                     <span style="font-size:13px;">${name}${coxBadge}</span>
                     <span style="font-size:14px;font-weight:600;">${weightStr} <span style="font-size:10px;color:#888;">${dateStr}</span></span>
                 </div>`;
         });
+
+        weightListEl.innerHTML = listHtml;
 
         // 平均体重（Cox除外）
         if (avgWeightEl) {
