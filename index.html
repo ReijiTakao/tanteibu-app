@@ -1460,21 +1460,31 @@
                     </div>
                 </div>
 
-                <!-- 船情報は配艇から自動取得（手動入力は削除済み） -->
-
-
-
-                <!-- メモ -->
-                <div class="form-group">
-                    <label>メモ（任意）</label>
-                    <textarea id="input-memo" rows="2" placeholder="備考など"></textarea>
+                <!-- 練習場所（乗艇時のみ表示） -->
+                <div class="form-group hidden" id="location-select-group">
+                    <label>📍 練習場所</label>
+                    <div class="toggle-group">
+                        <button class="toggle-btn location-btn" data-value="コース">🏁 コース</button>
+                        <button class="toggle-btn location-btn" data-value="河">🌊 河</button>
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button id="delete-schedule-btn" class="danger-btn hidden">削除</button>
-                <button id="save-schedule-btn" class="primary-btn">保存</button>
+
+            <!-- 船情報は配艇から自動取得（手動入力は削除済み） -->
+
+
+
+            <!-- メモ -->
+            <div class="form-group">
+                <label>メモ（任意）</label>
+                <textarea id="input-memo" rows="2" placeholder="備考など"></textarea>
             </div>
         </div>
+        <div class="modal-footer">
+            <button id="delete-schedule-btn" class="danger-btn hidden">削除</button>
+            <button id="save-schedule-btn" class="primary-btn">保存</button>
+        </div>
+    </div>
     </div>
 
     <!-- マスタ管理モーダル -->

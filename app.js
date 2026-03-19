@@ -3117,6 +3117,16 @@ function openInputModal(dateStr, timeSlot, scheduleId = null) {
     if (ergoMenuInput) ergoMenuInput.value = '';
     document.getElementById('meal-type-group').classList.add('hidden');
     document.getElementById('video-duration-group').classList.add('hidden');
+    const locGroupReset = document.getElementById('location-select-group');
+    if (locGroupReset) locGroupReset.classList.add('hidden');
+
+    // locationボタンのトグル処理
+    document.querySelectorAll('.location-btn').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.location-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        };
+    });
 
     document.getElementById('delete-schedule-btn').classList.add('hidden');
 
@@ -3202,6 +3212,10 @@ function handleScheduleTypeChange(type) {
     const allocGroup = document.getElementById('allocation-select-group');
     if (allocGroup) allocGroup.classList.toggle('hidden', type !== SCHEDULE_TYPES.BOAT);
 
+    // 練習場所の表示切替（乗艇時のみ表示）
+    const locGroup = document.getElementById('location-select-group');
+    if (locGroup) locGroup.classList.toggle('hidden', type !== SCHEDULE_TYPES.BOAT);
+
     // 乗艇選択時は配艇セレクタをポピュレート
     if (type === SCHEDULE_TYPES.BOAT) {
         populateAllocationSelect();
@@ -3212,7 +3226,7 @@ function populateAllocationSelect() {
     const select = document.getElementById('input-allocation');
     if (!select) return;
 
-    const allocations = state.boatAllocations || [];
+    const allocations = (state.boatAllocations || []).filter(a => (a.status || 'active') === 'active');
     const userId = state.currentUser?.id;
 
     // 自分が含まれる配艇を上に
@@ -3515,6 +3529,7 @@ function saveSchedule() {
         ergoType: document.querySelector('.ergo-type-btn.active')?.dataset.value || null,
         ergoMenu: document.getElementById('input-ergo-menu')?.value?.trim() || null,
         allocationId: document.getElementById('input-allocation')?.value || null,
+        location: document.querySelector('.location-btn.active')?.dataset.value || null,
         boatType: null,
         boatId: null,
         oarIds: [],
@@ -5966,6 +5981,31 @@ function openAllocationModal(allocId, preselectedBoatId) {
         document.getElementById('alloc-oar-container').innerHTML = '';
     }
 
+    // 親クルー選択UI
+    let parentContainer = document.getElementById('alloc-parent-container');
+    if (!parentContainer) {
+        parentContainer = document.createElement('div');
+        parentContainer.id = 'alloc-parent-container';
+        parentContainer.style.cssText = 'margin-top:12px;';
+        const deleteBtn = document.getElementById('delete-allocation-btn');
+        deleteBtn.parentElement.insertBefore(parentContainer, deleteBtn);
+    }
+    const savedAllocs = (state.boatAllocations || []).filter(a => a.status === 'saved' && a.id !== allocId);
+    if (savedAllocs.length > 0) {
+        let parentHtml = '<label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">🔗 親クルー（分艇の場合）</label>';
+        parentHtml += '<select id="alloc-parent-select" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border-color);font-size:12px;background:var(--bg-light);color:var(--text-primary);">';
+        parentHtml += '<option value="">なし</option>';
+        savedAllocs.forEach(sa => {
+            const boat = (state.boats || []).find(b => b.id === sa.boatId);
+            const sel = alloc?.parentAllocationId === sa.id ? 'selected' : '';
+            parentHtml += `<option value="${sa.id}" ${sel}>${boat?.name || '?'} (${sa.boatType || '?'})</option>`;
+        });
+        parentHtml += '</select>';
+        parentContainer.innerHTML = parentHtml;
+    } else {
+        parentContainer.innerHTML = '';
+    }
+
     // 削除ボタン表示
     document.getElementById('delete-allocation-btn').classList.toggle('hidden', !alloc);
 }
@@ -6156,6 +6196,7 @@ function saveAllocation() {
         crewIds,
         oarIds,
         status: 'active',
+        parentAllocationId: document.getElementById('alloc-parent-select')?.value || null,
         createdBy: state.currentUser?.id || '',
         updatedAt: new Date().toISOString()
     };
