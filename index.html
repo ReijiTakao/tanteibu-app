@@ -1709,19 +1709,6 @@
                     <!-- JSで動的生成 -->
                 </div>
 
-                <!-- 体重入力（練習ノートから直接記録可能） -->
-                <div class="form-group" id="pn-weight-group">
-                    <label>⚖️ 今日の体重 <span id="pn-weight-status" style="font-size:11px;margin-left:6px;"></span></label>
-                    <div style="display:flex;align-items:center;gap:6px;">
-                        <button type="button" class="weight-step-btn" onclick="adjustPnWeight(-1)">-1</button>
-                        <button type="button" class="weight-step-btn" onclick="adjustPnWeight(-0.1)">-0.1</button>
-                        <input type="number" id="pn-weight-input" placeholder="0.0" step="0.1" min="30" max="150"
-                            style="flex:1;text-align:center;font-size:18px;font-weight:700;padding:8px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-light,#f8fafc);color:var(--text-primary);">
-                        <button type="button" class="weight-step-btn" onclick="adjustPnWeight(0.1)">+0.1</button>
-                        <button type="button" class="weight-step-btn" onclick="adjustPnWeight(1)">+1</button>
-                    </div>
-                </div>
-
                 <!-- 振り返り -->
                 <div class="form-group">
                     <label>振り返り</label>

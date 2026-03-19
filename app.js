@@ -5232,9 +5232,7 @@ function renderMyPracticeDashboard() {
     container.innerHTML = `
         <div class="my-dash-header" id="my-dash-toggle">
             <div class="my-dash-header-left">
-                <span class="my-dash-header-fire">${streakInfo.current > 0 ? '🔥' : '💪'}</span>
-                <span class="my-dash-header-streak">${streakInfo.current}<small>日目</small></span>
-                <span class="my-dash-header-label">体調不良なし</span>
+                <span class="my-dash-header-label">今週の練習</span>
             </div>
             <div class="my-dash-header-right">
                 ${summaryBadges}
@@ -5242,17 +5240,6 @@ function renderMyPracticeDashboard() {
             </div>
         </div>
         <div class="my-dash-body ${dashExpanded ? '' : 'hidden'}" id="my-dash-body">
-            <div class="my-dash-streak">
-                <div class="my-dash-streak-fire">${streakInfo.current > 0 ? '🔥' : '💪'}</div>
-                <div class="my-dash-streak-info">
-                    <div class="my-dash-streak-count">${streakInfo.current}<span>日目</span></div>
-                    <div class="my-dash-streak-label">体調不良なし継続中</div>
-                </div>
-                <div class="my-dash-streak-best">
-                    最長記録<br><b>${streakInfo.best}日</b>
-                </div>
-            </div>
-
             ${renderDashCalendarWithSummary(mySchedules, dashCalMonth, todayStr, summaryInfo, today)}
         </div>
     `;
@@ -12722,57 +12709,12 @@ function renderCrewList() {
 
     const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
 
-    // === マイクルー: クルーノートを時系列表示 ===
-    if (filterType === 'my') {
-        const myCrewHashes = new Set(
-            (state.crews || []).filter(c => c.memberIds.includes(state.currentUser.id)).map(c => c.hash)
-        );
-        const myNotes = (state.crewNotes || [])
-            .filter(n => myCrewHashes.has(n.crewHash))
-            .sort((a, b) => b.date.localeCompare(a.date));
-
-        if (myNotes.length === 0) {
-            list.innerHTML = '<div class="empty-state"><p>まだクルー記録がありません。<br>画面右下の「＋」ボタンから<br>新しいクルーノートを作成してください。</p></div>';
-            return;
-        }
-
-        let html = '';
-        let lastMonth = '';
-
-        myNotes.forEach(note => {
-            const d = formatDisplayDate(note.date);
-            const monthKey = `${d.year}-${d.month}`;
-            if (monthKey !== lastMonth) {
-                html += `<div style="font-size:13px;font-weight:700;color:var(--text-muted);margin:12px 0 4px;padding:0 4px;">${d.year}年${d.month}月</div>`;
-                lastMonth = monthKey;
-            }
-
-            const crew = state.crews.find(c => c.hash === note.crewHash);
-            const btColor = boatTypeColors[note.boatType || crew?.boatType] || '#6b7280';
-            const boatType = note.boatType || crew?.boatType || '?';
-            const memberNames = (note.memberIds || crew?.memberIds || []).map(id => {
-                const u = state.users.find(u => u.id === id);
-                return u ? u.name : '?';
-            });
-            const preview = note.content ? note.content.substring(0, 60) + (note.content.length > 60 ? '…' : '') : '';
-
-            html += `<div class="crew-card-enhanced" onclick="openCrewNoteEdit('${note.crewHash}', '${note.date}')" style="margin-bottom:6px;">
-                <div class="crew-card-top">
-                    <span class="crew-boat-badge" style="background:${btColor};">${boatType}</span>
-                    <span class="crew-card-date">${d.month}/${d.day}（${d.weekday}）</span>
-                </div>
-                <div class="crew-card-members">${memberNames.map(n => `<span class="crew-member-chip">${n}</span>`).join('')}</div>
-                ${preview ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${preview}</div>` : ''}
-            </div>`;
-        });
-
-        list.innerHTML = html;
-        return;
-    }
-
-    // === すべてのクルー: 従来のクルーカード表示 ===
     let crews = state.crews || [];
 
+    // My Crewsフィルタ
+    if (filterType === 'my') {
+        crews = crews.filter(c => c.memberIds.includes(state.currentUser.id));
+    }
     if (searchDate) {
         const dateHashes = state.crewNotes.filter(n => n.date === searchDate).map(n => n.crewHash);
         crews = crews.filter(c => dateHashes.includes(c.hash));
@@ -12788,7 +12730,9 @@ function renderCrewList() {
     }
 
     if (crews.length === 0) {
-        list.innerHTML = '<div class="empty-state"><p>該当するクルーがありません</p></div>';
+        list.innerHTML = filterType === 'my'
+            ? '<div class="empty-state"><p>まだクルー記録がありません。<br>画面右下の「＋」ボタンから<br>新しいクルーノートを作成してください。</p></div>'
+            : '<div class="empty-state"><p>該当するクルーがありません</p></div>';
         return;
     }
 
@@ -12803,10 +12747,11 @@ function renderCrewList() {
         const dayOfWeek = dayNames[lastDate.getDay()];
         const noteCount = (state.crewNotes || []).filter(n => n.crewHash === crew.hash).length;
         const btColor = boatTypeColors[crew.boatType] || '#6b7280';
+        const crewName = crew.name ? `<span style="font-size:12px;font-weight:600;color:var(--text-primary);margin-left:6px;">${crew.name}</span>` : '';
 
         return `<div class="crew-card-enhanced" onclick="openCrewDetail('${crew.hash}')">
             <div class="crew-card-top">
-                <span class="crew-boat-badge" style="background:${btColor};">${crew.boatType || '?'}</span>
+                <span class="crew-boat-badge" style="background:${btColor};">${crew.boatType || '?'}</span>${crewName}
                 <span class="crew-card-date">📅 ${displayDate}（${dayOfWeek}）</span>
             </div>
             <div class="crew-card-members">${memberNames.map(n => `<span class="crew-member-chip">${n}</span>`).join('')}</div>
@@ -12885,6 +12830,15 @@ function renderCrewWeightChart(canvas, membersWithData) {
     });
 }
 
+// クルー名を保存
+function saveCrewName(hash, name) {
+    const crew = state.crews.find(c => c.hash === hash);
+    if (!crew) return;
+    crew.name = name.trim();
+    DB.save('crews', state.crews);
+    showToast('クルー名を保存しました', 'success');
+}
+
 function openCrewDetail(hash) {
     const crew = state.crews.find(c => c.hash === hash);
     if (!crew) return;
@@ -12906,6 +12860,11 @@ function openCrewDetail(hash) {
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
             <span class="crew-boat-badge" style="background:${btColor};font-size:14px;padding:4px 12px;">${crew.boatType || '未設定'}</span>
             <span style="font-size:12px;color:var(--text-muted);">${crew.memberIds.length}人</span>
+        </div>
+        <div style="margin-bottom:8px;">
+            <input type="text" id="crew-name-input" value="${crew.name || ''}" placeholder="クルー名を入力（例: インカレエイトメンバー）"
+                style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid var(--border-color);border-radius:6px;font-size:13px;background:var(--bg-light,#f8fafc);color:var(--text-primary);"
+                onchange="saveCrewName('${hash}', this.value)">
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;">
             ${memberNames.map(n => `<span class="crew-member-chip">${n}</span>`).join('')}
