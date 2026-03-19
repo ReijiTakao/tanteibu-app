@@ -12413,12 +12413,29 @@ function extractCrewsFromSchedules() {
 
     state.crews = Array.from(crewMap.values()).sort((a, b) => new Date(b.lastPractice) - new Date(a.lastPractice));
 
-    // playlistUrlをLocalStorageから復元
-    const savedPlaylists = DB.load('crews_playlist') || [];
-    savedPlaylists.forEach(p => {
-        const crew = state.crews.find(c => c.hash === p.hash);
-        if (crew && p.playlistUrl) crew.playlistUrl = p.playlistUrl;
+    // ローカルのname/playlistUrlを復元
+    const savedCrews = DB.load('crews') || [];
+    savedCrews.forEach(sc => {
+        const crew = state.crews.find(c => c.hash === sc.hash);
+        if (crew) {
+            if (sc.name) crew.name = sc.name;
+            if (sc.playlistUrl) crew.playlistUrl = sc.playlistUrl;
+        }
     });
+
+    // Supabaseからcrew_metadataを取得して復元（非同期）
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.loadCrewMetadata().then(metadata => {
+            metadata.forEach(m => {
+                const crew = state.crews.find(c => c.hash === m.crewHash);
+                if (crew) {
+                    if (m.name) crew.name = m.name;
+                    if (m.playlistUrl) crew.playlistUrl = m.playlistUrl;
+                }
+            });
+            DB.save('crews', state.crews);
+        }).catch(e => console.warn('Crew metadata load failed:', e));
+    }
 }
 
 // スケジュールから自動でクルーノートを作成または更新
@@ -12950,6 +12967,11 @@ function saveCrewName(hash, name) {
     if (!crew) return;
     crew.name = name.trim();
     DB.save('crews', state.crews);
+    // Supabase同期
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.saveCrewMetadata(hash, crew.name, crew.playlistUrl || null)
+            .catch(e => console.warn('Crew metadata sync failed:', e));
+    }
     showToast('クルー名を保存しました', 'success');
 }
 
@@ -13190,6 +13212,12 @@ function openCrewDetail(hash) {
         crew.playlistUrl = url;
         // crewNotes内の該当crewHashのノートにもplaylistUrlを付与（同期用）
         DB.saveLocal('crews_playlist', state.crews.map(c => ({ hash: c.hash, playlistUrl: c.playlistUrl })).filter(c => c.playlistUrl));
+        DB.save('crews', state.crews);
+        // Supabase同期
+        if (DB.useSupabase && window.SupabaseConfig?.db) {
+            window.SupabaseConfig.db.saveCrewMetadata(crew.hash, crew.name || null, url)
+                .catch(e => console.warn('Crew metadata sync failed:', e));
+        }
         showPlaylistState(url);
         showToast('再生リストを保存しました', 'success');
     };

@@ -982,6 +982,38 @@ const SupabaseDB = {
         }).catch(e => { console.error('Supabase op failed:', e); throw e; });
     },
 
+    // --- クルーメタデータ（名前・再生リスト） ---
+    async loadCrewMetadata() {
+        if (!isSupabaseReady()) return [];
+        const { data, error } = await _supabaseClient
+            .from('crew_metadata')
+            .select('*');
+        if (error) { console.error('Load crew_metadata error:', error); return []; }
+        return (data || []).map(r => ({
+            crewHash: r.crew_hash,
+            name: r.name,
+            playlistUrl: r.playlist_url
+        }));
+    },
+
+    async saveCrewMetadata(crewHash, name, playlistUrl) {
+        if (!isSupabaseReady()) return null;
+        return withSyncIndicator(async () => {
+            const { data, error } = await _supabaseClient
+                .from('crew_metadata')
+                .upsert({
+                    crew_hash: crewHash,
+                    name: name || null,
+                    playlist_url: playlistUrl || null,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'crew_hash' })
+                .select()
+                .single();
+            if (error) { console.error('Save crew_metadata error:', error); throw error; }
+            return data;
+        }).catch(e => { console.error('Supabase op failed:', e); throw e; });
+    },
+
     // --- 配艇表 ---
     _toAllocationRow(a) {
         return {
