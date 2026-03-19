@@ -269,6 +269,7 @@ const SupabaseDB = {
             "mealTypes": s.mealTypes || [],
             "videoDuration": s.videoDuration || null,
             start_time: s.startTime || null,
+            location: s.location || null,
             memo: s.memo || null,
             updated_at: s.updatedAt || new Date().toISOString()
         };
@@ -309,6 +310,7 @@ const SupabaseDB = {
             autoCreatedByName: autoCreatedByName,
             ergoMenu: ergoMenu,
             startTime: r.start_time,
+            location: r.location || null,
             memo: r.memo,
             updatedAt: r.updated_at,
             createdAt: r.created_at
@@ -989,6 +991,8 @@ const SupabaseDB = {
             crew_ids: a.crewIds || [],
             crew_details_map: a.crewDetailsMap || {},
             oar_ids: a.oarIds || [],
+            status: a.status || 'active',
+            parent_allocation_id: a.parentAllocationId || null,
             created_by: a.createdBy || null,
             updated_at: a.updatedAt || new Date().toISOString()
         };
@@ -1001,6 +1005,8 @@ const SupabaseDB = {
             crewIds: r.crew_ids || [],
             crewDetailsMap: r.crew_details_map || {},
             oarIds: r.oar_ids || [],
+            status: r.status || 'active',
+            parentAllocationId: r.parent_allocation_id || null,
             createdBy: r.created_by,
             updatedAt: r.updated_at,
             createdAt: r.created_at
