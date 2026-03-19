@@ -12670,26 +12670,12 @@ function initCrewNoteFeatures() {
 
             const type = btn.dataset.type;
             const searchSection = document.getElementById('crew-search-section');
-            const crewList = document.getElementById('crew-list');
-            const notesTimeline = document.getElementById('crew-notes-timeline');
-
-            if (type === 'notes') {
-                // ノート一覧ビュー
-                searchSection.classList.add('hidden');
-                if (crewList) crewList.classList.add('hidden');
-                if (notesTimeline) notesTimeline.classList.remove('hidden');
-                renderCrewNotesTimeline();
+            if (type === 'all') {
+                searchSection.classList.remove('hidden');
             } else {
-                // クルーカードビュー (my / all)
-                if (crewList) crewList.classList.remove('hidden');
-                if (notesTimeline) notesTimeline.classList.add('hidden');
-                if (type === 'all') {
-                    searchSection.classList.remove('hidden');
-                } else {
-                    searchSection.classList.add('hidden');
-                }
-                renderCrewList();
+                searchSection.classList.add('hidden');
             }
+            renderCrewList();
         });
     });
 
@@ -12722,63 +12708,6 @@ function initCrewNoteFeatures() {
     isCrewNoteInitialized = true;
 }
 
-// クルーノート一覧（全ノートを日付新しい順に表示）
-function renderCrewNotesTimeline() {
-    const container = document.getElementById('crew-notes-timeline');
-    if (!container) return;
-
-    // 自分が参加しているクルーのハッシュを取得
-    const myCrewHashes = new Set(
-        (state.crews || []).filter(c => c.memberIds.includes(state.currentUser.id)).map(c => c.hash)
-    );
-
-    // 自分のクルーノートを日付新しい順に取得
-    const myNotes = (state.crewNotes || [])
-        .filter(n => myCrewHashes.has(n.crewHash))
-        .sort((a, b) => b.date.localeCompare(a.date));
-
-    if (myNotes.length === 0) {
-        container.innerHTML = `<div class="empty-state"><p>📝 クルーノートがまだありません</p></div>`;
-        return;
-    }
-
-    const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
-
-    let html = '';
-    let lastMonth = '';
-
-    myNotes.forEach(note => {
-        const d = formatDisplayDate(note.date);
-        const monthKey = `${d.year}-${d.month}`;
-
-        // 月ヘッダー
-        if (monthKey !== lastMonth) {
-            html += `<div style="font-size:13px;font-weight:700;color:var(--text-muted);margin:12px 0 4px;padding:0 4px;">${d.year}年${d.month}月</div>`;
-            lastMonth = monthKey;
-        }
-
-        const crew = state.crews.find(c => c.hash === note.crewHash);
-        const btColor = boatTypeColors[note.boatType || crew?.boatType] || '#6b7280';
-        const boatType = note.boatType || crew?.boatType || '?';
-        const memberNames = (note.memberIds || crew?.memberIds || []).map(id => {
-            const u = state.users.find(u => u.id === id);
-            return u ? u.name : '?';
-        });
-        const preview = note.content ? note.content.substring(0, 60) + (note.content.length > 60 ? '…' : '') : '';
-
-        html += `<div class="crew-card-enhanced" onclick="openCrewNoteEdit('${note.crewHash}', '${note.date}')" style="margin-bottom:6px;">
-            <div class="crew-card-top">
-                <span class="crew-boat-badge" style="background:${btColor};">${boatType}</span>
-                <span class="crew-card-date">${d.month}/${d.day}（${d.weekday}）</span>
-            </div>
-            <div class="crew-card-members">${memberNames.map(n => `<span class="crew-member-chip">${n}</span>`).join('')}</div>
-            ${preview ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${preview}</div>` : ''}
-        </div>`;
-    });
-
-    container.innerHTML = html;
-}
-
 // クルーリスト描画
 function renderCrewList() {
     const list = document.getElementById('crew-list');
@@ -12791,60 +12720,87 @@ function renderCrewList() {
     const searchDateInput = document.getElementById('crew-search-date');
     const searchDate = searchDateInput ? searchDateInput.value : '';
 
+    const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
+
+    // === マイクルー: クルーノートを時系列表示 ===
+    if (filterType === 'my') {
+        const myCrewHashes = new Set(
+            (state.crews || []).filter(c => c.memberIds.includes(state.currentUser.id)).map(c => c.hash)
+        );
+        const myNotes = (state.crewNotes || [])
+            .filter(n => myCrewHashes.has(n.crewHash))
+            .sort((a, b) => b.date.localeCompare(a.date));
+
+        if (myNotes.length === 0) {
+            list.innerHTML = '<div class="empty-state"><p>まだクルー記録がありません。<br>画面右下の「＋」ボタンから<br>新しいクルーノートを作成してください。</p></div>';
+            return;
+        }
+
+        let html = '';
+        let lastMonth = '';
+
+        myNotes.forEach(note => {
+            const d = formatDisplayDate(note.date);
+            const monthKey = `${d.year}-${d.month}`;
+            if (monthKey !== lastMonth) {
+                html += `<div style="font-size:13px;font-weight:700;color:var(--text-muted);margin:12px 0 4px;padding:0 4px;">${d.year}年${d.month}月</div>`;
+                lastMonth = monthKey;
+            }
+
+            const crew = state.crews.find(c => c.hash === note.crewHash);
+            const btColor = boatTypeColors[note.boatType || crew?.boatType] || '#6b7280';
+            const boatType = note.boatType || crew?.boatType || '?';
+            const memberNames = (note.memberIds || crew?.memberIds || []).map(id => {
+                const u = state.users.find(u => u.id === id);
+                return u ? u.name : '?';
+            });
+            const preview = note.content ? note.content.substring(0, 60) + (note.content.length > 60 ? '…' : '') : '';
+
+            html += `<div class="crew-card-enhanced" onclick="openCrewNoteEdit('${note.crewHash}', '${note.date}')" style="margin-bottom:6px;">
+                <div class="crew-card-top">
+                    <span class="crew-boat-badge" style="background:${btColor};">${boatType}</span>
+                    <span class="crew-card-date">${d.month}/${d.day}（${d.weekday}）</span>
+                </div>
+                <div class="crew-card-members">${memberNames.map(n => `<span class="crew-member-chip">${n}</span>`).join('')}</div>
+                ${preview ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${preview}</div>` : ''}
+            </div>`;
+        });
+
+        list.innerHTML = html;
+        return;
+    }
+
+    // === すべてのクルー: 従来のクルーカード表示 ===
     let crews = state.crews || [];
 
-    // My Crewsフィルタ (自分が含まれるクルー)
-    if (filterType === 'my') {
-        crews = crews.filter(c => c.memberIds.includes(state.currentUser.id));
-    }
-
-    // 日付フィルタ (その日にノートがあるクルーのみ)
     if (searchDate) {
-        const dateHashes = state.crewNotes
-            .filter(n => n.date === searchDate)
-            .map(n => n.crewHash);
-
+        const dateHashes = state.crewNotes.filter(n => n.date === searchDate).map(n => n.crewHash);
         crews = crews.filter(c => dateHashes.includes(c.hash));
     }
-
-    // 検索フィルタ
     if (searchName) {
         crews = crews.filter(c => {
             const members = c.memberIds.map(id => state.users.find(u => u.id === id)?.name || '').join(' ');
             return members.toLowerCase().includes(searchName);
         });
     }
-
-    // 艇種フィルタ
     if (searchBoat !== 'all') {
         crews = crews.filter(c => c.boatType === searchBoat);
     }
 
-    // 空の状態
     if (crews.length === 0) {
-        if (filterType === 'my') {
-            list.innerHTML = '<div class="empty-state"><p>まだクルー記録がありません。<br>画面右下の「＋」ボタンから<br>新しいクルーノートを作成してください。</p></div>';
-        } else {
-            list.innerHTML = '<div class="empty-state"><p>該当するクルーがありません</p></div>';
-        }
+        list.innerHTML = '<div class="empty-state"><p>該当するクルーがありません</p></div>';
         return;
     }
-
-    const boatTypeColors = { '1x': '#6366f1', '2x': '#8b5cf6', '2-': '#a855f7', '4x': '#0ea5e9', '4+': '#0284c7', '4-': '#0369a1', '8+': '#dc2626' };
 
     list.innerHTML = crews.map(crew => {
         const memberNames = crew.memberIds.map(id => {
             const user = state.users.find(u => u.id === id);
             return user ? user.name : '不明';
         });
-
-        // 最終練習日
         const lastDate = new Date(crew.lastPractice);
         const displayDate = `${lastDate.getMonth() + 1}/${lastDate.getDate()}`;
         const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
         const dayOfWeek = dayNames[lastDate.getDay()];
-
-        // ノート件数
         const noteCount = (state.crewNotes || []).filter(n => n.crewHash === crew.hash).length;
         const btColor = boatTypeColors[crew.boatType] || '#6b7280';
 
