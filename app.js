@@ -5616,9 +5616,11 @@ function renderBoatAllocation() {
         return status === 'available';
     });
 
-    const allocations = state.boatAllocations || [];
-    const allocatedBoatIds = new Set(allocations.map(a => a.boatId));
-    const allocatedOarIds = new Set(allocations.flatMap(a => a.oarIds || []));
+    const allAllocations = state.boatAllocations || [];
+    const activeAllocations = allAllocations.filter(a => (a.status || 'active') === 'active');
+    const savedAllocations = allAllocations.filter(a => a.status === 'saved');
+    const allocatedBoatIds = new Set(activeAllocations.map(a => a.boatId));
+    const allocatedOarIds = new Set(activeAllocations.flatMap(a => a.oarIds || []));
 
     // 空き船
     const freeBoats = allBoats.filter(b => !allocatedBoatIds.has(b.id));
@@ -5641,7 +5643,7 @@ function renderBoatAllocation() {
 
     // 配艇カード生成
     let cardsHtml = '';
-    const sortedAllocations = [...allocations].sort((a, b) => {
+    const sortedAllocations = [...activeAllocations].sort((a, b) => {
         const ai = BA_TYPE_ORDER.indexOf(a.boatType);
         const bi = BA_TYPE_ORDER.indexOf(b.boatType);
         return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
@@ -5694,8 +5696,8 @@ function renderBoatAllocation() {
             ? `<div class="ba-oar-row">🏏 <span>${oarNames.join('、')}</span></div>` : '';
 
         cardsHtml += `
-        <div class="ba-card used" style="--ba-accent: ${color};" onclick="openAllocationModal('${alloc.id}')">
-            <div class="ba-card-top">
+        <div class="ba-card used" style="--ba-accent: ${color};">
+            <div class="ba-card-top" onclick="openAllocationModal('${alloc.id}')">
                 <div class="ba-boat-info">
                     <span class="ba-boat-name">${boat.name}</span>
                     <span class="ba-type-badge" style="background:${color};">${type}</span>
@@ -5704,8 +5706,46 @@ function renderBoatAllocation() {
             </div>
             ${crewHtml}
             ${oarHtml}
+            <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+                <button class="secondary-btn small-btn" style="font-size:10px;padding:3px 8px;" onclick="event.stopPropagation();toggleAllocationStatus('${alloc.id}','saved')">💾 保存</button>
+            </div>
         </div>`;
     });
+
+    // 保存中の配艇セクション
+    if (savedAllocations.length > 0) {
+        let savedHtml = '';
+        savedAllocations.forEach(alloc => {
+            const boat = allBoats.find(b => b.id === alloc.boatId) || (state.boats || []).find(b => b.id === alloc.boatId);
+            const type = alloc.boatType || (boat ? getBoatTypeFromBoat(boat) : '?');
+            const color = BA_TYPE_COLORS[type] || '#6b7280';
+            const crewMap = alloc.crewDetailsMap || {};
+            const crewNames = Object.values(crewMap).map(uid => {
+                const u = (state.users || []).find(u => u.id === uid);
+                return u ? u.name : '?';
+            }).join(', ');
+            savedHtml += `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px dashed var(--border-color);">
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span class="ba-type-badge" style="background:${color};font-size:10px;padding:2px 6px;">${type}</span>
+                    <span style="font-size:12px;font-weight:600;">${boat?.name || '?'}</span>
+                    <span style="font-size:11px;color:var(--text-muted);">${crewNames}</span>
+                </div>
+                <button class="secondary-btn small-btn" style="font-size:10px;padding:3px 8px;" onclick="toggleAllocationStatus('${alloc.id}','active')">♻️ 復元</button>
+            </div>`;
+        });
+        cardsHtml += `
+        <div class="timeline-block" style="margin-top:12px;">
+            <div class="ov-card-header" onclick="this.parentElement.classList.toggle('expanded')">
+                <span class="timeline-time-label" style="font-size:12px;">💾 保存中の配艇</span>
+                <div class="ov-summary-badges">
+                    <span class="ov-badge" style="background:rgba(255,255,255,0.08);">${savedAllocations.length}件</span>
+                    <span class="ov-expand-icon">▶</span>
+                </div>
+            </div>
+            <div class="ov-card-body" style="display:flex;flex-direction:column;gap:4px;">${savedHtml}</div>
+        </div>`;
+    }
 
     // 空き船カード（アコーディオン：デフォルト閉）- 艇種別にグループ化・ソート
     let freeBoatsHtml = '';
@@ -6074,6 +6114,20 @@ function renderAllocOarSelects(boatType, existingOarIds, allocatedOarIds) {
     container.innerHTML = html;
 }
 
+// 配艇のステータス切り替え（アクティブ⇔保存中）
+function toggleAllocationStatus(allocId, newStatus) {
+    const alloc = (state.boatAllocations || []).find(a => a.id === allocId);
+    if (!alloc) return;
+    alloc.status = newStatus;
+    alloc.updatedAt = new Date().toISOString();
+    DB.save('boat_allocations', state.boatAllocations);
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.saveBoatAllocation(alloc).catch(e => console.warn('Alloc status save failed:', e));
+    }
+    renderBoatAllocation();
+    showToast(newStatus === 'saved' ? '配艇を保存しました' : '配艇を復元しました');
+}
+
 function saveAllocation() {
     const boatId = document.getElementById('alloc-boat-select').value;
     if (!boatId) { showToast('船を選択してください', 'error'); return; }
@@ -6101,9 +6155,28 @@ function saveAllocation() {
         crewDetailsMap,
         crewIds,
         oarIds,
+        status: 'active',
         createdBy: state.currentUser?.id || '',
         updatedAt: new Date().toISOString()
     };
+
+    // 重複チェック: 他のアクティブ配艇に同じメンバーがいないか
+    const otherActiveAllocs = (state.boatAllocations || [])
+        .filter(a => a.id !== alloc.id && (a.status || 'active') === 'active');
+    const duplicates = [];
+    crewIds.forEach(uid => {
+        otherActiveAllocs.forEach(oa => {
+            if ((oa.crewIds || []).includes(uid)) {
+                const user = (state.users || []).find(u => u.id === uid);
+                const boat = (state.boats || []).find(b => b.id === oa.boatId);
+                duplicates.push(`${user?.name || '?'} → ${boat?.name || '?'}`);
+            }
+        });
+    });
+    if (duplicates.length > 0) {
+        const msg = `⚠️ 以下のメンバーが他の配艇にも登録されています:\n${duplicates.join('\n')}\n\nこのまま保存しますか？`;
+        if (!confirm(msg)) return;
+    }
 
     // 既存を更新 or 新規追加
     const idx = (state.boatAllocations || []).findIndex(a => a.id === alloc.id);
