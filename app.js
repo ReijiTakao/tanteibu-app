@@ -4659,14 +4659,31 @@ function renderSlotSection(sectionLabel, schedules, slotType) {
     </div>`;
 }
 
-function renderOverview() {
+async function renderOverview() {
     renderWeeklyMenu(); // 週間メニュー更新
     const dateStr = document.getElementById('overview-date').value;
     const container = document.getElementById('schedule-timeline');
     const boatSection = document.getElementById('available-boats-section');
 
+    // Supabaseから全ユーザーのスケジュールを取得してマージ
+    let allSchedules = [...state.schedules.filter(s => s.date === dateStr)];
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        try {
+            const remoteSchedules = await window.SupabaseConfig.db.loadSchedules(dateStr, dateStr);
+            // ローカルにないスケジュールを追加（ID重複排除）
+            const localIds = new Set(allSchedules.map(s => s.id));
+            remoteSchedules.forEach(rs => {
+                if (!localIds.has(rs.id)) {
+                    allSchedules.push(rs);
+                }
+            });
+        } catch (e) {
+            console.warn('Team schedule load failed:', e);
+        }
+    }
+
     // その日の全スケジュール（全ユーザー）
-    const schedules = state.schedules.filter(s => s.date === dateStr);
+    const schedules = allSchedules;
 
     // 在籍中のアクティブユーザー一覧
     const activeUsers = state.users.filter(u => u.approvalStatus === '承認済み' && u.status !== '退部' && !u.isDemo);
