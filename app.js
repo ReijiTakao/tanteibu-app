@@ -13061,6 +13061,68 @@ function openCrewDetail(hash) {
         }
     }
 
+    // ====== サブクルーのメニュー集約表示（Phase 4）======
+    let subCrewMenuHtml = '';
+    // この配艇のIDを特定（crewのmemberIdsと一致する配艇を探す）
+    const parentAlloc = (state.boatAllocations || []).find(a => {
+        const allocMembers = new Set(a.crewIds || []);
+        return crew.memberIds.every(id => allocMembers.has(id)) && allocMembers.size === crew.memberIds.length;
+    });
+    if (parentAlloc) {
+        // この配艇をparentとするサブ配艇を検索
+        const subAllocs = (state.boatAllocations || []).filter(a => a.parentAllocationId === parentAlloc.id);
+        if (subAllocs.length > 0) {
+            const today = formatDate(new Date());
+            let menuItems = '';
+            subAllocs.forEach(sub => {
+                const subBoat = (state.boats || []).find(b => b.id === sub.boatId);
+                const subBoatName = subBoat ? `${subBoat.name} (${sub.boatType || '?'})` : sub.boatType || '?';
+                // サブクルーメンバーの今日の練習ノートからメニューを取得
+                const subMenus = [];
+                (sub.crewIds || []).forEach(memberId => {
+                    const memberNote = (state.practiceNotes || []).find(n =>
+                        n.userId === memberId && n.date === today &&
+                        (n.scheduleType === SCHEDULE_TYPES.BOAT || n.scheduleType === '乗艇')
+                    );
+                    if (memberNote && memberNote.rowingMenus && memberNote.rowingMenus.length > 0) {
+                        memberNote.rowingMenus.forEach(m => {
+                            if (!subMenus.find(sm => sm.title === m.title && sm.distance === m.distance)) {
+                                subMenus.push(m);
+                            }
+                        });
+                    }
+                });
+                const menuStr = subMenus.length > 0
+                    ? subMenus.map(m => `${m.title || ''}${m.distance ? ' ' + m.distance + 'm' : ''}`).join(', ')
+                    : '<span style="color:var(--text-muted);">メニュー未登録</span>';
+                const subColor = BA_TYPE_COLORS[sub.boatType] || '#6b7280';
+                menuItems += `
+                    <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:6px;">
+                        <span class="ba-type-badge" style="background:${subColor};font-size:10px;padding:2px 6px;">${sub.boatType || '?'}</span>
+                        <span style="font-size:12px;font-weight:600;">${subBoatName}</span>
+                        <span style="font-size:12px;color:var(--text-secondary);margin-left:auto;">${menuStr}</span>
+                    </div>`;
+            });
+            subCrewMenuHtml = `
+                <div style="margin:12px 0;padding:10px;background:rgba(37,99,235,0.08);border-radius:10px;border:1px solid rgba(37,99,235,0.2);">
+                    <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:6px;">📋 今日の分艇メニュー</div>
+                    <div style="display:flex;flex-direction:column;gap:4px;">${menuItems}</div>
+                </div>`;
+        }
+    }
+
+    // サブクルーメニューをhistoryListの前に挿入
+    const subMenuContainer = document.getElementById('sub-crew-menu-container');
+    if (subMenuContainer) {
+        subMenuContainer.innerHTML = subCrewMenuHtml;
+    } else if (subCrewMenuHtml) {
+        // コンテナがない場合は動的に作成
+        const container = document.createElement('div');
+        container.id = 'sub-crew-menu-container';
+        container.innerHTML = subCrewMenuHtml;
+        historyList.parentElement.insertBefore(container, historyList);
+    }
+
     // 履歴リスト生成
     const notes = state.crewNotes.filter(n => n.crewHash === hash);
     const historyItems = notes.sort((a, b) => new Date(b.date) - new Date(a.date));
