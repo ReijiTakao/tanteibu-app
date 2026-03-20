@@ -11495,7 +11495,7 @@ function renderMemberRoster() {
         html += `<thead><tr style="background:#f5f5f5;border-bottom:1px solid #ddd;">
             <th style="text-align:left;padding:6px 8px;">名前</th>
             <th style="text-align:center;padding:6px 4px;">権限</th>
-            <th style="text-align:center;padding:6px 4px;">性別</th>
+            <th style="text-align:center;padding:6px 4px;">学年</th>
             ${isAdmin ? '<th style="text-align:center;padding:6px 4px;width:40px;"></th>' : ''}
         </tr></thead><tbody>`;
 
@@ -11510,10 +11510,17 @@ function renderMemberRoster() {
             const editBtn = isAdmin
                 ? `<button onclick="editMemberName('${m.id}')" style="background:none;border:none;cursor:pointer;font-size:12px;color:#2196f3;padding:0 4px;" title="名前を変更">✏️</button>`
                 : '';
+            // 管理者は権限・学年もクリックで編集可能
+            const roleCell = isAdmin
+                ? `<td style="text-align:center;padding:6px 4px;cursor:pointer;color:#6366f1;" onclick="editMemberRole('${m.id}')" title="タップで変更">${roleEmoji(m.role)} ${m.role || '-'}</td>`
+                : `<td style="text-align:center;padding:6px 4px;">${roleEmoji(m.role)} ${m.role || '-'}</td>`;
+            const gradeCell = isAdmin
+                ? `<td style="text-align:center;padding:6px 4px;cursor:pointer;color:#6366f1;" onclick="editMemberGrade('${m.id}')" title="タップで変更">${m.grade || 0}年</td>`
+                : `<td style="text-align:center;padding:6px 4px;">${m.grade || 0}年</td>`;
             html += `<tr style="border-bottom:1px solid #eee;${bgStyle}">
                 <td style="padding:6px 8px;">${editBtn}${m.name || '不明'}${isMe ? ' <span style="color:#2196f3;font-size:11px;">（自分）</span>' : ''}</td>
-                <td style="text-align:center;padding:6px 4px;">${roleEmoji(m.role)} ${m.role || '-'}</td>
-                <td style="text-align:center;padding:6px 4px;">${genderLabel(m.gender)}</td>
+                ${roleCell}
+                ${gradeCell}
                 ${deleteBtn}
             </tr>`;
         });
@@ -11544,6 +11551,40 @@ async function editMemberName(userId) {
     }
     renderMemberRoster();
     showToast(`${newName.trim()} に変更しました`, 'success');
+}
+
+// 管理者: メンバーのポジションを変更
+async function editMemberRole(userId) {
+    if (!state.currentUser || state.currentUser.role !== '管理者') return;
+    const user = state.users.find(u => u.id === userId);
+    if (!user) return;
+    const roles = ['管理者', 'コーチ', 'Cox', '漕手', 'データ班'];
+    const current = roles.indexOf(user.role);
+    const next = (current + 1) % roles.length;
+    user.role = roles[next];
+    DB.save('users', state.users);
+    if (DB.useSupabase && isSupabaseReady()) {
+        SupabaseDB.updateProfile(userId, { role: user.role }).catch(e => console.warn('Role sync failed:', e));
+    }
+    renderMemberRoster();
+    showToast(`${user.name}: ${user.role} に変更`, 'success');
+}
+
+// 管理者: メンバーの学年を変更
+async function editMemberGrade(userId) {
+    if (!state.currentUser || state.currentUser.role !== '管理者') return;
+    const user = state.users.find(u => u.id === userId);
+    if (!user) return;
+    const grades = [1, 2, 3, 4, 0]; // 0=コーチ/OB
+    const current = grades.indexOf(user.grade || 0);
+    const next = (current + 1) % grades.length;
+    user.grade = grades[next];
+    DB.save('users', state.users);
+    if (DB.useSupabase && isSupabaseReady()) {
+        SupabaseDB.updateProfile(userId, { grade: user.grade }).catch(e => console.warn('Grade sync failed:', e));
+    }
+    renderMemberRoster();
+    showToast(`${user.name}: ${user.grade === 0 ? 'コーチ/OB' : user.grade + '年'} に変更`, 'success');
 }
 
 // 管理者: メンバーを削除（非在籍に変更）
