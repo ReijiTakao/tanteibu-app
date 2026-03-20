@@ -12961,6 +12961,92 @@ function renderCrewWeightChart(canvas, membersWithData) {
     });
 }
 
+// クルーのリギング情報をレンダリング
+function renderCrewRiggingInfo(crew) {
+    const container = document.getElementById('crew-rigging-list');
+    if (!container) return;
+
+    // クルーが使っている船を特定（配艇から検索）
+    const allAllocs = state.boatAllocations || [];
+    const crewAlloc = allAllocs.find(a => {
+        const allocMembers = new Set(a.crewIds || []);
+        return crew.memberIds.every(id => allocMembers.has(id)) && allocMembers.size === crew.memberIds.length;
+    });
+
+    // 配艇がなくても船を推定（crewNoteのboatIdから）
+    let boatId = crewAlloc?.boatId;
+    if (!boatId) {
+        const latestNote = (state.crewNotes || []).filter(n => n.crewHash === crew.hash).sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+        boatId = latestNote?.boatId;
+    }
+
+    if (!boatId) {
+        container.innerHTML = '<div class="empty-state"><p>配艇が見つかりません。<br>配艇ボードで船を割り当ててください。</p></div>';
+        return;
+    }
+
+    const boat = (state.boats || []).find(b => b.id === boatId);
+    const boatName = boat ? boat.name : '不明';
+    const riggingData = (DB.load('rigging_data') || {})[boatId];
+    const riggingHistory = ((DB.load('rigging_history') || {})[boatId] || []);
+
+    let html = `
+        <div style="padding:10px;background:rgba(99,102,241,0.08);border-radius:10px;border:1px solid rgba(99,102,241,0.2);margin-bottom:12px;">
+            <div style="font-size:14px;font-weight:700;margin-bottom:8px;">⛵ ${boatName}</div>`;
+
+    if (riggingData) {
+        const items = [
+            { label: 'ピン・トゥ・ヒール', value: riggingData.pinToHeel, unit: 'cm' },
+            { label: 'デプス', value: riggingData.depth, unit: 'cm' },
+            { label: 'スパン', value: riggingData.span, unit: 'cm' },
+            { label: '足角', value: riggingData.pitch, unit: '°' },
+            { label: 'ハイト', value: riggingData.height, unit: 'cm' }
+        ].filter(i => i.value);
+
+        if (items.length > 0) {
+            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">';
+            items.forEach(item => {
+                html += `<div style="padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:6px;">
+                    <div style="font-size:10px;color:var(--text-muted);">${item.label}</div>
+                    <div style="font-size:14px;font-weight:600;">${item.value}${item.unit}</div>
+                </div>`;
+            });
+            html += '</div>';
+            if (riggingData.memo) {
+                html += `<div style="margin-top:8px;font-size:12px;color:var(--text-secondary);padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:6px;">📝 ${riggingData.memo}</div>`;
+            }
+            const savedDate = riggingData.savedAt ? new Date(riggingData.savedAt).toLocaleDateString('ja-JP') : '';
+            const savedBy = riggingData.savedBy || '';
+            html += `<div style="margin-top:6px;font-size:10px;color:var(--text-muted);text-align:right;">最終更新: ${savedDate} ${savedBy}</div>`;
+        } else {
+            html += '<div style="font-size:12px;color:var(--text-muted);padding:8px;">リギングデータが未入力です</div>';
+        }
+    } else {
+        html += '<div style="font-size:12px;color:var(--text-muted);padding:8px;">リギングデータが未入力です</div>';
+    }
+    html += '</div>';
+
+    // リギング履歴（直近5件）
+    if (riggingHistory.length > 0) {
+        html += '<div style="margin-top:8px;"><div style="font-size:12px;font-weight:600;margin-bottom:6px;">📋 設定変更履歴</div>';
+        riggingHistory.slice(0, 5).forEach(entry => {
+            const date = entry.savedAt ? new Date(entry.savedAt).toLocaleDateString('ja-JP') : '';
+            const changes = [
+                entry.pinToHeel ? `P2H:${entry.pinToHeel}` : '',
+                entry.depth ? `D:${entry.depth}` : '',
+                entry.span ? `S:${entry.span}` : '',
+                entry.height ? `H:${entry.height}` : ''
+            ].filter(Boolean).join(' / ');
+            html += `<div style="font-size:11px;padding:4px 8px;color:var(--text-secondary);border-left:2px solid rgba(99,102,241,0.3);margin-bottom:4px;">
+                <span style="color:var(--text-muted);">${date}</span> ${changes} <span style="color:var(--text-muted);">${entry.savedBy || ''}</span>
+            </div>`;
+        });
+        html += '</div>';
+    }
+
+    container.innerHTML = html;
+}
+
 // クルー名を保存
 function saveCrewName(hash, name) {
     const crew = state.crews.find(c => c.hash === hash);
@@ -13133,16 +13219,10 @@ function openCrewDetail(hash) {
         }
     }
 
-    // サブクルーメニューをhistoryListの前に挿入
+    // サブクルーメニューを表示
     const subMenuContainer = document.getElementById('sub-crew-menu-container');
     if (subMenuContainer) {
         subMenuContainer.innerHTML = subCrewMenuHtml;
-    } else if (subCrewMenuHtml) {
-        // コンテナがない場合は動的に作成
-        const container = document.createElement('div');
-        container.id = 'sub-crew-menu-container';
-        container.innerHTML = subCrewMenuHtml;
-        historyList.parentElement.insertBefore(container, historyList);
     }
 
     // 履歴リスト生成
@@ -13177,6 +13257,31 @@ function openCrewDetail(hash) {
     addBtn.onclick = () => {
         openCrewNoteEdit(hash, formatDate(new Date()));
     };
+
+    // --- タブ切り替え ---
+    document.querySelectorAll('.crew-detail-tab').forEach(tab => {
+        tab.onclick = () => {
+            document.querySelectorAll('.crew-detail-tab').forEach(t => {
+                t.style.color = 'var(--text-muted)';
+                t.style.borderBottomColor = 'transparent';
+                t.classList.remove('active');
+            });
+            tab.style.color = 'var(--text-primary)';
+            tab.style.borderBottomColor = 'var(--accent-color)';
+            tab.classList.add('active');
+            document.querySelectorAll('.crew-detail-tab-content').forEach(c => c.style.display = 'none');
+            document.getElementById('cdtab-' + tab.dataset.cdtab).style.display = '';
+        };
+    });
+    // タブを初期状態に
+    document.querySelectorAll('.crew-detail-tab').forEach((t, i) => {
+        t.style.color = i === 0 ? 'var(--text-primary)' : 'var(--text-muted)';
+        t.style.borderBottomColor = i === 0 ? 'var(--accent-color)' : 'transparent';
+    });
+    document.querySelectorAll('.crew-detail-tab-content').forEach((c, i) => c.style.display = i === 0 ? '' : 'none');
+
+    // --- リギング情報レンダリング ---
+    renderCrewRiggingInfo(crew);
 
     // --- YouTube再生リスト管理 ---
     const playlistDisplay = document.getElementById('crew-playlist-display');
