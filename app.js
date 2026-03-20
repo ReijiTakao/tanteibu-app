@@ -5746,7 +5746,10 @@ function renderBoatAllocation() {
                     <span style="font-size:12px;font-weight:600;">${boat?.name || '?'}</span>
                     <span style="font-size:11px;color:var(--text-muted);">${crewNames}</span>
                 </div>
-                <button class="secondary-btn small-btn" style="font-size:10px;padding:3px 8px;" onclick="toggleAllocationStatus('${alloc.id}','active')">♻️ 復元</button>
+                <div style="display:flex;gap:4px;">
+                    <button class="secondary-btn small-btn" style="font-size:10px;padding:3px 8px;" onclick="toggleAllocationStatus('${alloc.id}','active')">♻️ 復元</button>
+                    <button class="secondary-btn small-btn" style="font-size:10px;padding:3px 8px;color:#ef4444;" onclick="event.stopPropagation();permanentDeleteAllocation('${alloc.id}')">🗑️</button>
+                </div>
             </div>`;
         });
         cardsHtml += `
@@ -6255,6 +6258,18 @@ function deleteAllocation() {
         renderBoatAllocation();
         showToast('配艇を解除しました');
     });
+}
+
+// 分艇中の配艇を完全削除
+function permanentDeleteAllocation(allocId) {
+    if (!confirm('この配艇を完全に削除しますか？')) return;
+    state.boatAllocations = (state.boatAllocations || []).filter(a => a.id !== allocId);
+    DB.save('boat_allocations', state.boatAllocations);
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        window.SupabaseConfig.db.deleteBoatAllocation(allocId).catch(e => console.warn('Alloc delete failed:', e));
+    }
+    renderBoatAllocation();
+    showToast('配艇を削除しました');
 }
 
 function closeAllocationModal() {
