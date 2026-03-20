@@ -1600,8 +1600,8 @@
                         style="flex:1;padding:10px 0;font-size:13px;font-weight:600;background:none;border:none;color:var(--text-primary);border-bottom:2px solid var(--accent-color);cursor:pointer;">📝
                         ノート</button>
                     <button class="crew-detail-tab" data-cdtab="members"
-                        style="flex:1;padding:10px 0;font-size:13px;font-weight:600;background:none;border:none;color:var(--text-muted);border-bottom:2px solid transparent;cursor:pointer;">👥
-                        メンバー</button>
+                        style="flex:1;padding:10px 0;font-size:13px;font-weight:600;background:none;border:none;color:var(--text-muted);border-bottom:2px solid transparent;cursor:pointer;">⚖️
+                        体重</button>
                     <button class="crew-detail-tab" data-cdtab="rigging"
                         style="flex:1;padding:10px 0;font-size:13px;font-weight:600;background:none;border:none;color:var(--text-muted);border-bottom:2px solid transparent;cursor:pointer;">🔧
                         リギング</button>
@@ -1609,14 +1609,39 @@
 
                 <!-- タブコンテンツ: ノート -->
                 <div id="cdtab-notes" class="crew-detail-tab-content" style="padding:12px;">
+                    <!-- YouTube再生リスト -->
+                    <div class="form-group" id="crew-playlist-section" style="margin:0 0 12px 0;">
+                        <div id="crew-playlist-display" style="display:none;">
+                            <a id="crew-playlist-link" href="#" target="_blank"
+                                style="display:flex;align-items:center;gap:8px;padding:10px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:10px;text-decoration:none;color:#e0e0e0;transition:background 0.2s;">
+                                <span style="font-size:22px;">▶️</span>
+                                <div style="flex:1;">
+                                    <div style="font-size:13px;font-weight:600;color:#fff;">🎬 再生リスト</div>
+                                    <div id="crew-playlist-url-display"
+                                        style="font-size:10px;color:#888;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:250px;">
+                                    </div>
+                                </div>
+                                <span style="color:#555;">↗</span>
+                            </a>
+                            <button id="crew-playlist-edit-btn" class="secondary-btn small-btn"
+                                style="margin-top:4px;width:100%;font-size:11px;">URLを変更</button>
+                        </div>
+                        <div id="crew-playlist-input-group">
+                            <div style="display:flex;gap:6px;">
+                                <input type="url" id="crew-playlist-url" placeholder="YouTube再生リストURL"
+                                    style="flex:1;padding:8px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;background:rgba(255,255,255,0.08);color:#000;font-size:12px;">
+                                <button id="save-playlist-btn" class="primary-btn"
+                                    style="white-space:nowrap;padding:8px 12px;font-size:12px;">保存</button>
+                            </div>
+                        </div>
+                    </div>
                     <!-- 分艇メニュー（JS動的挿入） -->
                     <div id="sub-crew-menu-container"></div>
                     <div id="crew-history-list" class="history-list"></div>
                 </div>
 
-                <!-- タブコンテンツ: メンバー -->
+                <!-- タブコンテンツ: 体重 -->
                 <div id="cdtab-members" class="crew-detail-tab-content" style="padding:12px;display:none;">
-                    <!-- 体重情報 -->
                     <div style="margin-bottom:12px;">
                         <div class="section-title"
                             style="display:flex;align-items:center;justify-content:space-between;">
@@ -1628,37 +1653,6 @@
                             style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;"></div>
                         <canvas id="crew-weight-chart" height="120"
                             style="width:100%;border-radius:8px;background:#1a1a2e;display:none;"></canvas>
-                    </div>
-                    <!-- YouTube再生リスト -->
-                    <div class="form-group" style="margin:12px 0;">
-                        <label style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-                            <span style="font-size:16px;">🎬</span> YouTube再生リスト
-                        </label>
-                        <div id="crew-playlist-display" style="display:none;">
-                            <a id="crew-playlist-link" href="#" target="_blank"
-                                style="display:flex;align-items:center;gap:8px;padding:12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:10px;text-decoration:none;color:#e0e0e0;transition:background 0.2s;">
-                                <span style="font-size:24px;">▶️</span>
-                                <div style="flex:1;">
-                                    <div style="font-size:14px;font-weight:600;color:#fff;">再生リストを開く</div>
-                                    <div id="crew-playlist-url-display"
-                                        style="font-size:11px;color:#888;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:250px;">
-                                    </div>
-                                </div>
-                                <span style="color:#555;">↗</span>
-                            </a>
-                            <button id="crew-playlist-edit-btn" class="secondary-btn small-btn"
-                                style="margin-top:6px;width:100%;">URLを変更</button>
-                        </div>
-                        <div id="crew-playlist-input-group">
-                            <div style="display:flex;gap:6px;">
-                                <input type="url" id="crew-playlist-url" placeholder="YouTubeの再生リストURLを貼り付け"
-                                    style="flex:1;padding:10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;background:rgba(255,255,255,0.08);color:#000;font-size:13px;">
-                                <button id="save-playlist-btn" class="primary-btn"
-                                    style="white-space:nowrap;padding:10px 16px;">保存</button>
-                            </div>
-                            <p style="font-size:11px;color:#666;margin-top:4px;">例:
-                                https://youtube.com/playlist?list=PLxxxxxx</p>
-                        </div>
                     </div>
                 </div>
 

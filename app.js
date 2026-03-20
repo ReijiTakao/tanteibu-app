@@ -12990,13 +12990,18 @@ function renderCrewRiggingInfo(crew) {
     const riggingData = (DB.load('rigging_data') || {})[boatId];
     const riggingHistory = ((DB.load('rigging_history') || {})[boatId] || []);
 
-    let html = `
-        <div style="padding:10px;background:rgba(99,102,241,0.08);border-radius:10px;border:1px solid rgba(99,102,241,0.2);margin-bottom:12px;">
-            <div style="font-size:14px;font-weight:700;margin-bottom:8px;">⛵ ${boatName}</div>`;
+    // シート順メンバーリスト（配艇のcrewIds順 = 1番シートから）
+    const seatOrder = crewAlloc ? crewAlloc.crewIds : crew.memberIds;
+
+    let html = '';
+
+    // 船＋リギング情報カード
+    html += `<div style="padding:12px;background:rgba(99,102,241,0.08);border-radius:12px;border:1px solid rgba(99,102,241,0.2);margin-bottom:12px;">
+        <div style="font-size:16px;font-weight:700;margin-bottom:10px;">⛵ ${boatName}</div>`;
 
     if (riggingData) {
         const items = [
-            { label: 'ピン・トゥ・ヒール', value: riggingData.pinToHeel, unit: 'cm' },
+            { label: 'P2H', value: riggingData.pinToHeel, unit: 'cm' },
             { label: 'デプス', value: riggingData.depth, unit: 'cm' },
             { label: 'スパン', value: riggingData.span, unit: 'cm' },
             { label: '足角', value: riggingData.pitch, unit: '°' },
@@ -13004,26 +13009,47 @@ function renderCrewRiggingInfo(crew) {
         ].filter(i => i.value);
 
         if (items.length > 0) {
-            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">';
+            html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;">';
             items.forEach(item => {
-                html += `<div style="padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:6px;">
+                html += `<div style="padding:6px 8px;background:rgba(255,255,255,0.06);border-radius:6px;text-align:center;">
                     <div style="font-size:10px;color:var(--text-muted);">${item.label}</div>
-                    <div style="font-size:14px;font-weight:600;">${item.value}${item.unit}</div>
+                    <div style="font-size:15px;font-weight:700;">${item.value}${item.unit}</div>
                 </div>`;
             });
             html += '</div>';
             if (riggingData.memo) {
-                html += `<div style="margin-top:8px;font-size:12px;color:var(--text-secondary);padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:6px;">📝 ${riggingData.memo}</div>`;
+                html += `<div style="font-size:12px;color:var(--text-secondary);padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:6px;">📝 ${riggingData.memo}</div>`;
             }
             const savedDate = riggingData.savedAt ? new Date(riggingData.savedAt).toLocaleDateString('ja-JP') : '';
             const savedBy = riggingData.savedBy || '';
-            html += `<div style="margin-top:6px;font-size:10px;color:var(--text-muted);text-align:right;">最終更新: ${savedDate} ${savedBy}</div>`;
+            html += `<div style="margin-top:6px;font-size:10px;color:var(--text-muted);text-align:right;">最終更新: ${savedDate} ${savedBy ? `<strong style="color:var(--accent-color);">${savedBy}</strong>` : ''}</div>`;
         } else {
             html += '<div style="font-size:12px;color:var(--text-muted);padding:8px;">リギングデータが未入力です</div>';
         }
     } else {
         html += '<div style="font-size:12px;color:var(--text-muted);padding:8px;">リギングデータが未入力です</div>';
     }
+    html += '</div>';
+
+    // シート順メンバー一覧
+    html += `<div style="margin-bottom:12px;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;">🪑 シート順</div>`;
+    const isCoxed = crew.boatType?.includes('+');
+    seatOrder.forEach((memberId, idx) => {
+        const user = state.users.find(u => u.id === memberId);
+        const name = user ? user.name : '不明';
+        const role = user?.role || '';
+        const isCox = role === 'cox' || role === 'Cox';
+        const isUpdater = riggingData?.savedBy === name;
+        const seatNum = isCoxed && idx === seatOrder.length - 1 ? 'Cox' : `#${idx + 1}`;
+        const highlight = isUpdater ? 'background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);' : 'background:rgba(255,255,255,0.04);border:1px solid transparent;';
+        html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;${highlight}border-radius:8px;margin-bottom:4px;">
+            <span style="font-size:11px;font-weight:700;color:var(--accent-color);min-width:28px;">${seatNum}</span>
+            <span style="font-size:13px;font-weight:${isUpdater ? '700' : '500'};flex:1;">${name}</span>
+            ${isUpdater ? '<span style="font-size:10px;color:var(--accent-color);background:rgba(99,102,241,0.2);padding:1px 6px;border-radius:4px;">🔧 更新者</span>' : ''}
+            ${isCox ? '<span style="font-size:10px;background:rgba(99,102,241,0.2);color:#818cf8;padding:1px 6px;border-radius:4px;">Cox</span>' : ''}
+        </div>`;
+    });
     html += '</div>';
 
     // リギング履歴（直近5件）
@@ -13038,7 +13064,7 @@ function renderCrewRiggingInfo(crew) {
                 entry.height ? `H:${entry.height}` : ''
             ].filter(Boolean).join(' / ');
             html += `<div style="font-size:11px;padding:4px 8px;color:var(--text-secondary);border-left:2px solid rgba(99,102,241,0.3);margin-bottom:4px;">
-                <span style="color:var(--text-muted);">${date}</span> ${changes} <span style="color:var(--text-muted);">${entry.savedBy || ''}</span>
+                <span style="color:var(--text-muted);">${date}</span> ${changes} <strong style="color:var(--accent-color);">${entry.savedBy || ''}</strong>
             </div>`;
         });
         html += '</div>';
@@ -13085,7 +13111,7 @@ function openCrewDetail(hash) {
         </div>
         <div style="margin-bottom:8px;">
             <input type="text" id="crew-name-input" value="${crew.name || ''}" placeholder="クルー名を入力（例: インカレエイトメンバー）"
-                style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid var(--border-color);border-radius:6px;font-size:13px;background:var(--bg-light,#f8fafc);color:var(--text-primary);"
+                style="width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:18px;font-weight:700;background:var(--bg-light,#f8fafc);color:var(--text-primary);"
                 onchange="saveCrewName('${hash}', this.value)">
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;">
