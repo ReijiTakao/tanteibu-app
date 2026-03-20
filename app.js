@@ -5904,14 +5904,14 @@ function renderBoatAllocation() {
     }
 
     // サマリー
-    const totalCrew = allocations.reduce((sum, a) => sum + (a.crewIds || []).length, 0);
+    const totalCrew = activeAllocations.reduce((sum, a) => sum + (a.crewIds || []).length, 0);
 
     section.innerHTML = `
         <div class="ba-container">
             <div class="ba-header" onclick="this.parentElement.classList.toggle('collapsed')">
                 <div class="ba-title">
                     <span>🚣 配艇表</span>
-                    <span class="ba-count">${allocations.length}組 / ${totalCrew}人</span>
+                    <span class="ba-count">${activeAllocations.length}組 / ${totalCrew}人</span>
                 </div>
                 <span class="accordion-icon">▼</span>
             </div>
