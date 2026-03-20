@@ -11539,7 +11539,7 @@ async function editMemberName(userId) {
     // Supabase同期
     if (DB.useSupabase && isSupabaseReady()) {
         try {
-            await SupabaseDB.updateProfile(userId, { display_name: newName.trim() });
+            await SupabaseDB.updateProfile(userId, { name: newName.trim() });
         } catch (e) { console.warn('Name sync failed:', e); }
     }
     renderMemberRoster();
