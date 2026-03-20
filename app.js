@@ -11537,12 +11537,9 @@ async function editMemberName(userId) {
     user.name = newName.trim();
     DB.save('users', state.users);
     // Supabase同期
-    if (DB.useSupabase && window.SupabaseConfig?.db) {
+    if (DB.useSupabase && isSupabaseReady()) {
         try {
-            await window.SupabaseConfig.db.getClient()
-                .from('profiles')
-                .update({ display_name: newName.trim() })
-                .eq('id', userId);
+            await SupabaseDB.updateProfile(userId, { display_name: newName.trim() });
         } catch (e) { console.warn('Name sync failed:', e); }
     }
     renderMemberRoster();
