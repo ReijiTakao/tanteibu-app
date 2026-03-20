@@ -11507,8 +11507,11 @@ function renderMemberRoster() {
                     <button onclick="deleteMember('${m.id}')" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:16px;" title="削除">✕</button>
                    </td>`
                 : (isAdmin ? '<td></td>' : '');
+            const editBtn = isAdmin
+                ? `<button onclick="editMemberName('${m.id}')" style="background:none;border:none;cursor:pointer;font-size:12px;color:#2196f3;padding:0 4px;" title="名前を変更">✏️</button>`
+                : '';
             html += `<tr style="border-bottom:1px solid #eee;${bgStyle}">
-                <td style="padding:6px 8px;">${m.name || '不明'}${isMe ? ' <span style="color:#2196f3;font-size:11px;">（自分）</span>' : ''}</td>
+                <td style="padding:6px 8px;">${editBtn}${m.name || '不明'}${isMe ? ' <span style="color:#2196f3;font-size:11px;">（自分）</span>' : ''}</td>
                 <td style="text-align:center;padding:6px 4px;">${roleEmoji(m.role)} ${m.role || '-'}</td>
                 <td style="text-align:center;padding:6px 4px;">${genderLabel(m.gender)}</td>
                 ${deleteBtn}
@@ -11519,6 +11522,31 @@ function renderMemberRoster() {
     });
 
     container.innerHTML = html;
+}
+
+// 管理者: メンバー名を変更
+async function editMemberName(userId) {
+    if (!state.currentUser || state.currentUser.role !== '管理者') {
+        showToast('管理者権限が必要です', 'error');
+        return;
+    }
+    const user = state.users.find(u => u.id === userId);
+    if (!user) return;
+    const newName = prompt(`表示名を変更してください`, user.name || '');
+    if (newName === null || !newName.trim()) return;
+    user.name = newName.trim();
+    DB.save('users', state.users);
+    // Supabase同期
+    if (DB.useSupabase && window.SupabaseConfig?.db) {
+        try {
+            await window.SupabaseConfig.db.getClient()
+                .from('profiles')
+                .update({ display_name: newName.trim() })
+                .eq('id', userId);
+        } catch (e) { console.warn('Name sync failed:', e); }
+    }
+    renderMemberRoster();
+    showToast(`${newName.trim()} に変更しました`, 'success');
 }
 
 // 管理者: メンバーを削除（非在籍に変更）
