@@ -13535,6 +13535,50 @@ function openCrewNoteEdit(hash, date) {
         showToast('保存しました', 'success');
     };
 
+    // --- 実行メニュー表示 ---
+    const menusContainer = document.getElementById('crew-note-menus');
+    const menusGroup = document.getElementById('crew-note-menus-group');
+    if (menusContainer && memberIds.length > 0 && date) {
+        // メンバーの練習ノートからrowingMenusを集約
+        const allMenus = [];
+        memberIds.forEach(uid => {
+            const notes = (state.practiceNotes || []).filter(n =>
+                n.userId === uid && n.date === date &&
+                (n.scheduleType === SCHEDULE_TYPES.BOAT || n.scheduleType === '乗艇')
+            );
+            notes.forEach(n => {
+                if (n.rowingMenus && n.rowingMenus.length > 0) {
+                    n.rowingMenus.forEach(m => {
+                        if (!allMenus.find(am => am.title === m.title && am.distance === m.distance)) {
+                            allMenus.push(m);
+                        }
+                    });
+                }
+            });
+        });
+
+        if (allMenus.length > 0) {
+            menusGroup.classList.remove('hidden');
+            let totalDist = 0;
+            menusContainer.innerHTML = allMenus.map(m => {
+                const dist = m.distance ? parseInt(m.distance) : 0;
+                totalDist += dist;
+                return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(37,99,235,0.08);border-radius:8px;border:1px solid rgba(37,99,235,0.15);">
+                    <span style="font-size:14px;">🏁</span>
+                    <span style="font-size:13px;font-weight:600;flex:1;">${m.title || 'メニュー'}</span>
+                    ${dist > 0 ? `<span style="font-size:12px;color:var(--accent-color);font-weight:600;">${(dist / 1000).toFixed(1)}km</span>` : ''}
+                </div>`;
+            }).join('');
+            if (totalDist > 0) {
+                menusContainer.innerHTML += `<div style="text-align:right;font-size:11px;color:var(--text-muted);margin-top:2px;">合計: ${(totalDist / 1000).toFixed(1)}km</div>`;
+            }
+        } else {
+            menusGroup.classList.add('hidden');
+        }
+    } else if (menusGroup) {
+        menusGroup.classList.add('hidden');
+    }
+
     // メンバーの振り返りを描画（既存クルーの場合のみ）
     const reflectionsContainer = document.getElementById('crew-note-member-reflections');
     const reflectionsGroup = document.getElementById('crew-note-member-reflections-group');
