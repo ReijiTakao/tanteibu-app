@@ -13603,10 +13603,8 @@ function openCrewNoteEdit(hash, date) {
 
         if (allMenus.length > 0) {
             menusGroup.classList.remove('hidden');
-            let totalDist = 0;
             menusContainer.innerHTML = allMenus.map((m, idx) => {
                 const dist = m.distance ? parseInt(m.distance) : 0;
-                totalDist += dist;
                 const distStr = dist > 0 ? `${(dist / 1000).toFixed(1)}km` : '';
                 // メニュー表示: normalモードとonoffモードで分岐
                 let menuLabel = '';
@@ -13626,8 +13624,18 @@ function openCrewNoteEdit(hash, date) {
                     ${distStr ? `<span style="font-size:12px;color:var(--accent-color);font-weight:600;">${distStr}</span>` : ''}
                 </div>`;
             }).join('');
-            if (totalDist > 0) {
-                menusContainer.innerHTML += `<div style="text-align:right;font-size:12px;font-weight:700;color:var(--accent-color);margin-top:4px;padding:4px 10px;background:rgba(37,99,235,0.05);border-radius:6px;">合計: ${(totalDist / 1000).toFixed(1)}km</div>`;
+            // 合計距離は練習記録のrowingDistance（アップ/ダウン込み）から取得
+            let totalRowingDist = 0;
+            for (const uid of memberIds) {
+                const notes = (state.practiceNotes || []).filter(n =>
+                    n.userId === uid && n.date === date &&
+                    (n.scheduleType === SCHEDULE_TYPES.BOAT || n.scheduleType === '乗艇')
+                );
+                const dist = notes.reduce((sum, n) => sum + (n.rowingDistance || 0), 0);
+                if (dist > 0) { totalRowingDist = dist; break; }
+            }
+            if (totalRowingDist > 0) {
+                menusContainer.innerHTML += `<div style="text-align:right;font-size:12px;font-weight:700;color:var(--accent-color);margin-top:4px;padding:4px 10px;background:rgba(37,99,235,0.05);border-radius:6px;">合計: ${(totalRowingDist / 1000).toFixed(1)}km</div>`;
             }
         } else {
             menusGroup.classList.add('hidden');
