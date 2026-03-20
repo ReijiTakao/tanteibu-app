@@ -5722,7 +5722,7 @@ function renderBoatAllocation() {
             ${crewHtml}
             ${oarHtml}
             <div style="display:flex;justify-content:flex-end;margin-top:6px;">
-                <button class="secondary-btn small-btn" style="font-size:10px;padding:3px 8px;" onclick="event.stopPropagation();toggleAllocationStatus('${alloc.id}','saved')">💾 保存</button>
+                <button class="secondary-btn small-btn" style="font-size:10px;padding:3px 8px;" onclick="event.stopPropagation();toggleAllocationStatus('${alloc.id}','saved')">🔀 分艇</button>
             </div>
         </div>`;
     });
@@ -5752,7 +5752,7 @@ function renderBoatAllocation() {
         cardsHtml += `
         <div class="timeline-block" style="margin-top:12px;">
             <div class="ov-card-header" onclick="this.parentElement.classList.toggle('expanded')">
-                <span class="timeline-time-label" style="font-size:12px;">💾 保存中の配艇</span>
+                <span class="timeline-time-label" style="font-size:12px;">🔀 分艇中</span>
                 <div class="ov-summary-badges">
                     <span class="ov-badge" style="background:rgba(255,255,255,0.08);">${savedAllocations.length}件</span>
                     <span class="ov-expand-icon">▶</span>
@@ -6165,7 +6165,7 @@ function toggleAllocationStatus(allocId, newStatus) {
         window.SupabaseConfig.db.saveBoatAllocation(alloc).catch(e => console.warn('Alloc status save failed:', e));
     }
     renderBoatAllocation();
-    showToast(newStatus === 'saved' ? '配艇を保存しました' : '配艇を復元しました');
+    showToast(newStatus === 'saved' ? '分艇モードにしました' : '配艇を復元しました');
 }
 
 function saveAllocation() {
