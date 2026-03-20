@@ -13186,22 +13186,27 @@ function openCrewDetail(hash) {
                 const subBoat = (state.boats || []).find(b => b.id === sub.boatId);
                 const subBoatName = subBoat ? `${subBoat.name} (${sub.boatType || '?'})` : sub.boatType || '?';
                 // サブクルーメンバーの今日の練習ノートからメニューを取得
-                const subMenus = [];
-                (sub.crewIds || []).forEach(memberId => {
+                let subMenus = [];
+                for (const memberId of (sub.crewIds || [])) {
                     const memberNote = (state.practiceNotes || []).find(n =>
                         n.userId === memberId && n.date === today &&
                         (n.scheduleType === SCHEDULE_TYPES.BOAT || n.scheduleType === '乗艇')
                     );
                     if (memberNote && memberNote.rowingMenus && memberNote.rowingMenus.length > 0) {
-                        memberNote.rowingMenus.forEach(m => {
-                            if (!subMenus.find(sm => sm.title === m.title && sm.distance === m.distance)) {
-                                subMenus.push(m);
-                            }
-                        });
+                        subMenus = memberNote.rowingMenus;
+                        break;
                     }
-                });
+                }
                 const menuStr = subMenus.length > 0
-                    ? subMenus.map(m => `${m.title || ''}${m.distance ? ' ' + m.distance + 'm' : ''}`).join(', ')
+                    ? subMenus.map(m => {
+                        let label = '';
+                        if (m.mode === 'onoff') {
+                            label = `ON${m.onDist || 0}/OFF${m.offDist || 0}`;
+                        } else {
+                            label = m.rate ? `SR${m.rate}` : '—';
+                        }
+                        return label + (m.distance ? ` ${(m.distance / 1000).toFixed(1)}km` : '');
+                    }).join(', ')
                     : '<span style="color:var(--text-muted);">メニュー未登録</span>';
                 const subColor = BA_TYPE_COLORS[sub.boatType] || '#6b7280';
                 menuItems += `
@@ -13539,38 +13544,49 @@ function openCrewNoteEdit(hash, date) {
     const menusContainer = document.getElementById('crew-note-menus');
     const menusGroup = document.getElementById('crew-note-menus-group');
     if (menusContainer && memberIds.length > 0 && date) {
-        // メンバーの練習ノートからrowingMenusを集約
-        const allMenus = [];
-        memberIds.forEach(uid => {
+        // メンバーの練習ノートからrowingMenusを集約（最初に見つけた1人分を使う）
+        let allMenus = [];
+        for (const uid of memberIds) {
             const notes = (state.practiceNotes || []).filter(n =>
                 n.userId === uid && n.date === date &&
                 (n.scheduleType === SCHEDULE_TYPES.BOAT || n.scheduleType === '乗艇')
             );
-            notes.forEach(n => {
+            for (const n of notes) {
                 if (n.rowingMenus && n.rowingMenus.length > 0) {
-                    n.rowingMenus.forEach(m => {
-                        if (!allMenus.find(am => am.title === m.title && am.distance === m.distance)) {
-                            allMenus.push(m);
-                        }
-                    });
+                    allMenus = n.rowingMenus;
+                    break;
                 }
-            });
-        });
+            }
+            if (allMenus.length > 0) break;
+        }
 
         if (allMenus.length > 0) {
             menusGroup.classList.remove('hidden');
             let totalDist = 0;
-            menusContainer.innerHTML = allMenus.map(m => {
+            menusContainer.innerHTML = allMenus.map((m, idx) => {
                 const dist = m.distance ? parseInt(m.distance) : 0;
                 totalDist += dist;
+                const distStr = dist > 0 ? `${(dist / 1000).toFixed(1)}km` : '';
+                // メニュー表示: normalモードとonoffモードで分岐
+                let menuLabel = '';
+                if (m.mode === 'onoff') {
+                    menuLabel = `ON${m.onDist || 0}m / OFF${m.offDist || 0}m`;
+                    if (m.rate) menuLabel += ` @SR${m.rate}`;
+                } else {
+                    menuLabel = m.rate ? `SR${m.rate}` : `メニュー${idx + 1}`;
+                    if (m.avgTime) menuLabel += ` (${m.avgTime})`;
+                }
+                if (m.sets && m.sets > 1) menuLabel += ` ×${m.sets}`;
+                if (m.wind) menuLabel += ` 🌬${m.wind}`;
+
                 return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(37,99,235,0.08);border-radius:8px;border:1px solid rgba(37,99,235,0.15);">
                     <span style="font-size:14px;">🏁</span>
-                    <span style="font-size:13px;font-weight:600;flex:1;">${m.title || 'メニュー'}</span>
-                    ${dist > 0 ? `<span style="font-size:12px;color:var(--accent-color);font-weight:600;">${(dist / 1000).toFixed(1)}km</span>` : ''}
+                    <span style="font-size:13px;font-weight:600;flex:1;">${menuLabel}</span>
+                    ${distStr ? `<span style="font-size:12px;color:var(--accent-color);font-weight:600;">${distStr}</span>` : ''}
                 </div>`;
             }).join('');
             if (totalDist > 0) {
-                menusContainer.innerHTML += `<div style="text-align:right;font-size:11px;color:var(--text-muted);margin-top:2px;">合計: ${(totalDist / 1000).toFixed(1)}km</div>`;
+                menusContainer.innerHTML += `<div style="text-align:right;font-size:12px;font-weight:700;color:var(--accent-color);margin-top:4px;padding:4px 10px;background:rgba(37,99,235,0.05);border-radius:6px;">合計: ${(totalDist / 1000).toFixed(1)}km</div>`;
             }
         } else {
             menusGroup.classList.add('hidden');
