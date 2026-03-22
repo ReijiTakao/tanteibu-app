@@ -1407,6 +1407,65 @@ const SupabaseDB = {
     }
 };
 
+// ========================================
+// Realtime同期（WebSocket）
+// ========================================
+let _realtimeChannel = null;
+
+/**
+ * Supabase Realtimeを設定して、テーブル変更をリアルタイムに受信する
+ * @param {Object} callbacks - テーブルごとのコールバック
+ *   { onScheduleChange, onAllocationChange, onPracticeNoteChange }
+ */
+function setupRealtimeSync(callbacks = {}) {
+    if (!isSupabaseReady()) {
+        console.warn('⚠️ Supabase not ready, skipping realtime setup');
+        return;
+    }
+
+    // 既存チャンネルがあれば解除
+    if (_realtimeChannel) {
+        _supabaseClient.removeChannel(_realtimeChannel);
+    }
+
+    _realtimeChannel = _supabaseClient
+        .channel('app-realtime')
+        .on('postgres_changes',
+            { event: '*', schema: 'public', table: 'schedules' },
+            (payload) => {
+                console.log('🔄 Realtime: schedules', payload.eventType);
+                if (callbacks.onScheduleChange) callbacks.onScheduleChange(payload);
+            }
+        )
+        .on('postgres_changes',
+            { event: '*', schema: 'public', table: 'boat_allocations' },
+            (payload) => {
+                console.log('🔄 Realtime: boat_allocations', payload.eventType);
+                if (callbacks.onAllocationChange) callbacks.onAllocationChange(payload);
+            }
+        )
+        .on('postgres_changes',
+            { event: '*', schema: 'public', table: 'practice_notes' },
+            (payload) => {
+                console.log('🔄 Realtime: practice_notes', payload.eventType);
+                if (callbacks.onPracticeNoteChange) callbacks.onPracticeNoteChange(payload);
+            }
+        )
+        .subscribe((status) => {
+            console.log(`📡 Realtime status: ${status}`);
+        });
+
+    console.log('✅ Realtime sync setup complete');
+}
+
+function teardownRealtimeSync() {
+    if (_realtimeChannel && _supabaseClient) {
+        _supabaseClient.removeChannel(_realtimeChannel);
+        _realtimeChannel = null;
+        console.log('🔌 Realtime disconnected');
+    }
+}
+
 // グローバルに公開
 window.SupabaseConfig = {
     init: initSupabaseClient,
@@ -1420,5 +1479,7 @@ window.SupabaseConfig = {
     getOrCreateProfile,
     db: SupabaseDB,
     supabaseUrl: SUPABASE_URL,
-    suppressSyncIndicator
+    suppressSyncIndicator,
+    setupRealtimeSync,
+    teardownRealtimeSync
 };

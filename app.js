@@ -157,6 +157,9 @@ async function handleEmailLogin() {
                 updateConcept2UI();
                 showScreen('main-screen');
                 console.log('[Login] ✅ Main screen displayed');
+
+                // Step 5: Realtime同期を開始
+                startRealtimeSync();
             } catch (screenErr) {
                 console.error('[Login] Step 4 failed (initMainScreen):', screenErr);
                 // それでもメイン画面表示を試みる
@@ -2723,6 +2726,76 @@ async function syncConcept2() {
 // =========================================
 // メイン画面初期化
 // =========================================
+// ========================================
+// Realtime同期: 他ユーザーの変更をリアルタイムに反映
+// ========================================
+let _realtimeDebounceTimer = null;
+
+function startRealtimeSync() {
+    if (!window.SupabaseConfig?.setupRealtimeSync) return;
+
+    window.SupabaseConfig.setupRealtimeSync({
+        // --- スケジュール変更 ---
+        onScheduleChange: (payload) => {
+            // デバウンス: 連続イベントをまとめて処理
+            clearTimeout(_realtimeDebounceTimer);
+            _realtimeDebounceTimer = setTimeout(async () => {
+                try {
+                    // 表示中の週のスケジュールをSupabaseから再取得
+                    const weekDates = getWeekDates(state.currentWeekOffset || 0);
+                    const startDate = weekDates[0];
+                    const endDate = weekDates[weekDates.length - 1];
+                    const fresh = await SupabaseDB.loadSchedules(startDate, endDate);
+                    if (fresh && fresh.length >= 0) {
+                        // 該当週のスケジュールを差し替え
+                        state.schedules = state.schedules.filter(s =>
+                            s.date < startDate || s.date > endDate
+                        ).concat(fresh);
+                        DB.saveLocal('schedules', state.schedules);
+                        renderWeekCalendar();
+                        console.log(`🔄 Realtime: schedules synced (${fresh.length} records)`);
+                    }
+                } catch (e) {
+                    console.warn('Realtime schedule sync error:', e);
+                }
+            }, 500);
+        },
+
+        // --- 配艇変更 ---
+        onAllocationChange: (payload) => {
+            setTimeout(async () => {
+                try {
+                    const fresh = await SupabaseDB.loadBoatAllocations();
+                    if (fresh) {
+                        state.boatAllocations = fresh;
+                        DB.saveLocal('boat_allocations', state.boatAllocations);
+                        if (typeof renderBoatAllocation === 'function') renderBoatAllocation();
+                        console.log(`🔄 Realtime: allocations synced (${fresh.length})`);
+                    }
+                } catch (e) {
+                    console.warn('Realtime allocation sync error:', e);
+                }
+            }, 300);
+        },
+
+        // --- 練習ノート変更 ---
+        onPracticeNoteChange: (payload) => {
+            setTimeout(async () => {
+                try {
+                    const fresh = await SupabaseDB.loadPracticeNotes();
+                    if (fresh) {
+                        state.practiceNotes = fresh;
+                        DB.saveLocal('practice_notes', state.practiceNotes);
+                        console.log(`🔄 Realtime: practice_notes synced (${fresh.length})`);
+                    }
+                } catch (e) {
+                    console.warn('Realtime practice note sync error:', e);
+                }
+            }, 300);
+        }
+    });
+}
+
 function initMainScreen() {
     const user = state.currentUser;
 
@@ -3630,10 +3703,10 @@ function saveSchedule() {
         autoCreatePracticeNote(newSchedule);
     }
 
-    // クルー自動登録（乗艇練習でクルーメンバーがいる場合）
-    if (newSchedule.scheduleType === SCHEDULE_TYPES.BOAT && newSchedule.crewIds && newSchedule.crewIds.length > 0) {
-        autoRegisterCrewSchedules(newSchedule);
-    }
+    // クルー自動登録は無効化（各自が自分で登録する運用に変更）
+    // if (newSchedule.scheduleType === SCHEDULE_TYPES.BOAT && newSchedule.crewIds && newSchedule.crewIds.length > 0) {
+    //     autoRegisterCrewSchedules(newSchedule);
+    // }
 
     closeInputModal();
     renderWeekCalendar();
