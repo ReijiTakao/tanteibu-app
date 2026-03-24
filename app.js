@@ -3038,7 +3038,14 @@ function createTimeSlotHTML(dateStr, timeSlot) {
                 break;
             case SCHEDULE_TYPES.BOAT:
                 badgeClass = 'boat';
-                badgeText = `🚣 ${schedule.scheduleType}`;
+                // クルー名があればクルー名で表示、なければ船名
+                const allocForDisplay = schedule.allocationId
+                    ? (state.boatAllocations || []).find(a => a.id === schedule.allocationId) : null;
+                if (allocForDisplay?.crewName) {
+                    badgeText = `🚣 ${allocForDisplay.crewName}`;
+                } else {
+                    badgeText = `🚣 ${schedule.scheduleType}`;
+                }
                 const boat = state.boats.find(b => b.id === schedule.boatId);
                 details = boat ? boat.name : '';
                 break;
@@ -5795,6 +5802,7 @@ function renderBoatAllocation() {
         <div class="ba-card used" style="--ba-accent: ${color};">
             <div class="ba-card-top" onclick="openAllocationModal('${alloc.id}')">
                 <div class="ba-boat-info">
+                    ${alloc.crewName ? `<span style="font-weight:700;font-size:15px;color:var(--text-primary);display:block;margin-bottom:2px;">${alloc.crewName}</span>` : ''}
                     <span class="ba-boat-name">${boat.name}</span>
                     <span class="ba-type-badge" style="background:${color};">${type}</span>
                 </div>
@@ -6090,6 +6098,22 @@ function openAllocationModal(allocId, preselectedBoatId) {
         parentContainer.innerHTML = '';
     }
 
+    // クルー名入力
+    let crewNameContainer = document.getElementById('alloc-crew-name-container');
+    if (!crewNameContainer) {
+        crewNameContainer = document.createElement('div');
+        crewNameContainer.id = 'alloc-crew-name-container';
+        crewNameContainer.style.cssText = 'margin-bottom:12px;';
+        const seatContainer = document.getElementById('alloc-seat-container');
+        seatContainer.parentElement.insertBefore(crewNameContainer, seatContainer);
+    }
+    crewNameContainer.innerHTML = `
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">🏷️ クルー名（任意）</label>
+        <input type="text" id="alloc-crew-name" placeholder="例: エイトA、対校フォア" 
+            style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border-color);font-size:14px;background:var(--bg-light);color:var(--text-primary);"
+            value="${alloc?.crewName || ''}">
+    `;
+
     // 削除ボタン表示
     document.getElementById('delete-allocation-btn').classList.toggle('hidden', !alloc);
 }
@@ -6272,10 +6296,13 @@ function saveAllocation() {
     // オール取得
     const oarIds = Array.from(document.querySelectorAll('.alloc-oar-select')).map(s => s.value).filter(v => v);
 
+    const crewName = document.getElementById('alloc-crew-name')?.value?.trim() || null;
+
     const alloc = {
         id: currentAllocationId || generateId(),
         boatId,
         boatType,
+        crewName,
         crewDetailsMap,
         crewIds,
         oarIds,

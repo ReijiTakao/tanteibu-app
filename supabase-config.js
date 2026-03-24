@@ -1016,12 +1016,14 @@ const SupabaseDB = {
 
     // --- 配艇表 ---
     _toAllocationRow(a) {
+        const crewDetailsMap = { ...(a.crewDetailsMap || {}) };
+        if (a.crewName) crewDetailsMap.__crewName = a.crewName;
         return {
             id: a.id,
             boat_id: a.boatId || null,
             boat_type: a.boatType || null,
             crew_ids: a.crewIds || [],
-            crew_details_map: a.crewDetailsMap || {},
+            crew_details_map: crewDetailsMap,
             oar_ids: a.oarIds || [],
             status: a.status || 'active',
             parent_allocation_id: a.parentAllocationId || null,
@@ -1030,12 +1032,17 @@ const SupabaseDB = {
         };
     },
     _fromAllocationRow(r) {
+        const rawMap = r.crew_details_map || {};
+        const crewName = rawMap.__crewName || null;
+        const crewDetailsMap = { ...rawMap };
+        delete crewDetailsMap.__crewName;
         return {
             id: r.id,
             boatId: r.boat_id,
             boatType: r.boat_type,
             crewIds: r.crew_ids || [],
-            crewDetailsMap: r.crew_details_map || {},
+            crewDetailsMap: crewDetailsMap,
+            crewName: crewName,
             oarIds: r.oar_ids || [],
             status: r.status || 'active',
             parentAllocationId: r.parent_allocation_id || null,
