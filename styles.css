@@ -2247,9 +2247,11 @@ body {
     max-height: 85vh;
     background-color: var(--bg-white);
     border-radius: 20px 20px 0 0;
-    overflow-y: auto;
     animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: var(--shadow-xl);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .modal-content.large-modal {
@@ -2305,6 +2307,9 @@ body {
 
 .modal-body {
     padding: 16px;
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .modal-footer {

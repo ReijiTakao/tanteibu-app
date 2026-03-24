@@ -3687,10 +3687,18 @@ function saveSchedule() {
     DB.save('schedules', state.schedules); // ローカル保存
     DB.addAuditLog('予定', newSchedule.id, schedule ? '更新' : '作成', { after: newSchedule });
 
-    // Supabase同期（非同期）
-    DB.saveSchedule(newSchedule).catch(e => {
-        console.error('Schedule sync failed:', e);
-        showToast('スケジュール同期エラー: ' + (e?.message || JSON.stringify(e)), 'error');
+    // Supabase同期（非同期・リトライ付き）
+    DB.saveSchedule(newSchedule).catch(async (e) => {
+        console.warn('Schedule sync failed (1st attempt), retrying...', e);
+        // 1秒後にリトライ
+        await new Promise(r => setTimeout(r, 1000));
+        try {
+            await DB.saveSchedule(newSchedule);
+            showToast('同期完了', 'success');
+        } catch (e2) {
+            console.error('Schedule sync failed (2nd attempt):', e2);
+            showToast('同期エラー: もう一度保存してください', 'error');
+        }
     });
 
     // 自動でクルーノートを作成（乗艇練習の場合）
@@ -6146,7 +6154,7 @@ function renderAllocSeatInputs(boatType, existingCrewMap) {
     if (!container) return;
 
     const OAR_COUNT_BY_BOAT = {
-        '1x': { seats: [], oars: 2, sweep: false },
+        '1x': { seats: ['B'], oars: 2, sweep: false },
         '2x': { seats: ['S', 'B'], oars: 4, sweep: false },
         '2-': { seats: ['S', 'B'], oars: 2, sweep: true },
         '4x': { seats: ['S', '3', '2', 'B'], oars: 8, sweep: false },
@@ -6159,7 +6167,7 @@ function renderAllocSeatInputs(boatType, existingCrewMap) {
     const seats = config.seats;
 
     if (seats.length === 0) {
-        container.innerHTML = '<p style="color:#888;font-size:12px;">シングルはクルー設定不要</p>';
+        container.innerHTML = '<p style="color:#888;font-size:12px;">シートが設定されていません</p>';
         return;
     }
 
@@ -6523,9 +6531,11 @@ function renderPracticeNotesList() {
     // 午後を午前より上にするソート値（午後=0, 午前=1, その他=2）
     const timeSlotOrder = (ts) => ts === '午後' ? 0 : ts === '午前' ? 1 : 2;
 
+    const todayStr = new Date().toISOString().slice(0, 10);
     let myNotes = state.practiceNotes
         .filter(n => n.userId === state.currentUser.id)
         .filter(n => n.date >= weekStartStr && n.date <= weekEndStr)
+        .filter(n => n.date <= todayStr) // 未来日のノートは非表示
         .sort((a, b) => b.date.localeCompare(a.date) || timeSlotOrder(getTimeSlot(a)) - timeSlotOrder(getTimeSlot(b)));
 
     // フィルター適用
