@@ -8647,6 +8647,18 @@ function _isTimeBasedMenu(selectedMenu) {
 
 // 週間ランキング
 let weeklyRankingSortMode = 'time'; // 'time' or 'idt'
+let weeklyRankingOffset = 0; // 0=今週, -1=先週, -2=先々週...
+
+// 週を前後に変更
+function changeRankingWeek(delta, reset) {
+    if (reset) {
+        weeklyRankingOffset = 0;
+    } else {
+        weeklyRankingOffset += delta;
+        if (weeklyRankingOffset > 0) weeklyRankingOffset = 0; // 未来の週は不可
+    }
+    renderWeeklyRanking();
+}
 
 function renderWeeklyRanking() {
     const container = document.getElementById('weekly-ranking');
@@ -8670,14 +8682,25 @@ function renderWeeklyRanking() {
         }
     }
 
-    // 今週の開始日を計算（火曜日）
+    // 週の開始日を計算（火曜日起算 + offset）
     const now = new Date();
     const dayOfWeek = now.getDay();
-    // 火曜日起算: (day + 5) % 7 で火曜からのオフセット
     const tuesdayOffset = (dayOfWeek + 5) % 7;
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - tuesdayOffset);
-    monday.setHours(0, 0, 0, 0);
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - tuesdayOffset + (weeklyRankingOffset * 7));
+    weekStart.setHours(0, 0, 0, 0);
+
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
+
+    // 週ラベルを更新
+    const weekLabel = document.getElementById('ranking-week-label');
+    if (weekLabel) {
+        const ws = weekStart;
+        const we = new Date(weekEnd); we.setDate(we.getDate() - 1);
+        const label = `${ws.getMonth() + 1}/${ws.getDate()} 〜 ${we.getMonth() + 1}/${we.getDate()}`;
+        weekLabel.textContent = weeklyRankingOffset === 0 ? `${label}（今週）` : label;
+    }
 
     const isTimeMenu = _isTimeBasedMenu(selectedMenu);
     const is2000m = selectedMenu === '2000m TT';
@@ -8692,7 +8715,7 @@ function renderWeeklyRanking() {
         if (!user || user.gender !== selectedGender) return;
         if (!includeInactive && user.status === '非在籍') return;
         const sessionDate = new Date(session.date);
-        if (sessionDate < monday || session.menuKey !== selectedMenu) return;
+        if (sessionDate < weekStart || sessionDate >= weekEnd || session.menuKey !== selectedMenu) return;
         if (session.rawId) seenRawIds.add(session.rawId);
         // 体重フォールバック
         if (!session.weight) session.weight = getWeightForDate(session.userId, session.date);
@@ -8709,7 +8732,7 @@ function renderWeeklyRanking() {
         if (!user || user.gender !== selectedGender) return;
         if (!includeInactive && user.status === '非在籍') return;
         const recordDate = new Date(record.date);
-        if (recordDate < monday || record.menuKey !== selectedMenu) return;
+        if (recordDate < weekStart || recordDate >= weekEnd || record.menuKey !== selectedMenu) return;
         if (record.rawId && seenRawIds.has(record.rawId)) return; // 重複スキップ
         if (!record.weight) record.weight = getWeightForDate(record.userId, record.date);
         // timeDisplayしかない場合はtime(秒)をパース
@@ -15780,12 +15803,12 @@ function switchRankingType(type) {
 }
 
 function getWeekStartDate() {
-    // 火曜日起算
+    // 火曜日起算 + weeklyRankingOffset
     const now = new Date();
     const dayOfWeek = now.getDay();
     const tuesdayOffset = (dayOfWeek + 5) % 7;
     const tuesday = new Date(now);
-    tuesday.setDate(now.getDate() - tuesdayOffset);
+    tuesday.setDate(now.getDate() - tuesdayOffset + (weeklyRankingOffset * 7));
     tuesday.setHours(0, 0, 0, 0);
     return tuesday;
 }

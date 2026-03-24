@@ -439,6 +439,16 @@
                     <!-- 週間ランキング -->
                     <div id="weekly-ranking-section">
                         <h3 class="section-title">🏆 週間ランキング</h3>
+                        <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;">
+                            <button class="icon-btn" onclick="changeRankingWeek(-1)"
+                                style="font-size:18px;padding:4px 8px;">◀</button>
+                            <span id="ranking-week-label"
+                                style="font-size:13px;font-weight:600;min-width:140px;text-align:center;color:var(--text-primary);"></span>
+                            <button class="icon-btn" onclick="changeRankingWeek(1)"
+                                style="font-size:18px;padding:4px 8px;">▶</button>
+                            <button class="secondary-btn" onclick="changeRankingWeek(0, true)"
+                                style="font-size:11px;padding:4px 8px;">今週</button>
+                        </div>
                         <div class="ranking-filters">
                             <div class="toggle-group gender-toggle" style="margin-bottom: 8px;">
                                 <button class="toggle-btn gender-btn active" data-gender="man"
