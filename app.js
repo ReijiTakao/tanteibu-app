@@ -7414,10 +7414,10 @@ function savePracticeNote() {
         window.SupabaseConfig.db.savePracticeNote(note).catch(e => console.warn('Practice note sync failed:', e));
     }
 
-    // クルー共有: 乗艇メニューを同クルーのメンバーに自動コピー
-    if (note.rowingMenus && note.rowingMenus.length > 0 && note.scheduleType === SCHEDULE_TYPES.BOAT) {
-        shareRowingMenuToCrew(note);
-    }
+    // クルー共有は廃止: メニューはクルーノート→個人ノートの新フローで管理
+    // if (note.rowingMenus && note.rowingMenus.length > 0 && note.scheduleType === SCHEDULE_TYPES.BOAT) {
+    //     shareRowingMenuToCrew(note);
+    // }
 
     // 保存後、閲覧モードに切り替え
     const schedule = state.schedules.find(s => s.id === note.scheduleId);
@@ -13652,6 +13652,108 @@ function renderCrewMemberReflections(crew) {
 }
 
 // ノート編集モーダル (hashがnullの場合は新規作成)
+// クルーノートメニュー入力行を追加
+function addCrewMenuRow(existingMenu) {
+    const container = document.getElementById('crew-note-menus');
+    if (!container) return;
+    const m = existingMenu || {};
+    const rowId = 'crew-menu-' + Date.now() + Math.random().toString(36).substr(2, 4);
+    const row = document.createElement('div');
+    row.className = 'crew-menu-row';
+    row.id = rowId;
+    row.style.cssText = 'padding:8px;background:rgba(37,99,235,0.06);border-radius:8px;border:1px solid rgba(37,99,235,0.12);';
+    row.innerHTML = `
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
+            <input type="text" class="crew-menu-label" placeholder="メニュー名（例: W.U.、SR20）"
+                value="${m.label || m.rate && 'SR' + m.rate || ''}"
+                style="flex:1;padding:6px 8px;font-size:13px;border-radius:6px;">
+            <button type="button" onclick="this.closest('.crew-menu-row').remove()"
+                style="width:24px;height:24px;border:none;background:#ef4444;color:white;border-radius:50%;font-size:14px;cursor:pointer;">✕</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;">
+            <div>
+                <label style="font-size:10px;color:var(--text-muted);">距離(m)</label>
+                <input type="number" class="crew-menu-distance" placeholder="3000"
+                    value="${m.distance || ''}" style="padding:4px 6px;font-size:12px;border-radius:4px;">
+            </div>
+            <div>
+                <label style="font-size:10px;color:var(--text-muted);">レート</label>
+                <input type="number" class="crew-menu-rate" placeholder="20"
+                    value="${m.rate || ''}" style="padding:4px 6px;font-size:12px;border-radius:4px;">
+            </div>
+            <div>
+                <label style="font-size:10px;color:var(--text-muted);">時間(分)</label>
+                <input type="number" class="crew-menu-duration" placeholder="12"
+                    value="${m.duration || ''}" style="padding:4px 6px;font-size:12px;border-radius:4px;">
+            </div>
+        </div>
+    `;
+    container.appendChild(row);
+}
+
+// クルーノートフォームからメニュー配列を取得
+function getCrewMenusFromForm() {
+    const rows = document.querySelectorAll('.crew-menu-row');
+    const menus = [];
+    rows.forEach(row => {
+        const label = row.querySelector('.crew-menu-label')?.value?.trim() || '';
+        const distance = row.querySelector('.crew-menu-distance')?.value || '';
+        const rate = row.querySelector('.crew-menu-rate')?.value || '';
+        const duration = row.querySelector('.crew-menu-duration')?.value || '';
+        if (label || distance || rate || duration) {
+            menus.push({ label, distance: parseInt(distance) || 0, rate: parseInt(rate) || 0, duration: parseInt(duration) || 0 });
+        }
+    });
+    return menus;
+}
+
+// クルーノートのメニューをメンバー全員の個人練習ノートに自動反映
+function syncCrewMenusToMemberNotes(memberIds, date, timeSlot, rowingMenus) {
+    let syncCount = 0;
+    memberIds.forEach(uid => {
+        // 該当日・乗艇の練習ノートを検索
+        let memberNote = state.practiceNotes.find(n =>
+            n.userId === uid && n.date === date &&
+            (n.scheduleType === SCHEDULE_TYPES.BOAT || n.scheduleType === '乗艇') &&
+            (!n.timeSlot || n.timeSlot === timeSlot)
+        );
+
+        if (memberNote) {
+            memberNote.rowingMenus = JSON.parse(JSON.stringify(rowingMenus));
+            memberNote.updatedAt = new Date().toISOString();
+        } else {
+            // 練習ノートがなければ新規作成
+            memberNote = {
+                id: generateId(),
+                scheduleId: null,
+                userId: uid,
+                date: date,
+                timeSlot: timeSlot,
+                scheduleType: '乗艇',
+                rowingMenus: JSON.parse(JSON.stringify(rowingMenus)),
+                reflection: '',
+                ergoRecordIds: [],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            state.practiceNotes.push(memberNote);
+        }
+        syncCount++;
+
+        // Supabase同期
+        if (DB.useSupabase && window.SupabaseConfig?.db) {
+            window.SupabaseConfig.db.savePracticeNote(memberNote).catch(e =>
+                console.warn('Crew menu sync to member failed:', e)
+            );
+        }
+    });
+
+    DB.save('practice_notes', state.practiceNotes);
+    if (syncCount > 0) {
+        console.log(`🔄 Crew menus synced to ${syncCount} member notes`);
+    }
+}
+
 function openCrewNoteEdit(hash, date) {
     const modal = document.getElementById('crew-note-modal');
     const dateInput = document.getElementById('crew-note-date');
@@ -13710,14 +13812,28 @@ function openCrewNoteEdit(hash, date) {
 
         // 既存の場合は hash, memberIds, boatType は設定済み
 
+        // 午前/午後の取得
+        const activeTimeSlotBtn = document.querySelector('.crew-timeslot-btn.active');
+        const timeSlot = activeTimeSlotBtn?.dataset.value || '午前';
+
+        // メニューの取得
+        const rowingMenus = getCrewMenusFromForm();
+
         saveCrewNote({
             date: newDate,
             memberIds: memberIds,
             boatType: boatType,
             content: newContent,
-            videoUrls: [], // 動画はクルー単位の再生リストに移行
+            timeSlot: timeSlot,
+            rowingMenus: rowingMenus,
+            videoUrls: [],
             authorId: state.currentUser.id
         });
+
+        // メニューをクルーメンバー全員の個人練習ノートに自動反映
+        if (rowingMenus.length > 0) {
+            syncCrewMenusToMemberNotes(memberIds, newDate, timeSlot, rowingMenus);
+        }
 
         // 自分の振り返りを練習ノートにも保存
         const myReflectionEl = document.getElementById('crew-my-reflection');
@@ -13734,9 +13850,10 @@ function openCrewNoteEdit(hash, date) {
                     scheduleId: null,
                     userId: state.currentUser.id,
                     date: newDate,
-                    timeSlot: '',
+                    timeSlot: timeSlot,
                     scheduleType: '乗艇',
                     reflection: myReflection,
+                    rowingMenus: rowingMenus,
                     ergoRecordIds: [],
                     crewNoteId: null,
                     createdAt: new Date().toISOString(),
@@ -13757,12 +13874,20 @@ function openCrewNoteEdit(hash, date) {
         showToast('保存しました', 'success');
     };
 
-    // --- 実行メニュー表示 ---
+    // --- 午前/午後ボタン初期値 ---
+    const existingTimeSlot = note?.timeSlot || '';
+    document.querySelectorAll('.crew-timeslot-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.value === (existingTimeSlot || '午前'));
+    });
+
+    // --- 実行メニュー入力フォーム ---
     const menusContainer = document.getElementById('crew-note-menus');
     const menusGroup = document.getElementById('crew-note-menus-group');
-    if (menusContainer && memberIds.length > 0 && date) {
-        // メンバーの練習ノートからrowingMenusを集約（最初に見つけた1人分を使う）
-        let allMenus = [];
+    menusContainer.innerHTML = '';
+
+    // 既存メニューを取得（クルーノート直接 or メンバーの練習ノートから）
+    let existingMenus = note?.rowingMenus || [];
+    if (existingMenus.length === 0 && memberIds.length > 0 && date) {
         for (const uid of memberIds) {
             const notes = (state.practiceNotes || []).filter(n =>
                 n.userId === uid && n.date === date &&
@@ -13770,55 +13895,19 @@ function openCrewNoteEdit(hash, date) {
             );
             for (const n of notes) {
                 if (n.rowingMenus && n.rowingMenus.length > 0) {
-                    allMenus = n.rowingMenus;
+                    existingMenus = n.rowingMenus;
                     break;
                 }
             }
-            if (allMenus.length > 0) break;
+            if (existingMenus.length > 0) break;
         }
-
-        if (allMenus.length > 0) {
-            menusGroup.classList.remove('hidden');
-            menusContainer.innerHTML = allMenus.map((m, idx) => {
-                const dist = m.distance ? parseInt(m.distance) : 0;
-                const distStr = dist > 0 ? `${(dist / 1000).toFixed(1)}km` : '';
-                // メニュー表示: normalモードとonoffモードで分岐
-                let menuLabel = '';
-                if (m.mode === 'onoff') {
-                    menuLabel = `ON${m.onDist || 0}m / OFF${m.offDist || 0}m`;
-                    if (m.rate) menuLabel += ` @SR${m.rate}`;
-                } else {
-                    menuLabel = m.rate ? `SR${m.rate}` : `メニュー${idx + 1}`;
-                    if (m.avgTime) menuLabel += ` (${m.avgTime})`;
-                }
-                if (m.sets && m.sets > 1) menuLabel += ` ×${m.sets}`;
-                if (m.wind) menuLabel += ` 🌬${m.wind}`;
-
-                return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(37,99,235,0.08);border-radius:8px;border:1px solid rgba(37,99,235,0.15);">
-                    <span style="font-size:14px;">🏁</span>
-                    <span style="font-size:13px;font-weight:600;flex:1;">${menuLabel}</span>
-                    ${distStr ? `<span style="font-size:12px;color:var(--accent-color);font-weight:600;">${distStr}</span>` : ''}
-                </div>`;
-            }).join('');
-            // 合計距離は練習記録のrowingDistance（アップ/ダウン込み）から取得
-            let totalRowingDist = 0;
-            for (const uid of memberIds) {
-                const notes = (state.practiceNotes || []).filter(n =>
-                    n.userId === uid && n.date === date &&
-                    (n.scheduleType === SCHEDULE_TYPES.BOAT || n.scheduleType === '乗艇')
-                );
-                const dist = notes.reduce((sum, n) => sum + (n.rowingDistance || 0), 0);
-                if (dist > 0) { totalRowingDist = dist; break; }
-            }
-            if (totalRowingDist > 0) {
-                menusContainer.innerHTML += `<div style="text-align:right;font-size:12px;font-weight:700;color:var(--accent-color);margin-top:4px;padding:4px 10px;background:rgba(37,99,235,0.05);border-radius:6px;">合計: ${(totalRowingDist / 1000).toFixed(1)}km</div>`;
-            }
-        } else {
-            menusGroup.classList.add('hidden');
-        }
-    } else if (menusGroup) {
-        menusGroup.classList.add('hidden');
     }
+
+    // メニュー行を描画
+    if (existingMenus.length > 0) {
+        existingMenus.forEach(m => addCrewMenuRow(m));
+    }
+    menusGroup.classList.remove('hidden');
 
     // メンバーの振り返りを描画（既存クルーの場合のみ）
     const reflectionsContainer = document.getElementById('crew-note-member-reflections');
