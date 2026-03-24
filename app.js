@@ -7403,7 +7403,7 @@ function savePracticeNote() {
             }
 
             // 全メンバーの個人ノートにも反映
-            syncCrewMenusToMemberNotes(uniqueCrewIds, note.date, note.timeSlot || schedule.timeSlot || '', rowingMenus);
+            syncCrewMenusToMemberNotes(uniqueCrewIds, note.date, note.timeSlot || schedule.timeSlot || '', rowingMenus, note.totalDistance);
         }
     }
 
@@ -7606,7 +7606,8 @@ function getWeightMenuData() {
 }
 
 // =========================================
-// 乗艇メニュー入力（距離バー方式）
+// 乗艇メニュー入力（距離バー方式 - prefix対応）
+// prefix='rowing' → 個人ノート, prefix='crew' → クルーノート
 // =========================================
 
 // 強度→色マップ
@@ -7619,20 +7620,19 @@ const INTENSITY_COLORS = {
 };
 
 // 距離バーを更新（各区間の距離＋セット数から）
-function updateDistanceBar() {
-    const bar = document.getElementById('rowing-distance-bar');
+function updateDistanceBar(prefix = 'rowing') {
+    const bar = document.getElementById(`${prefix}-distance-bar`);
     if (!bar) return;
 
-    const totalInput = document.getElementById('rowing-total-distance');
+    const totalInput = document.getElementById(`${prefix}-total-distance`);
     const totalDist = parseInt(totalInput?.value) || 0;
-    const items = document.querySelectorAll('#rowing-menu-list .rowing-menu-item');
+    const items = document.querySelectorAll(`#${prefix}-menu-list .rowing-menu-item`);
 
     if (totalDist === 0 && items.length === 0) {
         bar.innerHTML = '<span style="margin:auto;font-size:11px;color:var(--text-muted);">総距離を入力して区間を追加</span>';
         return;
     }
 
-    // 各区間の距離を計算
     const segments = [];
     let usedDist = 0;
     items.forEach(item => {
@@ -7648,11 +7648,12 @@ function updateDistanceBar() {
         const rate = (mode === 'onoff')
             ? (item.querySelector('.rm-rate-onoff')?.value || '')
             : (item.querySelector('.rm-rate')?.value || '');
+        const itemLabel = item.querySelector('.rm-label')?.value?.trim() || '';
         const totalSegDist = dist * sets;
         usedDist += totalSegDist;
 
         if (totalSegDist > 0) {
-            segments.push({ dist: totalSegDist, intensity, rate, sets, unitDist: dist });
+            segments.push({ dist: totalSegDist, intensity, rate, sets, unitDist: dist, label: itemLabel });
         }
     });
 
@@ -7662,21 +7663,20 @@ function updateDistanceBar() {
         return;
     }
 
-    // セグメントをバーに描画
     let html = '';
     segments.forEach(seg => {
         const pct = Math.min((seg.dist / baseDist) * 100, 100);
         if (pct <= 0) return;
         const color = INTENSITY_COLORS[seg.intensity] || INTENSITY_COLORS[''];
-        const label = seg.sets > 1 ? `${(seg.unitDist / 1000).toFixed(1)}km×${seg.sets}` : `${(seg.dist / 1000).toFixed(1)}km`;
+        const distLabel = seg.sets > 1 ? `${(seg.unitDist / 1000).toFixed(1)}km×${seg.sets}` : `${(seg.dist / 1000).toFixed(1)}km`;
+        const displayLabel = seg.label || distLabel;
         const rateLabel = seg.rate ? ` SR${seg.rate}` : '';
-        html += `<div style="width:${pct}%;background:${color.bg};display:flex;align-items:center;justify-content:center;flex-direction:column;min-width:30px;transition:width 0.3s;" title="${seg.intensity || ''} ${label}${rateLabel}">
-            <span style="font-size:10px;font-weight:700;color:${color.text};line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95%;text-shadow:0 1px 2px rgba(0,0,0,0.3);">${label}</span>
+        html += `<div style="width:${pct}%;background:${color.bg};display:flex;align-items:center;justify-content:center;flex-direction:column;min-width:30px;transition:width 0.3s;" title="${seg.intensity || ''} ${displayLabel}${rateLabel}">
+            <span style="font-size:10px;font-weight:700;color:${color.text};line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95%;text-shadow:0 1px 2px rgba(0,0,0,0.3);">${displayLabel}</span>
             ${rateLabel ? `<span style="font-size:9px;color:${color.text};opacity:0.85;text-shadow:0 1px 2px rgba(0,0,0,0.3);">${rateLabel}</span>` : ''}
         </div>`;
     });
 
-    // 残り距離
     const remaining = baseDist - usedDist;
     if (remaining > 0 && totalDist > 0) {
         const pct = (remaining / baseDist) * 100;
@@ -7687,38 +7687,41 @@ function updateDistanceBar() {
 
     bar.innerHTML = html;
 
-    // 総距離の自動計算（総距離が空の場合はusedDistを表示）
     if (!totalInput?.value && usedDist > 0) {
         totalInput.placeholder = usedDist.toString();
     }
 }
 
-function addRowingMenuItem(mode, rate, distance, avgTime, onDist, offDist, wind, intensity, sets, setAvgTimes) {
-    const list = document.getElementById('rowing-menu-list');
+function addRowingMenuItem(prefix = 'rowing', mode, rate, distance, avgTime, onDist, offDist, wind, intensity, sets, setAvgTimes, label) {
+    const list = document.getElementById(`${prefix}-menu-list`);
     if (!list) return;
 
     const isOnOff = mode === 'onoff';
     const windVal = wind || '';
     const intensityVal = intensity || '';
     const setsVal = sets || '';
+    const labelVal = label || '';
     const item = document.createElement('div');
     item.className = 'rowing-menu-item';
     item.dataset.mode = isOnOff ? 'onoff' : 'normal';
+    item.dataset.prefix = prefix;
 
     item.innerHTML = `
         <div class="rm-header">
+            <input type="text" class="rm-label" placeholder="区間名（W.U.等）" value="${labelVal}" oninput="updateDistanceBar('${prefix}')"
+                style="flex:1;max-width:120px;font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid #d1d5db;background:var(--bg-white);color:var(--text-primary);">
             <div class="rm-mode-toggle">
-                <button type="button" class="rm-mode-btn ${!isOnOff ? 'active' : ''}" data-mode="normal" onclick="switchRowingMenuMode(this)">通常</button>
-                <button type="button" class="rm-mode-btn ${isOnOff ? 'active' : ''}" data-mode="onoff" onclick="switchRowingMenuMode(this)">On/Off</button>
+                <button type="button" class="rm-mode-btn ${!isOnOff ? 'active' : ''}" data-mode="normal" onclick="switchRowingMenuMode(this, '${prefix}')">通常</button>
+                <button type="button" class="rm-mode-btn ${isOnOff ? 'active' : ''}" data-mode="onoff" onclick="switchRowingMenuMode(this, '${prefix}')">On/Off</button>
             </div>
-            <select class="rm-intensity" onchange="updateDistanceBar()" style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid #d1d5db;background:var(--bg-white);color:var(--text-primary);">
+            <select class="rm-intensity" onchange="updateDistanceBar('${prefix}')" style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid #d1d5db;background:var(--bg-white);color:var(--text-primary);">
                 <option value="" ${!intensityVal ? 'selected' : ''}>🏷️ 強度</option>
                 <option value="UT" ${intensityVal === 'UT' ? 'selected' : ''}>🔵 UT</option>
                 <option value="TP" ${intensityVal === 'TP' ? 'selected' : ''}>🟢 TP</option>
                 <option value="短力" ${intensityVal === '短力' ? 'selected' : ''}>🟠 短力</option>
                 <option value="RP" ${intensityVal === 'RP' || intensityVal === 'レースペース' ? 'selected' : ''}>🔴 RP</option>
             </select>
-            <input type="number" class="rm-sets" placeholder="Set" min="1" max="20" value="${setsVal}" oninput="updateSetAvgFields(this); updateDistanceBar()" style="width:45px;font-size:12px;padding:3px 4px;border-radius:6px;border:1px solid #d1d5db;text-align:center;background:var(--bg-white);color:var(--text-primary);">
+            <input type="number" class="rm-sets" placeholder="Set" min="1" max="20" value="${setsVal}" oninput="updateSetAvgFields(this); updateDistanceBar('${prefix}')" style="width:45px;font-size:12px;padding:3px 4px;border-radius:6px;border:1px solid #d1d5db;text-align:center;background:var(--bg-white);color:var(--text-primary);">
             <select class="rm-wind" style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid #d1d5db;background:var(--bg-white);color:var(--text-primary);">
                 <option value="" ${!windVal ? 'selected' : ''}>🌬️ 風</option>
                 <option value="無風" ${windVal === '無風' ? 'selected' : ''}>🔵 無風</option>
@@ -7727,16 +7730,16 @@ function addRowingMenuItem(mode, rate, distance, avgTime, onDist, offDist, wind,
                 <option value="逆風" ${windVal === '逆風' ? 'selected' : ''}>↙️ 逆風</option>
                 <option value="順逆両方" ${windVal === '順逆両方' ? 'selected' : ''}>⇅ 順逆両方</option>
             </select>
-            <button type="button" class="rm-remove-btn" onclick="this.closest('.rowing-menu-item').remove(); updateDistanceBar()">✕</button>
+            <button type="button" class="rm-remove-btn" onclick="this.closest('.rowing-menu-item').remove(); updateDistanceBar('${prefix}')">✕</button>
         </div>
         <div class="rm-fields rm-normal-fields" ${isOnOff ? 'style="display:none"' : ''}>
             <div class="rm-field">
                 <label>レート</label>
-                <input type="number" class="rm-rate" placeholder="20" min="10" max="50" value="${rate || ''}" oninput="updateDistanceBar()">
+                <input type="number" class="rm-rate" placeholder="20" min="10" max="50" value="${rate || ''}" oninput="updateDistanceBar('${prefix}')">
             </div>
             <div class="rm-field">
                 <label>距離(m)</label>
-                <input type="number" class="rm-distance" placeholder="6000" min="0" step="100" value="${(!isOnOff && distance) || ''}" oninput="updateDistanceBar()">
+                <input type="number" class="rm-distance" placeholder="6000" min="0" step="100" value="${(!isOnOff && distance) || ''}" oninput="updateDistanceBar('${prefix}')">
             </div>
         </div>
         <div class="rm-fields rm-onoff-fields" ${!isOnOff ? 'style="display:none"' : ''}>
@@ -7750,32 +7753,29 @@ function addRowingMenuItem(mode, rate, distance, avgTime, onDist, offDist, wind,
             </div>
             <div class="rm-field">
                 <label>レート</label>
-                <input type="number" class="rm-rate-onoff" placeholder="28" min="10" max="50" value="${(isOnOff && rate) || ''}" oninput="updateDistanceBar()">
+                <input type="number" class="rm-rate-onoff" placeholder="28" min="10" max="50" value="${(isOnOff && rate) || ''}" oninput="updateDistanceBar('${prefix}')">
             </div>
             <div class="rm-field">
                 <label>合計(m)</label>
-                <input type="number" class="rm-distance-onoff" placeholder="3000" min="0" step="100" value="${(isOnOff && distance) || ''}" oninput="updateDistanceBar()">
+                <input type="number" class="rm-distance-onoff" placeholder="3000" min="0" step="100" value="${(isOnOff && distance) || ''}" oninput="updateDistanceBar('${prefix}')">
             </div>
         </div>
         <div class="rm-avg-section" style="margin-top:4px;"></div>
     `;
     list.appendChild(item);
 
-    // セットごとのAve入力欄を生成
     const numSets = parseInt(setsVal) || 0;
     if (numSets > 1 && setAvgTimes && setAvgTimes.length > 0) {
         _renderSetAvgFields(item, numSets, setAvgTimes);
     } else if (numSets <= 1) {
-        // 1本の場合はシンプルなAve入力
         const avgSection = item.querySelector('.rm-avg-section');
         const avgVal = avgTime || (setAvgTimes && setAvgTimes[0]) || '';
         avgSection.innerHTML = `<div class="rm-fields"><div class="rm-field"><label>Ave(/500m)</label><input type="text" class="rm-avgtime" placeholder="2:05" value="${avgVal}"></div></div>`;
     } else {
-        // セット数あり、setAvgTimesなし
         _renderSetAvgFields(item, numSets, []);
     }
 
-    updateDistanceBar();
+    updateDistanceBar(prefix);
 }
 
 // セットごとのAve入力欄を動的生成
@@ -7813,49 +7813,49 @@ function updateSetAvgFields(input) {
     _renderSetAvgFields(item, numSets, existingAvgs);
 }
 
-function switchRowingMenuMode(btn) {
+function switchRowingMenuMode(btn, prefix = 'rowing') {
     const item = btn.closest('.rowing-menu-item');
     const mode = btn.dataset.mode;
     item.dataset.mode = mode;
     item.querySelectorAll('.rm-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
     item.querySelector('.rm-normal-fields').style.display = mode === 'normal' ? '' : 'none';
     item.querySelector('.rm-onoff-fields').style.display = mode === 'onoff' ? '' : 'none';
-    updateDistanceBar();
+    updateDistanceBar(prefix);
 }
 
-function renderRowingMenuItems(items, totalDistance) {
-    const list = document.getElementById('rowing-menu-list');
+function renderRowingMenuItems(items, totalDistance, prefix = 'rowing') {
+    const list = document.getElementById(`${prefix}-menu-list`);
     if (!list) return;
     list.innerHTML = '';
 
-    // 総距離を復元
-    const totalInput = document.getElementById('rowing-total-distance');
+    const totalInput = document.getElementById(`${prefix}-total-distance`);
     if (totalInput && totalDistance) {
         totalInput.value = totalDistance;
+    } else if (totalInput) {
+        totalInput.value = '';
     }
 
     if (items && items.length > 0) {
-        items.forEach(m => addRowingMenuItem(m.mode, m.rate, m.distance, m.avgTime, m.onDist, m.offDist, m.wind, m.intensity, m.sets, m.setAvgTimes));
+        items.forEach(m => addRowingMenuItem(prefix, m.mode, m.rate, m.distance, m.avgTime, m.onDist, m.offDist, m.wind, m.intensity, m.sets, m.setAvgTimes, m.label));
     }
-    updateDistanceBar();
+    updateDistanceBar(prefix);
 }
 
-function getRowingMenuData() {
-    const items = document.querySelectorAll('#rowing-menu-list .rowing-menu-item');
+function getRowingMenuData(prefix = 'rowing') {
+    const items = document.querySelectorAll(`#${prefix}-menu-list .rowing-menu-item`);
     const data = [];
     items.forEach(item => {
         const mode = item.dataset.mode || 'normal';
         const wind = item.querySelector('.rm-wind')?.value || '';
         const intensity = item.querySelector('.rm-intensity')?.value || '';
         const sets = parseInt(item.querySelector('.rm-sets')?.value) || 0;
+        const label = item.querySelector('.rm-label')?.value?.trim() || '';
 
-        // セットごとのAve値を収集
         const setAvgInputs = item.querySelectorAll('.rm-set-avg');
         const setAvgTimes = [];
         if (setAvgInputs.length > 0) {
             setAvgInputs.forEach(el => setAvgTimes.push(el.value?.trim() || ''));
         } else {
-            // 単一Ave
             const singleAvg = item.querySelector('.rm-avgtime')?.value?.trim() || '';
             if (singleAvg) setAvgTimes.push(singleAvg);
         }
@@ -7867,59 +7867,19 @@ function getRowingMenuData() {
             const rate = parseInt(item.querySelector('.rm-rate-onoff')?.value) || 0;
             const distance = parseInt(item.querySelector('.rm-distance-onoff')?.value) || 0;
             if (onDist || offDist || rate || distance) {
-                data.push({ mode: 'onoff', onDist, offDist, rate, distance, avgTime, setAvgTimes, wind, intensity, sets: sets || undefined });
+                data.push({ mode: 'onoff', label, onDist, offDist, rate, distance, avgTime, setAvgTimes, wind, intensity, sets: sets || undefined });
             }
         } else {
             const rate = parseInt(item.querySelector('.rm-rate')?.value) || 0;
             const distance = parseInt(item.querySelector('.rm-distance')?.value) || 0;
             if (rate || distance) {
-                data.push({ mode: 'normal', rate, distance, avgTime, setAvgTimes, wind, intensity, sets: sets || undefined });
+                data.push({ mode: 'normal', label, rate, distance, avgTime, setAvgTimes, wind, intensity, sets: sets || undefined });
             }
         }
     });
     return data;
 }
 
-
-// クルー共有: 乗艇メニューを同クルーメンバーに自動コピー
-function shareRowingMenuToCrew(note) {
-    if (!note.rowingMenus || note.rowingMenus.length === 0) return;
-
-    // 同日・同艇のスケジュールを検索してクルーメンバーを特定
-    const mySchedule = state.schedules.find(s => s.id === note.scheduleId);
-    if (!mySchedule || !mySchedule.crewIds || mySchedule.crewIds.length === 0) return;
-
-    let sharedCount = 0;
-    mySchedule.crewIds.forEach(memberId => {
-        if (memberId === note.userId) return; // 自分はスキップ
-
-        // そのメンバーの同日の乗艇練習ノートを探す
-        const memberNote = state.practiceNotes.find(n =>
-            n.userId === memberId &&
-            n.date === note.date &&
-            (n.scheduleType === SCHEDULE_TYPES.BOAT || n.scheduleType === '乗艇')
-        );
-
-        if (memberNote) {
-            // 既にメニューがある場合は上書きしない
-            if (memberNote.rowingMenus && memberNote.rowingMenus.length > 0) return;
-
-            memberNote.rowingMenus = JSON.parse(JSON.stringify(note.rowingMenus));
-            memberNote.rowingMenusSharedFrom = note.userId;
-            memberNote.updatedAt = new Date().toISOString();
-            sharedCount++;
-
-            if (DB.useSupabase && window.SupabaseConfig?.db) {
-                window.SupabaseConfig.db.savePracticeNote(memberNote).catch(e => console.warn('Crew share sync failed:', e));
-            }
-        }
-    });
-
-    if (sharedCount > 0) {
-        DB.save('practice_notes', state.practiceNotes);
-        showToast(`メニューをクルー${sharedCount}人に共有しました`, 'success');
-    }
-}
 
 // =========================================
 // 練習記録フィルター
@@ -13868,64 +13828,10 @@ function renderCrewMemberReflections(crew) {
     container.innerHTML = html;
 }
 
-// ノート編集モーダル (hashがnullの場合は新規作成)
-// クルーノートメニュー入力行を追加
-function addCrewMenuRow(existingMenu) {
-    const container = document.getElementById('crew-note-menus');
-    if (!container) return;
-    const m = existingMenu || {};
-    const rowId = 'crew-menu-' + Date.now() + Math.random().toString(36).substr(2, 4);
-    const row = document.createElement('div');
-    row.className = 'crew-menu-row';
-    row.id = rowId;
-    row.style.cssText = 'padding:8px;background:rgba(37,99,235,0.06);border-radius:8px;border:1px solid rgba(37,99,235,0.12);';
-    row.innerHTML = `
-        <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
-            <input type="text" class="crew-menu-label" placeholder="メニュー名（例: W.U.、SR20）"
-                value="${m.label || m.rate && 'SR' + m.rate || ''}"
-                style="flex:1;padding:6px 8px;font-size:13px;border-radius:6px;">
-            <button type="button" onclick="this.closest('.crew-menu-row').remove()"
-                style="width:24px;height:24px;border:none;background:#ef4444;color:white;border-radius:50%;font-size:14px;cursor:pointer;">✕</button>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;">
-            <div>
-                <label style="font-size:10px;color:var(--text-muted);">距離(m)</label>
-                <input type="number" class="crew-menu-distance" placeholder="3000"
-                    value="${m.distance || ''}" style="padding:4px 6px;font-size:12px;border-radius:4px;">
-            </div>
-            <div>
-                <label style="font-size:10px;color:var(--text-muted);">レート</label>
-                <input type="number" class="crew-menu-rate" placeholder="20"
-                    value="${m.rate || ''}" style="padding:4px 6px;font-size:12px;border-radius:4px;">
-            </div>
-            <div>
-                <label style="font-size:10px;color:var(--text-muted);">時間(分)</label>
-                <input type="number" class="crew-menu-duration" placeholder="12"
-                    value="${m.duration || ''}" style="padding:4px 6px;font-size:12px;border-radius:4px;">
-            </div>
-        </div>
-    `;
-    container.appendChild(row);
-}
 
-// クルーノートフォームからメニュー配列を取得
-function getCrewMenusFromForm() {
-    const rows = document.querySelectorAll('.crew-menu-row');
-    const menus = [];
-    rows.forEach(row => {
-        const label = row.querySelector('.crew-menu-label')?.value?.trim() || '';
-        const distance = row.querySelector('.crew-menu-distance')?.value || '';
-        const rate = row.querySelector('.crew-menu-rate')?.value || '';
-        const duration = row.querySelector('.crew-menu-duration')?.value || '';
-        if (label || distance || rate || duration) {
-            menus.push({ label, distance: parseInt(distance) || 0, rate: parseInt(rate) || 0, duration: parseInt(duration) || 0 });
-        }
-    });
-    return menus;
-}
 
 // クルーノートのメニューをメンバー全員の個人練習ノートに自動反映
-function syncCrewMenusToMemberNotes(memberIds, date, timeSlot, rowingMenus) {
+function syncCrewMenusToMemberNotes(memberIds, date, timeSlot, rowingMenus, totalDistance) {
     let syncCount = 0;
     memberIds.forEach(uid => {
         // 該当日・乗艇の練習ノートを検索
@@ -13937,6 +13843,7 @@ function syncCrewMenusToMemberNotes(memberIds, date, timeSlot, rowingMenus) {
 
         if (memberNote) {
             memberNote.rowingMenus = JSON.parse(JSON.stringify(rowingMenus));
+            memberNote.totalDistance = totalDistance || 0;
             memberNote.updatedAt = new Date().toISOString();
         } else {
             // 練習ノートがなければ新規作成
@@ -13948,6 +13855,7 @@ function syncCrewMenusToMemberNotes(memberIds, date, timeSlot, rowingMenus) {
                 timeSlot: timeSlot,
                 scheduleType: '乗艇',
                 rowingMenus: JSON.parse(JSON.stringify(rowingMenus)),
+                totalDistance: totalDistance || 0,
                 reflection: '',
                 ergoRecordIds: [],
                 createdAt: new Date().toISOString(),
@@ -14033,8 +13941,10 @@ function openCrewNoteEdit(hash, date) {
         const activeTimeSlotBtn = document.querySelector('.crew-timeslot-btn.active');
         const timeSlot = activeTimeSlotBtn?.dataset.value || '午前';
 
-        // メニューの取得
-        const rowingMenus = getCrewMenusFromForm();
+        // メニューの取得（個人ノートと同じ関数を使用）
+        const rowingMenus = getRowingMenuData('crew');
+        const crewTotalDistInput = document.getElementById('crew-total-distance');
+        const crewTotalDistance = parseInt(crewTotalDistInput?.value) || 0;
 
         saveCrewNote({
             date: newDate,
@@ -14043,13 +13953,14 @@ function openCrewNoteEdit(hash, date) {
             content: newContent,
             timeSlot: timeSlot,
             rowingMenus: rowingMenus,
+            totalDistance: crewTotalDistance,
             videoUrls: [],
             authorId: state.currentUser.id
         });
 
         // メニューをクルーメンバー全員の個人練習ノートに自動反映
         if (rowingMenus.length > 0) {
-            syncCrewMenusToMemberNotes(memberIds, newDate, timeSlot, rowingMenus);
+            syncCrewMenusToMemberNotes(memberIds, newDate, timeSlot, rowingMenus, crewTotalDistance);
         }
 
         // 自分の振り返りを練習ノートにも保存
@@ -14097,13 +14008,12 @@ function openCrewNoteEdit(hash, date) {
         btn.classList.toggle('active', btn.dataset.value === (existingTimeSlot || '午前'));
     });
 
-    // --- 実行メニュー入力フォーム ---
-    const menusContainer = document.getElementById('crew-note-menus');
+    // --- 実行メニュー入力フォーム（距離バー方式 - 個人ノートと統一） ---
     const menusGroup = document.getElementById('crew-note-menus-group');
-    menusContainer.innerHTML = '';
 
     // 既存メニューを取得（クルーノート直接 or メンバーの練習ノートから）
     let existingMenus = note?.rowingMenus || [];
+    let existingTotalDist = note?.totalDistance || 0;
     if (existingMenus.length === 0 && memberIds.length > 0 && date) {
         for (const uid of memberIds) {
             const notes = (state.practiceNotes || []).filter(n =>
@@ -14113,6 +14023,7 @@ function openCrewNoteEdit(hash, date) {
             for (const n of notes) {
                 if (n.rowingMenus && n.rowingMenus.length > 0) {
                     existingMenus = n.rowingMenus;
+                    existingTotalDist = n.totalDistance || 0;
                     break;
                 }
             }
@@ -14120,10 +14031,8 @@ function openCrewNoteEdit(hash, date) {
         }
     }
 
-    // メニュー行を描画
-    if (existingMenus.length > 0) {
-        existingMenus.forEach(m => addCrewMenuRow(m));
-    }
+    // 距離バー方式で描画（prefix='crew'）
+    renderRowingMenuItems(existingMenus, existingTotalDist, 'crew');
     menusGroup.classList.remove('hidden');
 
     // メンバーの振り返りを描画（既存クルーの場合のみ）
