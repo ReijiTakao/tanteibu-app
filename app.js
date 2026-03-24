@@ -12744,7 +12744,9 @@ function createNewCrewNote(hash, memberIds, boatType, schedule) {
         memberIds: memberIds,
         boatType: boatType,
         date: schedule.date,
+        timeSlot: schedule.timeSlot || '',
         content: '',
+        rowingMenus: [],
         videoUrls: [],
         substitutes: [],
         createdAt: new Date().toISOString(),
@@ -13454,6 +13456,14 @@ function openCrewDetail(hash) {
     historyList.innerHTML = historyItems.length ? historyItems.map(n => {
         const d = formatDisplayDate(n.date);
         const contentPreview = n.content ? n.content.substring(0, 50) + (n.content.length > 50 ? '…' : '') : '';
+        // 午前/午後バッジ
+        const slotBadge = n.timeSlot ? `<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:${n.timeSlot === '午前' ? 'rgba(59,130,246,0.15);color:#2563eb' : 'rgba(249,115,22,0.15);color:#ea580c'};font-weight:600;">${n.timeSlot}</span>` : '';
+        // メニュー概要
+        const menus = n.rowingMenus || [];
+        const totalDist = menus.reduce((s, m) => s + (m.distance || 0), 0);
+        const menuSummary = menus.length > 0
+            ? `<div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">🏁 ${menus.map(m => m.label || 'SR' + (m.rate || '?')).join(' → ')}${totalDist > 0 ? ` (${(totalDist / 1000).toFixed(1)}km)` : ''}</div>`
+            : '';
         // 代打情報
         let subInfo = '';
         if (n.substitutes && n.substitutes.length > 0) {
@@ -13466,10 +13476,11 @@ function openCrewDetail(hash) {
         }
         return `<div class="history-card" onclick="openCrewNoteEdit('${hash}', '${n.date}')">
             <div class="history-card-header">
-                <span class="history-card-date">${d.month}/${d.day}（${d.weekday}）</span>
+                <span class="history-card-date">${d.month}/${d.day}（${d.weekday}）${slotBadge ? ' ' + slotBadge : ''}</span>
                 <div class="history-card-badges">
                 </div>
             </div>
+            ${menuSummary}
             ${subInfo}
             ${contentPreview ? `<div class="history-card-content">${contentPreview}</div>` : '<div class="history-card-empty">タップして記録を確認</div>'}
             <button class="crew-note-delete-btn" onclick="event.stopPropagation();deleteCrewNote('${n.id}','${hash}')" title="削除">🗑️</button>
