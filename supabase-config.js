@@ -532,6 +532,8 @@ const SupabaseDB = {
                 videoUrls: n.videoUrls,
                 lastAuthorId: n.lastAuthorId
             },
+            "rowingMenus": n.rowingMenus || null,
+            "totalDistance": n.totalDistance || null,
             note: n.content || n.note || null,
             created_by: n.lastAuthorId || n.createdBy || null,
             updated_at: n.updatedAt || new Date().toISOString()
@@ -548,6 +550,8 @@ const SupabaseDB = {
             memberIds: cd.memberIds || [],
             boatType: cd.boatType,
             content: r.note,
+            rowingMenus: r.rowingMenus || null,
+            totalDistance: r.totalDistance || null,
             videoUrls: cd.videoUrls || [],
             lastAuthorId: cd.lastAuthorId || r.created_by,
             createdAt: r.created_at,
