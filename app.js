@@ -6896,40 +6896,19 @@ function switchPracticeNoteToEdit() {
         document.getElementById('practice-note-wind-speed').value = '';
     }
 
-    // 乗艇メニュー（乗艇時: 読み取り専用表示 + クルーノートリンク）
+    // 乗艇メニュー（乗艇時: 編集可能 → 保存時にクルーノートに反映）
     const rowingMenuGroup = document.getElementById('rowing-menu-group');
     if (schedule && schedule.scheduleType === SCHEDULE_TYPES.BOAT) {
         rowingMenuGroup.classList.remove('hidden');
-        const rmList = document.getElementById('rowing-menu-list');
-        const menus = note.rowingMenus || [];
-        if (menus.length > 0) {
-            rmList.innerHTML = menus.map(m => {
-                const label = m.label || (m.rate ? `SR${m.rate}` : '---');
-                const dist = m.distance ? `${(m.distance / 1000).toFixed(1)}km` : '';
-                const dur = m.duration ? `${m.duration}分` : '';
-                return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(37,99,235,0.08);border-radius:8px;border:1px solid rgba(37,99,235,0.15);">
-                    <span style="font-size:14px;">🏁</span>
-                    <span style="font-size:13px;font-weight:600;flex:1;">${label}</span>
-                    ${dist ? `<span style="font-size:12px;color:var(--accent-color);font-weight:600;">${dist}</span>` : ''}
-                    ${dur ? `<span style="font-size:11px;color:var(--text-muted);">${dur}</span>` : ''}
-                </div>`;
-            }).join('');
-        } else {
-            rmList.innerHTML = '<p style="font-size:12px;color:var(--text-muted);margin:0;">クルーノートでメニューを入力してください</p>';
-        }
-        // クルーノートへのリンクボタン（配艇IDから対応するクルーを探す）
-        const existingLink = rowingMenuGroup.querySelector('.crew-note-link-btn');
-        if (existingLink) existingLink.remove();
-        if (schedule.crewIds && schedule.crewIds.length > 0) {
-            const linkBtn = document.createElement('button');
-            linkBtn.className = 'secondary-btn crew-note-link-btn';
-            linkBtn.style.cssText = 'margin-top:6px;padding:8px;font-size:12px;';
-            linkBtn.textContent = '📝 クルーノートで編集';
-            linkBtn.onclick = () => {
-                // クルーノートタブに切り替え
-                document.querySelector('[data-tab="tab-crew"]')?.click();
-            };
-            rowingMenuGroup.appendChild(linkBtn);
+        renderRowingMenuItems(note.rowingMenus || []);
+        // クルー全体反映の案内表示
+        let crewSyncLabel = rowingMenuGroup.querySelector('.crew-sync-label');
+        if (!crewSyncLabel) {
+            crewSyncLabel = document.createElement('p');
+            crewSyncLabel.className = 'crew-sync-label';
+            crewSyncLabel.style.cssText = 'font-size:11px;color:var(--accent-color);margin:4px 0 0;';
+            crewSyncLabel.textContent = '💡 保存するとクルー全体のメニューとして反映されます';
+            rowingMenuGroup.appendChild(crewSyncLabel);
         }
     } else {
         rowingMenuGroup.classList.add('hidden');
@@ -7397,9 +7376,33 @@ function savePracticeNote() {
         note.weightMenus = getWeightMenuData();
     }
 
-    // 乗艇メニュー: 読み取り専用のため保存時にフォームから取得しない
-    // メニューはクルーノートから自動反映されるので、既存のrowingMenusを維持
-    // (note.rowingMenus はそのまま)
+    // 乗艇メニュー: フォームから取得して自分のノート＋クルーノート＋全メンバーに反映
+    const rowingMenuGroup = document.getElementById('rowing-menu-group');
+    if (rowingMenuGroup && !rowingMenuGroup.classList.contains('hidden')) {
+        const rowingMenus = getRowingMenuData();
+        note.rowingMenus = rowingMenus;
+
+        // クルーノートとメンバー全員に反映
+        if (rowingMenus.length > 0 && schedule && schedule.crewIds && schedule.crewIds.length > 0) {
+            const allCrewIds = [schedule.userId, ...schedule.crewIds];
+            const uniqueCrewIds = [...new Set(allCrewIds)];
+
+            // 対応するクルーノートを探して更新
+            const crewNote = state.crewNotes.find(cn =>
+                cn.date === note.date &&
+                cn.memberIds && uniqueCrewIds.every(id => cn.memberIds.includes(id))
+            );
+            if (crewNote) {
+                crewNote.rowingMenus = JSON.parse(JSON.stringify(rowingMenus));
+                crewNote.updatedAt = new Date().toISOString();
+                DB.save('crew_notes', state.crewNotes);
+                DB.saveCrewNote(crewNote);
+            }
+
+            // 全メンバーの個人ノートにも反映
+            syncCrewMenusToMemberNotes(uniqueCrewIds, note.date, note.timeSlot || schedule.timeSlot || '', rowingMenus);
+        }
+    }
 
     // 体重を保存（入力されている場合のみ）
     const pnWeightInput = document.getElementById('pn-weight-input');
