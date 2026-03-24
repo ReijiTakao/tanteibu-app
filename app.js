@@ -6896,11 +6896,41 @@ function switchPracticeNoteToEdit() {
         document.getElementById('practice-note-wind-speed').value = '';
     }
 
-    // 乗艇メニュー（乗艇時のみ表示）
+    // 乗艇メニュー（乗艇時: 読み取り専用表示 + クルーノートリンク）
     const rowingMenuGroup = document.getElementById('rowing-menu-group');
     if (schedule && schedule.scheduleType === SCHEDULE_TYPES.BOAT) {
         rowingMenuGroup.classList.remove('hidden');
-        renderRowingMenuItems(note.rowingMenus || []);
+        const rmList = document.getElementById('rowing-menu-list');
+        const menus = note.rowingMenus || [];
+        if (menus.length > 0) {
+            rmList.innerHTML = menus.map(m => {
+                const label = m.label || (m.rate ? `SR${m.rate}` : '---');
+                const dist = m.distance ? `${(m.distance / 1000).toFixed(1)}km` : '';
+                const dur = m.duration ? `${m.duration}分` : '';
+                return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(37,99,235,0.08);border-radius:8px;border:1px solid rgba(37,99,235,0.15);">
+                    <span style="font-size:14px;">🏁</span>
+                    <span style="font-size:13px;font-weight:600;flex:1;">${label}</span>
+                    ${dist ? `<span style="font-size:12px;color:var(--accent-color);font-weight:600;">${dist}</span>` : ''}
+                    ${dur ? `<span style="font-size:11px;color:var(--text-muted);">${dur}</span>` : ''}
+                </div>`;
+            }).join('');
+        } else {
+            rmList.innerHTML = '<p style="font-size:12px;color:var(--text-muted);margin:0;">クルーノートでメニューを入力してください</p>';
+        }
+        // クルーノートへのリンクボタン（配艇IDから対応するクルーを探す）
+        const existingLink = rowingMenuGroup.querySelector('.crew-note-link-btn');
+        if (existingLink) existingLink.remove();
+        if (schedule.crewIds && schedule.crewIds.length > 0) {
+            const linkBtn = document.createElement('button');
+            linkBtn.className = 'secondary-btn crew-note-link-btn';
+            linkBtn.style.cssText = 'margin-top:6px;padding:8px;font-size:12px;';
+            linkBtn.textContent = '📝 クルーノートで編集';
+            linkBtn.onclick = () => {
+                // クルーノートタブに切り替え
+                document.querySelector('[data-tab="tab-crew"]')?.click();
+            };
+            rowingMenuGroup.appendChild(linkBtn);
+        }
     } else {
         rowingMenuGroup.classList.add('hidden');
         const rmList = document.getElementById('rowing-menu-list');
@@ -7367,11 +7397,9 @@ function savePracticeNote() {
         note.weightMenus = getWeightMenuData();
     }
 
-    // 乗艇メニューを保存
-    const rowingMenuGroup = document.getElementById('rowing-menu-group');
-    if (rowingMenuGroup && !rowingMenuGroup.classList.contains('hidden')) {
-        note.rowingMenus = getRowingMenuData();
-    }
+    // 乗艇メニュー: 読み取り専用のため保存時にフォームから取得しない
+    // メニューはクルーノートから自動反映されるので、既存のrowingMenusを維持
+    // (note.rowingMenus はそのまま)
 
     // 体重を保存（入力されている場合のみ）
     const pnWeightInput = document.getElementById('pn-weight-input');
