@@ -1786,13 +1786,26 @@
 
                 <!-- 乗艇メニュー詳細（乗艇時のみ表示） -->
                 <div class="form-group hidden" id="rowing-menu-group">
-                    <label>🚣 練習メニュー（任意）</label>
-                    <p class="help-text" style="margin-bottom:8px;">メニューごとにレート・距離・aveタイムを記録できます</p>
+                    <label>🚣 練習メニュー</label>
+                    <!-- 総距離入力 -->
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <span style="font-size:12px;color:var(--text-secondary);white-space:nowrap;">総距離</span>
+                        <input type="number" id="rowing-total-distance" placeholder="12000" min="0" step="500"
+                            oninput="updateDistanceBar()"
+                            style="flex:1;padding:6px 10px;font-size:14px;font-weight:600;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-white);color:var(--text-primary);">
+                        <span style="font-size:12px;color:var(--text-muted);">m</span>
+                    </div>
+                    <!-- 距離バー（ビジュアル表示） -->
+                    <div id="rowing-distance-bar"
+                        style="height:36px;border-radius:8px;overflow:hidden;background:rgba(100,116,139,0.12);margin-bottom:10px;display:flex;position:relative;cursor:default;">
+                        <!-- JSで動的に区間セグメントを生成 -->
+                    </div>
+                    <!-- 区間リスト -->
                     <div id="rowing-menu-list" class="rowing-menu-list">
                         <!-- JSで動的生成 -->
                     </div>
                     <button type="button" id="add-rowing-menu-btn" class="secondary-btn small-btn"
-                        onclick="addRowingMenuItem()">＋ メニュー追加</button>
+                        onclick="addRowingMenuItem()">＋ 区間追加</button>
                 </div>
 
                 <!-- ラン距離（ラン時のみ表示） -->
