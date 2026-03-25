@@ -7339,6 +7339,8 @@ function savePracticeNote() {
     const note = state.practiceNotes.find(n => n.id === noteId);
     if (!note) return;
 
+    const schedule = state.schedules.find(s => s.id === note.scheduleId);
+
     note.reflection = document.getElementById('practice-note-reflection').value || '';
 
     // 風速を保存
@@ -7450,7 +7452,6 @@ function savePracticeNote() {
     // }
 
     // 保存後、閲覧モードに切り替え
-    const schedule = state.schedules.find(s => s.id === note.scheduleId);
     document.getElementById('practice-note-read-body').classList.remove('hidden');
     document.getElementById('practice-note-read-footer').classList.remove('hidden');
     document.getElementById('practice-note-edit-body').classList.add('hidden');
