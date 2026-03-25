@@ -1230,13 +1230,15 @@
                     </div>
                     <button class="primary-btn weight-save-btn" onclick="saveStandaloneWeight()">体重を記録</button>
                 </div>
-                <div id="weight-history-section-standalone" style="margin-top: 12px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                        <span style="font-size:13px;color:#888;">体重推移（最近30日）</span>
-                    </div>
-                    <canvas id="weight-chart-standalone" height="150"
-                        style="width:100%;border-radius:8px;background:#1a1a2e;"></canvas>
-                    <div id="weight-history-list-standalone" style="margin-top:8px;max-height:200px;overflow-y:auto;">
+                <div id="weight-history-section-standalone" style="margin-top: 16px;">
+                    <div style="background:var(--card-gradient);border-radius:var(--border-radius);box-shadow:var(--shadow-sm);border:1px solid rgba(0,0,0,0.04);padding:16px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                            <span style="font-size:14px;font-weight:600;color:var(--text-primary);">📈 体重推移（最近30日）</span>
+                        </div>
+                        <canvas id="weight-chart-standalone" height="150"
+                            style="width:100%;border-radius:10px;background:rgba(15,23,42,0.9);"></canvas>
+                        <div id="weight-history-list-standalone" style="margin-top:12px;max-height:200px;overflow-y:auto;">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2006,12 +2008,11 @@
                 <div class="form-group">
                     <div id="alloc-oar-container"></div>
                 </div>
-
-                <div style="display:flex;gap:8px;margin-top:16px;">
-                    <button onclick="saveAllocation()" class="primary-btn" style="flex:1;">保存</button>
-                    <button id="delete-allocation-btn" onclick="deleteAllocation()" class="danger-btn hidden"
-                        style="flex:0 0 auto;padding:8px 16px;">🗑 解除</button>
-                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="delete-allocation-btn" onclick="deleteAllocation()" class="danger-btn hidden"
+                    style="flex:0 0 auto;padding:10px 20px;">🗑 解除</button>
+                <button onclick="saveAllocation()" class="primary-btn" style="flex:1;">保存</button>
             </div>
         </div>
     </div>

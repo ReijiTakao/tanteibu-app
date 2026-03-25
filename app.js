@@ -3362,20 +3362,14 @@ function onAllocationSelected(allocId) {
     // プレビュー表示（読み取り専用）
     const crewNames = Object.entries(alloc.crewDetailsMap || {}).map(([seat, uid]) => {
         const u = (state.users || []).find(u => u.id === uid);
-        return u ? `<span class="ba-crew-member"><span class="ba-seat">${seat}</span>${u.name}</span>` : '';
+        return u ? `<span class="ba-crew-chip"><span class="ba-seat-mini">${seat}</span>${u.name}</span>` : '';
     }).filter(n => n).join('');
-
-    const oarNames = (alloc.oarIds || []).map(oid => {
-        const oar = (state.oars || []).find(o => o.id === oid);
-        return oar ? oar.name : '';
-    }).filter(n => n);
 
     if (preview) {
         preview.innerHTML = `
             <div class="alloc-preview-card">
                 <div style="font-weight:600;font-size:13px;">${boat ? boat.name : ''} <span style="color:#3b82f6;">${alloc.boatType || ''}</span></div>
-                <div class="ba-crew-row" style="margin-top:4px;">${crewNames || '<span style="color:#999;">クルー未設定</span>'}</div>
-                ${oarNames.length > 0 ? `<div class="ba-oars">🏏 ${oarNames.join(', ')}</div>` : ''}
+                <div class="ba-crew-chips" style="margin-top:4px;">${crewNames || '<span style="color:#999;">クルー未設定</span>'}</div>
             </div>
         `;
     }
@@ -5084,9 +5078,13 @@ function renderTimeBlock(timeLabel, entries) {
             const boat = state.boats.find(b => b.id === group.boat.boatId);
             const boatType = group.boat.boatType || '';
             const boatName = boat?.name || '未選択';
-            const memberChips = Array.from(group.members.values())
-                .sort((a, b) => a.seat.localeCompare(b.seat))
-                .map(m => `<span class="ov-chip boat-chip">${m.name}</span>`).join('');
+            const memberChips = Array.from(group.members.entries())
+                .sort((a, b) => a[1].seat.localeCompare(b[1].seat))
+                .map(([uid, m]) => {
+                    const u = state.users.find(u => u.id === uid);
+                    const isWoman = u && u.gender === 'woman';
+                    return `<span class="ov-chip boat-chip${isWoman ? ' women-chip' : ''}">${m.name}</span>`;
+                }).join('');
             boatHtml += `<div class="ov-crew-card">
                 <div class="ov-crew-label">${boatType ? `[${boatType}]` : ''} ${boatName}</div>
                 <div class="ov-chip-row">${memberChips}</div>
@@ -5099,7 +5097,8 @@ function renderTimeBlock(timeLabel, entries) {
                 const boatType = s.boatType || '';
                 const boat = state.boats.find(b => b.id === s.boatId);
                 const label = [boatType, boat?.name].filter(Boolean).join(' ');
-                return `<span class="ov-chip boat-chip" title="${label}">${u?.name || '?'}${label ? ` (${label})` : ''}</span>`;
+                const isWoman = u && u.gender === 'woman';
+                return `<span class="ov-chip boat-chip${isWoman ? ' women-chip' : ''}" title="${label}">${u?.name || '?'}${label ? ` (${label})` : ''}</span>`;
             }).join('');
             boatHtml += `<div class="ov-crew-card"><div class="ov-chip-row">${soloChips}</div></div>`;
         }
@@ -5125,7 +5124,8 @@ function renderTimeBlock(timeLabel, entries) {
             } else if (type === SCHEDULE_TYPES.MEAL) {
                 extra = s.mealTypes ? s.mealTypes.join('/') : '';
             }
-            return `<span class="ov-chip ${cfg.cls}-chip" ${extra ? `title="${extra}"` : ''}>${u?.name || '?'}${extra ? ` <small>${extra}</small>` : ''}</span>`;
+            const isWoman = u && u.gender === 'woman';
+            return `<span class="ov-chip ${cfg.cls}-chip${isWoman ? ' women-chip' : ''}" ${extra ? `title="${extra}"` : ''}>${u?.name || '?'}${extra ? ` <small>${extra}</small>` : ''}</span>`;
         }).join('');
 
         detailHtml += `<div class="ov-type-section ${cfg.cls}-section">
@@ -5758,48 +5758,47 @@ function renderBoatAllocation() {
         const type = alloc.boatType || getBoatTypeFromBoat(boat);
         const color = BA_TYPE_COLORS[type] || '#6b7280';
 
-        // クルー表示 - 縦型テーブル
+        // クルー表示 - コンパクトチップ形式
         const crewMap = alloc.crewDetailsMap || {};
         const seatOrder = ['Cox', 'S', '7', '6', '5', '4', '3', '2', 'B'];
-        const crewRows = [];
+        const crewChips = [];
+        let isWomenCrew = false;
+        const crewUserIds = Object.values(crewMap);
+
+        // 女子判定: クルー全員がgender === 'woman'かチェック
+        if (crewUserIds.length > 0) {
+            isWomenCrew = crewUserIds.every(uid => {
+                const u = (state.users || []).find(u => u.id === uid);
+                return u && u.gender === 'woman';
+            });
+        }
+
         seatOrder.forEach(seat => {
             const uid = crewMap[seat];
             if (uid) {
                 const u = (state.users || []).find(u => u.id === uid);
-                crewRows.push({ seat, name: u ? u.name : '不明' });
+                const isWoman = u && u.gender === 'woman';
+                crewChips.push(`<span class="ba-crew-chip${isWoman ? ' women' : ''}"><span class="ba-seat-mini">${seat}</span>${u ? u.name : '不明'}</span>`);
             }
         });
         // seatOrderにない座席も追加
         Object.entries(crewMap).forEach(([seat, uid]) => {
             if (!seatOrder.includes(seat)) {
                 const u = (state.users || []).find(u => u.id === uid);
-                crewRows.push({ seat, name: u ? u.name : '不明' });
+                const isWoman = u && u.gender === 'woman';
+                crewChips.push(`<span class="ba-crew-chip${isWoman ? ' women' : ''}"><span class="ba-seat-mini">${seat}</span>${u ? u.name : '不明'}</span>`);
             }
         });
 
         let crewHtml = '';
-        if (crewRows.length > 0) {
-            const rows = crewRows.map(c =>
-                `<div class="ba-crew-table-row">
-                    <span class="ba-crew-seat">${c.seat}</span>
-                    <span class="ba-crew-name">${c.name}</span>
-                </div>`
-            ).join('');
-            crewHtml = `<div class="ba-crew-table">${rows}</div>`;
+        if (crewChips.length > 0) {
+            crewHtml = `<div class="ba-crew-chips">${crewChips.join('')}</div>`;
         } else {
             crewHtml = '<div class="ba-empty-label">クルー未設定</div>';
         }
 
-        // オール名
-        const oarNames = (alloc.oarIds || []).map(oid => {
-            const oar = (state.oars || []).find(o => o.id === oid);
-            return oar ? oar.name : '';
-        }).filter(n => n);
-        const oarHtml = oarNames.length > 0
-            ? `<div class="ba-oar-row">🏏 <span>${oarNames.join('、')}</span></div>` : '';
-
         cardsHtml += `
-        <div class="ba-card used" style="--ba-accent: ${color};">
+        <div class="ba-card used${isWomenCrew ? ' women' : ''}" style="--ba-accent: ${color};">
             <div class="ba-card-top" onclick="openAllocationModal('${alloc.id}')">
                 <div class="ba-boat-info">
                     ${alloc.crewName ? `<span style="font-weight:700;font-size:15px;color:var(--text-primary);display:block;margin-bottom:2px;">${alloc.crewName}</span>` : ''}
@@ -5809,7 +5808,6 @@ function renderBoatAllocation() {
                 <span class="ba-edit-icon">✏️</span>
             </div>
             ${crewHtml}
-            ${oarHtml}
             <div style="display:flex;justify-content:flex-end;margin-top:6px;">
                 <button class="secondary-btn small-btn" style="font-size:10px;padding:3px 8px;" onclick="event.stopPropagation();toggleAllocationStatus('${alloc.id}','saved')">🔀 分艇</button>
             </div>
@@ -6863,6 +6861,16 @@ function switchPracticeNoteToEdit() {
         }
     } else {
         crewLinkGroup.classList.add('hidden');
+    }
+
+    // エルゴ紐付け表示制御（乗艇時は非表示、エルゴ時のみ表示）
+    const ergoLinkGroup = document.getElementById('ergo-link-group');
+    if (ergoLinkGroup) {
+        if (schedule && schedule.scheduleType === SCHEDULE_TYPES.BOAT) {
+            ergoLinkGroup.classList.add('hidden');
+        } else {
+            ergoLinkGroup.classList.remove('hidden');
+        }
     }
 
     // 風速入力（乗艇時のみ表示） + Open-Meteo APIで自動取得
