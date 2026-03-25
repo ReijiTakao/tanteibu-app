@@ -1682,7 +1682,7 @@
 
             </div>
             <div class="modal-footer">
-                <button class="btn-primary full-width" id="add-new-note-btn">このクルーで新規ノート作成</button>
+                <button class="primary-btn full-width" id="add-new-note-btn">このクルーで新規ノート作成</button>
             </div>
         </div>
     </div>
@@ -1771,13 +1771,6 @@
                     </div>
                 </div>
 
-                <!-- 漕いだ距離入力（乗艇時のみ表示） -->
-                <div class="form-group hidden" id="rowing-distance-group">
-                    <label>🏅 漕いだ距離 (m)</label>
-                    <input type="number" id="practice-note-distance" placeholder="例: 12000" min="0" step="100">
-                    <p class="help-text">Mile makes champion — 漕いだ距離がマイレージランキングに反映されます</p>
-                </div>
-
                 <!-- 風速入力（乗艇時のみ表示） -->
                 <div class="form-group hidden" id="wind-speed-group">
                     <label>🌬️ 風速 (m/s)</label>
@@ -1787,14 +1780,15 @@
                 <!-- 乗艇メニュー詳細（乗艇時のみ表示） -->
                 <div class="form-group hidden" id="rowing-menu-group">
                     <label>🚣 練習メニュー</label>
-                    <!-- 総距離入力 -->
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                        <span style="font-size:12px;color:var(--text-secondary);white-space:nowrap;">総距離</span>
-                        <input type="number" id="rowing-total-distance" placeholder="12000" min="0" step="500"
+                    <!-- 漕いだ距離（総距離＝マイレージ用と統合） -->
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                        <span style="font-size:12px;color:var(--text-secondary);white-space:nowrap;">🏅 漕いだ距離</span>
+                        <input type="number" id="practice-note-distance" placeholder="12000" min="0" step="100"
                             oninput="updateDistanceBar()"
                             style="flex:1;padding:6px 10px;font-size:14px;font-weight:600;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-white);color:var(--text-primary);">
                         <span style="font-size:12px;color:var(--text-muted);">m</span>
                     </div>
+                    <p class="help-text" style="margin:0 0 8px;font-size:11px;color:var(--text-muted);">Mile makes champion — マイレージランキングに反映されます</p>
                     <!-- 距離バー（ビジュアル表示） -->
                     <div id="rowing-distance-bar"
                         style="height:36px;border-radius:8px;overflow:hidden;background:rgba(100,116,139,0.12);margin-bottom:10px;display:flex;position:relative;cursor:default;">
@@ -1919,7 +1913,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn-primary full-width" id="save-crew-note-btn">保存</button>
+                <button class="primary-btn full-width" id="save-crew-note-btn">保存</button>
             </div>
         </div>
     </div>

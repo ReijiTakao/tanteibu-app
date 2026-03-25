@@ -6777,6 +6777,30 @@ textarea {
     color: #dc2626;
 }
 
+.pn-menu-chip-up {
+    background: rgba(156, 163, 175, 0.12);
+}
+
+.pn-menu-chip-up .pn-menu-chip-label {
+    color: #6b7280;
+}
+
+.pn-menu-chip-down {
+    background: rgba(156, 163, 175, 0.12);
+}
+
+.pn-menu-chip-down .pn-menu-chip-label {
+    color: #6b7280;
+}
+
+.pn-menu-chip-tech {
+    background: rgba(234, 179, 8, 0.08);
+}
+
+.pn-menu-chip-tech .pn-menu-chip-label {
+    color: #ca8a04;
+}
+
 /* 乗艇: 風情報 */
 .pn-card-wind {
     font-size: 11px;
@@ -6988,6 +7012,18 @@ textarea {
 
 .pn-rv-intensity-race {
     background: #ef4444;
+}
+
+.pn-rv-intensity-up {
+    background: #9ca3af;
+}
+
+.pn-rv-intensity-down {
+    background: #9ca3af;
+}
+
+.pn-rv-intensity-tech {
+    background: #eab308;
 }
 
 .pn-rv-wind {
