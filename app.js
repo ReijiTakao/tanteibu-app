@@ -7616,6 +7616,7 @@ const INTENSITY_COLORS = {
     'up': { bg: 'rgba(156,163,175,0.6)', text: '#fff' },
     'down': { bg: 'rgba(156,163,175,0.6)', text: '#fff' },
     '技練': { bg: 'rgba(234,179,8,0.7)', text: '#fff' },
+    'ノーワーク': { bg: 'rgba(107,114,128,0.5)', text: '#fff' },
     '': { bg: 'rgba(100,116,139,0.5)', text: '#fff' }
 };
 
@@ -7723,6 +7724,7 @@ function addRowingMenuItem(prefix = 'rowing', mode, rate, distance, avgTime, onD
                 <option value="RP" ${intensityVal === 'RP' || intensityVal === 'レースペース' ? 'selected' : ''}>🔴 RP</option>
                 <option value="技練" ${intensityVal === '技練' ? 'selected' : ''}>🟡 技練</option>
                 <option value="down" ${intensityVal === 'down' ? 'selected' : ''}>⬇️ down</option>
+                <option value="ノーワーク" ${intensityVal === 'ノーワーク' ? 'selected' : ''}>⛔ ノーワーク</option>
             </select>
             <input type="number" class="rm-sets" placeholder="Set" min="1" max="20" value="${setsVal}" oninput="updateSetAvgFields(this); updateDistanceBar('${prefix}')" style="width:45px;font-size:12px;padding:3px 4px;border-radius:6px;border:1px solid #d1d5db;text-align:center;background:var(--bg-white);color:var(--text-primary);">
             <select class="rm-wind" style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid #d1d5db;background:var(--bg-white);color:var(--text-primary);">
@@ -13626,11 +13628,22 @@ function openCrewDetail(hash) {
     const crewMemberIds = new Set(crew.memberIds);
     const boatSchedules = (state.schedules || []).filter(s => {
         if (s.scheduleType !== SCHEDULE_TYPES.BOAT && s.scheduleType !== '乗艇') return false;
-        if (!s.crewIds || s.crewIds.length === 0) return false;
-        // クルーメンバーと一致するスケジュールを検索
-        const schedCrew = new Set(s.crewIds);
+        // crewIds または crewDetailsMap のいずれかでマッチ
+        const schedCrew = new Set();
+        if (s.crewIds) s.crewIds.forEach(id => schedCrew.add(id));
+        if (s.crewDetailsMap) Object.values(s.crewDetailsMap).forEach(id => schedCrew.add(id));
         if (s.userId) schedCrew.add(s.userId);
-        return crew.memberIds.every(id => schedCrew.has(id));
+        if (schedCrew.size === 0) return false;
+        // クルーメンバーの少なくとも1人がスケジュールに含まれているかチェック
+        return crew.memberIds.some(id => schedCrew.has(id));
+    });
+    // 同日同timeSlotのスケジュールを重複排除
+    const scheduleKeys = new Set();
+    const uniqueBoatSchedules = boatSchedules.filter(s => {
+        const key = `${s.date}_${s.timeSlot || ''}`;
+        if (scheduleKeys.has(key)) return false;
+        scheduleKeys.add(key);
+        return true;
     });
 
     // 既存クルーノートのdate+timeSlotのセットを作成
@@ -13645,7 +13658,7 @@ function openCrewDetail(hash) {
     });
 
     // スケジュールからノート未作成分を追加
-    boatSchedules.forEach(s => {
+    uniqueBoatSchedules.forEach(s => {
         const key = `${s.date}_${s.timeSlot || ''}`;
         if (!existingNoteKeys.has(key)) {
             historyEntries.push({ type: 'schedule', schedule: s, date: s.date, timeSlot: s.timeSlot || '' });
@@ -13695,16 +13708,29 @@ function openCrewDetail(hash) {
                 <button class="crew-note-delete-btn" onclick="event.stopPropagation();deleteCrewNote('${n.id}','${hash}')" title="削除">🗑️</button>
             </div>`;
         } else {
-            // スケジュールのみ（ノート未作成）
+            // スケジュールのみ（ノート未作成）→ 対応する個人ノートからメニュー情報を取得
             const s = entry.schedule;
             const d = formatDisplayDate(s.date);
             const slotBadge = s.timeSlot ? `<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:${s.timeSlot === '午前' ? 'rgba(59,130,246,0.15);color:#2563eb' : 'rgba(249,115,22,0.15);color:#ea580c'};font-weight:600;">${s.timeSlot}</span>` : '';
+            // 個人の練習ノートからメニュー情報を取得
+            const memberNotes = state.practiceNotes.filter(pn => 
+                pn.date === s.date && crew.memberIds.includes(pn.userId) &&
+                (!s.timeSlot || pn.timeSlot === s.timeSlot || !pn.timeSlot)
+            );
+            const noteWithMenu = memberNotes.find(pn => pn.rowingMenus && pn.rowingMenus.length > 0);
+            let schedMenuSummary = '';
+            if (noteWithMenu) {
+                const menus = noteWithMenu.rowingMenus;
+                const dist = noteWithMenu.totalDistance || noteWithMenu.rowingDistance || 0;
+                schedMenuSummary = `<div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">🏁 ${menus.map(m => m.label || 'SR' + (m.rate || '?')).join(' → ')}${dist > 0 ? ` (${(dist / 1000).toFixed(1)}km)` : ''}</div>`;
+            }
             const memoText = s.memo ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">📋 ${s.memo}</div>` : '';
             return `<div class="history-card" style="border-left:3px solid rgba(59,130,246,0.4);opacity:0.8;" onclick="openCrewNoteEdit('${hash}', '${s.date}')">
                 <div class="history-card-header">
                     <span class="history-card-date">${d.month}/${d.day}（${d.weekday}）${slotBadge ? ' ' + slotBadge : ''}</span>
                     <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(59,130,246,0.1);color:#3b82f6;font-weight:600;">＋ ノート作成</span>
                 </div>
+                ${schedMenuSummary}
                 ${memoText}
                 <div class="history-card-empty">タップしてノートを作成</div>
             </div>`;
