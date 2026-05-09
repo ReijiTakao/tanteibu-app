@@ -1150,7 +1150,7 @@ const SupabaseDB = {
             .from('app_settings')
             .select('value')
             .eq('key', key)
-            .single();
+            .maybeSingle();
         if (error) { return null; }
         return data?.value || null;
     },

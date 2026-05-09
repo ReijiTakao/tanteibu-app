@@ -947,6 +947,15 @@
                         </div>
                     </div>
 
+                    <!-- データ管理 -->
+                    <div class="settings-section">
+                        <h3>💾 データ管理</h3>
+                        <p class="help-text" style="margin-bottom: 12px;">
+                            動作が重い場合やデータが最新化されない場合に、端末内のキャッシュを削除してクラウドから再読み込みします。
+                        </p>
+                        <button id="clear-local-data-btn" class="secondary-btn" style="width: 100%; border-color: #ef4444; color: #ef4444;">ローカルデータをクリア（再読み込み）</button>
+                    </div>
+
                     <button id="logout-btn" class="danger-btn">ログアウト</button>
                     <button id="reset-data-btn" class="danger-btn hidden" style="margin-top:8px;background:#dc2626;">⚠️
                         全データリセット</button>
@@ -1842,7 +1851,7 @@
                 style="display: flex; justify-content: space-between; align-items: center;">
                 <button id="delete-practice-note-btn" class="danger-btn" style="font-size: 13px; padding: 8px 16px;"
                     onclick="deletePracticeNote()">🗑 削除</button>
-                <button id="save-practice-note-btn" class="primary-btn">保存</button>
+                <button id="save-practice-note-btn" class="primary-btn">💾 クラウドに保存して共有</button>
             </div>
         </div>
     </div>
@@ -1915,7 +1924,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="primary-btn full-width" id="save-crew-note-btn">保存</button>
+                <button class="primary-btn full-width" id="save-crew-note-btn">💾 クラウドに保存して共有</button>
             </div>
         </div>
     </div>

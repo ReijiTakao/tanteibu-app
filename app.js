@@ -312,7 +312,16 @@ const DB = {
 
     // ローカルストレージ操作
     saveLocal(key, data) {
-        localStorage.setItem(`${this.storagePrefix}${key}`, JSON.stringify(data));
+        try {
+            localStorage.setItem(`${this.storagePrefix}${key}`, JSON.stringify(data));
+        } catch (e) {
+            console.warn(`localStorage save error for key ${key}:`, e);
+            if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22) {
+                if (typeof showToast === 'function') {
+                    showToast('端末の保存容量が上限に達しました。一部のデータが一時保存されません。', 'error');
+                }
+            }
+        }
     },
 
     loadLocal(key) {
@@ -550,7 +559,7 @@ const DB = {
                     return false;
                 });
 
-                this.saveLocal('ergo_records', state.ergoRecords);
+                this.saveLocal('ergo_records', state.ergoRecords.slice(0, 100));
                 if (state.ergoSessions?.length) {
                     this.saveLocal('ergo_sessions', state.ergoSessions);
                 }
@@ -591,7 +600,7 @@ const DB = {
                     if (idx !== -1) state.crewNotes[idx] = n;
                     else state.crewNotes.push(n);
                 });
-                this.saveLocal('crew_notes', state.crewNotes);
+                this.saveLocal('crew_notes', state.crewNotes.slice(0, 100));
             }
 
             // 練習ノート
@@ -602,7 +611,7 @@ const DB = {
                     if (idx !== -1) state.practiceNotes[idx] = pn;
                     else state.practiceNotes.push(pn);
                 });
-                this.saveLocal('practice_notes', state.practiceNotes);
+                this.saveLocal('practice_notes', state.practiceNotes.slice(0, 100));
             }
 
             // 監査ログ
@@ -613,7 +622,7 @@ const DB = {
                     if (idx !== -1) state.auditLogs[idx] = log;
                     else state.auditLogs.push(log);
                 });
-                this.saveLocal('audit_logs', state.auditLogs);
+                this.saveLocal('audit_logs', state.auditLogs.slice(0, 100));
             }
 
             // クループリセット
@@ -752,10 +761,48 @@ const DB = {
                 }
             } catch (e) { console.warn('TT records sync failed:', e); }
 
+            // クルーメタデータ
+            try {
+                const crewMetadata = await window.SupabaseConfig.db.loadCrewMetadata();
+                if (crewMetadata && crewMetadata.length > 0) {
+                    let localCrews = this.loadLocal('crews') || [];
+                    let hasChanges = false;
+                    crewMetadata.forEach(m => {
+                        let crew = localCrews.find(c => c.hash === m.crewHash);
+                        if (!crew) {
+                            crew = { hash: m.crewHash };
+                            localCrews.push(crew);
+                        }
+                        crew.name = m.name;
+                        crew.playlistUrl = m.playlistUrl;
+                        hasChanges = true;
+                        
+                        // メモリ上のstate.crewsも更新
+                        if (state.crews) {
+                            const stateCrew = state.crews.find(c => c.hash === m.crewHash);
+                            if (stateCrew) {
+                                stateCrew.name = m.name;
+                                stateCrew.playlistUrl = m.playlistUrl;
+                            }
+                        }
+                    });
+                    if (hasChanges) {
+                        this.saveLocal('crews', localCrews);
+                    }
+                }
+            } catch (e) { console.warn('Crew metadata sync failed:', e); }
+
         } catch (e) {
             console.error('syncFromSupabase failed:', e);
             showToast('同期エラー: ' + (e?.message || JSON.stringify(e)), 'error');
         } finally {
+            // バックグラウンドで全ユーザーのエルゴデータを同期（UIをブロックしないように遅延実行）
+            setTimeout(() => {
+                if (typeof syncAllConcept2Data === 'function') {
+                    syncAllConcept2Data();
+                }
+            }, 3000);
+
             window.SupabaseConfig.suppressSyncIndicator(false);
         }
     },
@@ -2484,6 +2531,96 @@ function classifyConcept2Result(result) {
 }
 
 // Concept2データを同期（Vercel APIプロキシ経由・全ページ取得）
+// ====== 全員のConcept2データをバックグラウンドで同期 ======
+async function syncAllConcept2Data() {
+    if (!state.users || !state.users.length) return;
+    
+    // Concept2連携済みのユーザーを抽出
+    const connectedUsers = state.users.filter(u => u.concept2Connected && u.concept2Token);
+    if (connectedUsers.length === 0) return;
+
+    console.log(`全 ${connectedUsers.length} ユーザーのConcept2データをバックグラウンドで同期します`);
+    
+    for (const user of connectedUsers) {
+        try {
+            // 最新1ページ（直近50件）だけ取得（負荷対策）
+            const response = await fetch(API_BASE + '/api/concept2-proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'sync',
+                    access_token: user.concept2Token,
+                    page: 1
+                })
+            });
+            
+            const data = await response.json();
+            if (!response.ok || !data.success) continue;
+
+            const results = data.results || [];
+            if (results.length === 0) continue;
+
+            let existingRecords = DB.loadLocal('ergo_records') || [];
+            let insertedCount = 0;
+
+            for (const result of results) {
+                const concept2Id = String(result.id);
+                // 既存チェック
+                const exists = existingRecords.some(r => r.concept2Id === concept2Id);
+                if (exists) continue;
+
+                const { menuKey, category } = classifyConcept2Result(result);
+                if (category === 'skip') continue;
+
+                const timeSec = result.time ? result.time / 10 : 0;
+                const distance = result.distance || 0;
+                const recordDate = result.date?.split('T')[0] || new Date().toISOString().split('T')[0];
+                const recordId = 'c2_' + concept2Id;
+
+                const newRecord = {
+                    id: recordId,
+                    rawId: recordId,
+                    concept2Id: concept2Id,
+                    userId: user.id,
+                    userName: user.name,
+                    date: recordDate,
+                    distance: distance,
+                    time: timeSec,
+                    timeSeconds: Math.round(timeSec),
+                    timeDisplay: formatTime(timeSec),
+                    split: (distance > 0 && timeSec > 0) ? formatSplit(timeSec, distance) : '-',
+                    rate: result.stroke_rate || null,
+                    menu: menuKey,
+                    category: category,
+                    createdAt: new Date().toISOString()
+                };
+
+                if (window.SupabaseConfig?.db) {
+                    await window.SupabaseConfig.db.saveErgoRecord(newRecord);
+                }
+                insertedCount++;
+            }
+            if (insertedCount > 0) {
+                console.log(`User ${user.name}: 新規 ${insertedCount} 件のエルゴデータを同期`);
+            }
+        } catch (e) {
+            console.warn(`User ${user.id} の Concept2同期エラー:`, e);
+        }
+    }
+    
+    // 全員の同期が終わったら、表示を更新するためにエルゴレコードを再読み込みする
+    if (window.SupabaseConfig?.db) {
+        const updatedRecords = await window.SupabaseConfig.db.loadErgoRecords();
+        if (updatedRecords && updatedRecords.length) {
+            state.ergoRecords = updatedRecords;
+            DB.saveLocal('ergo_records', updatedRecords.slice(0, 100));
+            if (typeof renderErgoRecords === 'function') {
+                renderErgoRecords();
+            }
+        }
+    }
+}
+
 async function syncConcept2() {
     if (!state.currentUser?.concept2Connected || !state.currentUser?.concept2Token) {
         showToast('Concept2と連携してください', 'error');
@@ -7459,7 +7596,7 @@ function savePracticeNote() {
     renderPracticeNoteReadView(note, schedule);
 
     renderPracticeNotesList();
-    showToast('保存しました', 'success');
+    showToast('ノートを保存し、全メンバーに共有しました', 'success');
 }
 
 /**
@@ -10588,6 +10725,18 @@ const initializeApp = async () => {
         document.getElementById('skip-concept2-btn')?.addEventListener('click', skipConcept2);
         document.getElementById('connect-concept2-btn')?.addEventListener('click', connectConcept2);
         document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
+        document.getElementById('clear-local-data-btn')?.addEventListener('click', () => {
+            if (confirm('ローカルキャッシュを削除してクラウドからデータを再取得しますか？\n（アカウントはログアウトされません）')) {
+                localStorage.removeItem('antigravity_ergo_records');
+                localStorage.removeItem('antigravity_crew_notes');
+                localStorage.removeItem('antigravity_practice_notes');
+                localStorage.removeItem('antigravity_audit_logs');
+                localStorage.removeItem('antigravity_ergo_sessions');
+                localStorage.removeItem('antigravity_schedules');
+                showToast('キャッシュを削除しました。再読み込みします', 'success');
+                setTimeout(() => location.reload(), 1000);
+            }
+        });
         document.getElementById('reset-data-btn')?.addEventListener('click', () => {
             showConfirmModal('⚠️ 全てのローカルデータを削除します。この操作は取り消せません。よろしいですか？', () => {
                 showConfirmModal('本当に全データを削除しますか？（最終確認）', () => {
@@ -13067,6 +13216,7 @@ function saveCrewNote(noteData) {
     DB.save('crew_notes', state.crewNotes);
     DB.saveCrewNote(note); // Supabase同期
     extractCrewsFromSchedules();
+    showToast('ノートを保存し、全メンバーに共有しました', 'success');
     return note;
 }
 
@@ -13108,15 +13258,8 @@ function deleteCrewNote(noteId, crewHash) {
         DB.save('crew_notes', state.crewNotes);
 
         // Supabase削除
-        if (DB.useSupabase && window.SupabaseConfig?.isReady()) {
-            try {
-                window.SupabaseConfig.getClient()
-                    .from('crew_notes')
-                    .delete()
-                    .eq('id', noteId)
-                    .then(() => { });
-            } catch (e) { /* ignore */ }
-        }
+        window.SupabaseConfig?.db?.deleteCrewNote(noteId)
+            .catch(e => console.warn('Crew note delete sync failed:', e));
 
         // 練習ノートからのリンク解除
         state.practiceNotes.forEach(pn => {
