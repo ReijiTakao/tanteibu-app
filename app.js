@@ -10562,6 +10562,21 @@ function deleteMasterItem(e) {
 // =========================================
 const initializeApp = async () => {
     try {
+        // -----------------------------------------
+        // 自動キャッシュクリア処理 (V3アップデート等)
+        // -----------------------------------------
+        const CACHE_VERSION = 'v3_slice';
+        if (localStorage.getItem('antigravity_cache_version') !== CACHE_VERSION) {
+            console.log(`キャッシュバージョンが古いか存在しないため、一部のローカルデータをクリアします: ${CACHE_VERSION}`);
+            localStorage.removeItem('antigravity_ergo_records');
+            localStorage.removeItem('antigravity_crew_notes');
+            localStorage.removeItem('antigravity_practice_notes');
+            localStorage.removeItem('antigravity_audit_logs');
+            localStorage.removeItem('antigravity_ergo_sessions');
+            localStorage.removeItem('antigravity_schedules');
+            localStorage.setItem('antigravity_cache_version', CACHE_VERSION);
+            // リロードせずにそのまま続行し、クラウドから最新の制限付きデータを取得させる
+        }
 
         // デモモード判定 (?demo=true)
         const urlParams = new URLSearchParams(window.location.search);
